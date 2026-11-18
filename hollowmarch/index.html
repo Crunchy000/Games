@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#15100b">
+<title>Hollowmarch</title>
+<meta name="description" content="A tower defense game for touch screens: build and upgrade towers, lead two heroes and cast spells to hold the road.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@500;700;800;900&family=Grenze+Gotisch:wght@600;800&display=swap">
+<style>
+/* Layout: full-bleed battlefield canvas; wood-and-brass HUD bars pinned top and bottom; parchment dialogs float over the map */
+:root{
+  --night:#15100b; --wood:#3b2618; --wood-lt:#6a4529; --brass:#efbb4c; --brass-dk:#9a6b1f;
+  --parch:#f1dfb4; --parch-dk:#d6bb82; --ink:#2a1d12; --blood:#c8432d; --leaf:#7cc04a; --frost:#9ad8ff; --muted:#8a7352;
+  --display:'Grenze Gotisch','Palatino Linotype',Georgia,serif;
+  --ui:'Alegreya Sans','Trebuchet MS',system-ui,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+.ico{display:inline-grid;place-items:center;line-height:1;font-style:normal;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;flex:none}
+.ico.off{filter:grayscale(1);opacity:.35}
+html,body{height:100%}
+body{font-size:14px}
+body{margin:0;background:var(--night);color:var(--parch);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;font-family:var(--ui);-webkit-tap-highlight-color:transparent}
+button{font-family:var(--ui);cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:3px solid var(--frost);outline-offset:2px}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* ---------- HUD ---------- */
+.hud{position:fixed;left:0;right:0;z-index:5;display:flex;gap:8px;pointer-events:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hud > *{pointer-events:auto}
+#hudTop{top:0;align-items:center;padding-top:calc(env(safe-area-inset-top,0px) + 8px);padding-bottom:14px;background:linear-gradient(#120c07f0,#120c0700)}
+#hudBot{bottom:0;align-items:flex-end;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);padding-top:22px;background:linear-gradient(#120c0700,#120c07f2 50%)}
+.stat{display:flex;align-items:center;gap:5px;white-space:nowrap;background:#21160dd9;border:2px solid var(--wood-lt);border-radius:999px;padding:2px 10px 2px 3px;font-weight:900;font-size:16px;font-variant-numeric:tabular-nums;color:var(--parch);box-shadow:inset 0 -2px 0 #0006}
+.stat .ico{font-size:17px;width:24px;height:24px}
+.stat.wave{padding-left:10px;font-size:14px;font-weight:800;color:var(--parch-dk)}
+.stat.wave b{color:var(--parch);font-weight:900}
+.stat.bump{animation:bump .25s}
+@keyframes bump{50%{transform:scale(1.15)}}
+.spacer{flex:1}
+.rbtn{width:42px;height:42px;border-radius:50%;border:2px solid var(--brass-dk);background:radial-gradient(circle at 35% 30%,#7a5232,#3b2618 70%);color:var(--brass);display:grid;place-items:center;font:900 15px var(--ui);box-shadow:0 3px 0 #0008;padding:0}
+.rbtn .ico{font-size:18px}
+.rbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #0008}
+
+.heroCard{position:relative;width:58px;height:58px;border-radius:14px;border:3px solid var(--brass-dk);background:#2c1d12;padding:0;box-shadow:0 3px 0 #0009;flex:none}
+.heroCard.sel{border-color:#fff3c4;box-shadow:0 0 0 3px var(--brass),0 0 18px #efbb4caa}
+.heroCard canvas{width:100%;height:100%;border-radius:10px;display:block}
+.heroCard .hp{position:absolute;left:3px;right:3px;bottom:-9px;height:6px;border-radius:3px;background:#000b;overflow:hidden;border:1px solid #000}
+.heroCard .hp i{display:block;height:100%;width:100%;background:var(--leaf);transform-origin:left}
+.heroCard .lvl{position:absolute;left:-8px;top:-8px;min-width:22px;height:22px;border-radius:11px;background:var(--ink);border:2px solid var(--brass);font-size:12px;font-weight:900;display:grid;place-items:center;color:var(--brass);font-variant-numeric:tabular-nums}
+.heroCard .down{position:absolute;inset:0;border-radius:10px;background:#000b;display:grid;place-items:center;font-weight:900;font-size:18px;color:#ffb0a0;font-variant-numeric:tabular-nums}
+.ult{position:absolute;right:-12px;top:-12px;width:32px;height:32px;border-radius:50%;border:2px solid var(--brass);background:radial-gradient(circle at 35% 30%,#ffd98a,#c4801f 75%);padding:0;display:grid;place-items:center;overflow:hidden;box-shadow:0 2px 0 #0009}
+.ult .ico{font-size:16px;position:relative;z-index:1}
+.ult.arm,.spell.arm{box-shadow:0 0 0 3px #fff,0 0 16px #fff}
+.cd{position:absolute;inset:0;border-radius:inherit;background:conic-gradient(#000000b8 calc(var(--p,0)*1turn),transparent 0);pointer-events:none;z-index:2}
+.spells{display:flex;gap:8px;margin-left:auto}
+.spell{position:relative;width:52px;height:52px;border-radius:50%;border:3px solid var(--brass-dk);padding:0;display:grid;place-items:center;overflow:hidden;box-shadow:0 3px 0 #0009;flex:none}
+.spell .ico{font-size:25px;position:relative;z-index:1}
+.spell .t{position:absolute;z-index:3;font-weight:900;font-size:14px;color:#fff;text-shadow:0 1px 2px #000;font-variant-numeric:tabular-nums}
+.spell.fire{background:radial-gradient(circle at 35% 30%,#ffb35c,#a8321c 75%)}
+.spell.arms{background:radial-gradient(circle at 35% 30%,#8fb6e8,#2c4f86 75%)}
+.spell.snare{background:radial-gradient(circle at 35% 30%,#b9d878,#3f6b24 75%)}
+
+/* ---------- build ring ---------- */
+#ring{position:fixed;left:0;top:0;width:0;height:0;z-index:4;pointer-events:none}
+#ring .halo{position:absolute;left:-64px;top:-64px;width:128px;height:128px;border-radius:50%;border:3px solid #f1dfb455;box-shadow:inset 0 0 20px #0008;animation:pop .18s ease-out}
+.opt{position:absolute;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;pointer-events:auto;border:3px solid var(--brass-dk);background:radial-gradient(circle at 35% 30%,#7f5634,#33200f 75%);display:grid;place-items:center;padding:0;box-shadow:0 4px 0 #000a;animation:pop .18s ease-out}
+.opt > .ico{font-size:27px}
+.opt canvas{width:50px;height:50px;margin-top:-6px;pointer-events:none}
+.opt .badge{position:absolute;right:-6px;top:-6px;width:22px;height:22px;border-radius:50%;background:#2f7d2f;border:2px solid #c9f59a;display:grid;place-items:center}
+.opt .badge .ico{font-size:12px}
+.opt .badge.mast{background:#9a6b1f;border-color:#ffe28a}
+.opt .price{position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--brass);font:900 12px var(--ui);padding:1px 7px;border-radius:9px;border:1px solid var(--brass-dk);white-space:nowrap;font-variant-numeric:tabular-nums}
+.opt.poor > .ico{opacity:.45;filter:grayscale(.8)}
+.opt.poor .price{color:#ff8f7a}
+.opt.arm{border-color:#fff7d6;box-shadow:0 0 0 3px var(--brass),0 0 18px #efbb4c}
+.opt .ok{position:absolute;inset:-3px;border-radius:50%;background:#2f7d2fe6;display:none;place-items:center;border:3px solid #c9f59a}
+.opt.arm .ok{display:grid}
+.opt.arm.poor .ok{background:#6d2a1fe6;border-color:#ff8f7a}
+.opt .ok .ico{font-size:22px}
+@keyframes pop{from{transform:scale(.4);opacity:0}}
+
+/* ---------- info + hint ---------- */
+#info{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);width:min(calc(100vw - 32px),380px);background:var(--parch);color:var(--ink);border-radius:12px;border:3px solid var(--wood);box-shadow:0 0 0 2px var(--brass-dk),0 10px 30px #000a;padding:9px 12px 10px;pointer-events:none}
+#info.top{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 62px)}
+#info h3{margin:0;font:800 22px/1.05 var(--display);letter-spacing:.2px;text-wrap:balance}
+#info .sub{font-size:13px;font-weight:700;color:#6b5434;margin-top:1px}
+#info p{margin:5px 0 0;font-size:14px;line-height:1.3;font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.chips span{display:inline-flex;align-items:center;gap:3px}
+.chips .ico{font-size:12px}
+#hint{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 96px);max-width:calc(100vw - 40px);background:#120c07e6;border:2px solid var(--brass);color:var(--parch);font-weight:800;font-size:15px;padding:8px 14px;border-radius:999px;text-align:center;pointer-events:none;animation:float 1.6s ease-in-out infinite}
+@keyframes float{50%{transform:translate(-50%,-4px)}}
+#toast{position:fixed;z-index:7;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);transform:translateX(-50%);font:800 30px var(--display);color:var(--brass);text-shadow:0 3px 0 #3d2208,0 0 18px #000;white-space:nowrap;pointer-events:none;animation:toast 2.2s ease-out forwards}
+#toast small{display:block;font:800 15px var(--ui);color:var(--parch);text-align:center;text-shadow:0 2px 4px #000}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,-10px) scale(.9)}12%{opacity:1;transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0}}
+
+/* ---------- wave banners ---------- */
+.flag{position:fixed;left:0;top:0;z-index:3;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;border:3px solid #3a0f08;background:radial-gradient(circle at 35% 30%,#ef6a4c,#8e1f12 75%);padding:0;display:grid;place-items:center;box-shadow:0 0 0 0 #ff6a4c88;animation:beckon 1.3s infinite}
+.flag .ico{font-size:24px;position:relative;z-index:1}
+.flag .ring{position:absolute;inset:-7px;border-radius:50%;background:conic-gradient(var(--brass) calc(var(--p,1)*1turn),#0006 0);-webkit-mask:radial-gradient(circle,transparent 27px,#000 28px);mask:radial-gradient(circle,transparent 27px,#000 28px)}
+.flag.arm{border-color:#fff;animation:none;box-shadow:0 0 0 4px var(--brass),0 0 22px #ffcf70}
+@keyframes beckon{70%{box-shadow:0 0 0 14px #ff6a4c00}100%{box-shadow:0 0 0 0 #ff6a4c00}}
+
+/* ---------- screens ---------- */
+.screen{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#120c0766,#0a0604dd);
+  padding-top:calc(env(safe-area-inset-top,0px) + 16px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto}
+.panel{background:var(--parch);color:var(--ink);border-radius:16px;border:4px solid var(--wood);box-shadow:0 0 0 2px var(--brass-dk),0 24px 60px #000c;padding:18px;width:min(100%,430px);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:12px;animation:pop .22s ease-out}
+.panel h2{margin:0;font:800 34px/1 var(--display);text-wrap:balance}
+.panel .lede{margin:0;font-size:15px;line-height:1.35;color:#4b3820;font-weight:500}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.btn{font:900 18px var(--ui);padding:11px 20px;border-radius:12px;border:3px solid var(--wood);background:linear-gradient(#ffd56e,#d0902a);color:var(--ink);box-shadow:0 4px 0 #6b4410;flex:1;min-width:0}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #6b4410}
+.btn.alt{background:linear-gradient(#efe0bd,#cdb382);box-shadow:0 4px 0 #7b6340}
+.btn.dark{background:linear-gradient(#6a4529,#3b2618);color:var(--parch);box-shadow:0 4px 0 #1a0f07}
+.btn:disabled{filter:grayscale(.8);opacity:.6}
+
+#title{flex-direction:column;gap:18px;background:radial-gradient(ellipse at 50% 40%,#0000,#0a0604e6 75%)}
+.logo{margin:0;font:800 clamp(44px,14vw,104px)/.9 var(--display);color:var(--brass);text-shadow:0 4px 0 #5a3410,0 8px 0 #2a1708,0 0 40px #000;text-align:center;letter-spacing:1px}
+.tag{margin:0;font-weight:800;font-size:16px;color:var(--parch);text-shadow:0 2px 6px #000;text-align:center;max-width:22em}
+#title .btn{flex:none;min-width:200px;font-size:22px}
+
+.stages{display:flex;flex-direction:column;gap:10px}
+.stage{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;text-align:left;background:#fff6dd;border:3px solid var(--parch-dk);border-radius:12px;padding:10px 12px;color:var(--ink)}
+.stage:not(:disabled):active{transform:translateY(2px)}
+.stage:disabled{opacity:.55}
+.stage .medal{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffd56e,#b47718 75%);border:3px solid var(--wood);display:grid;place-items:center;font:800 24px var(--display);color:var(--ink)}
+.stage:disabled .medal{background:#a99674}
+.stage b{display:block;font:800 21px/1.05 var(--display)}
+.stage small{display:block;font-size:13px;font-weight:700;color:#6b5434;margin-top:2px}
+.stars{display:flex;gap:1px}
+.stars .ico{font-size:17px}
+.meta{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:15px}
+.meta .pill{display:inline-flex;align-items:center;gap:4px;background:var(--ink);color:var(--brass);padding:3px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
+.meta .pill .ico{font-size:13px}
+
+.heroes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hpick{display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff6dd;border:3px solid var(--parch-dk);border-radius:12px;padding:8px 4px;color:var(--ink);position:relative}
+.hpick canvas{width:64px;height:64px;border-radius:10px}
+.hpick b{font:800 19px/1 var(--display)}
+.hpick small{font-size:12px;font-weight:700;color:#6b5434;text-align:center;line-height:1.15}
+.hpick.on{border-color:var(--brass-dk);background:#ffe9a8;box-shadow:0 0 0 2px var(--brass)}
+.hpick .chk{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:#2f7d2f;border:2px solid #c9f59a;display:none;place-items:center}
+.hpick.on .chk{display:grid}
+.hpick .chk .ico{font-size:12px}
+.hdesc{background:#fff6dd;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.35;border:2px dashed var(--parch-dk)}
+.hdesc b{font-weight:900}
+
+.relics{display:flex;flex-direction:column;gap:8px}
+.relic{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;background:#fff6dd;border:2px solid var(--parch-dk);border-radius:12px;padding:8px 10px}
+.relic .rico{width:40px;height:40px;border-radius:10px;background:var(--wood);display:grid;place-items:center}
+.relic .rico .ico{font-size:22px}
+.relic b{display:block;font-weight:900;font-size:15px}
+.relic small{display:block;font-size:13px;color:#6b5434;font-weight:600;line-height:1.2}
+.relic button{font:900 14px var(--ui);border-radius:10px;border:2px solid var(--wood);padding:6px 10px;background:linear-gradient(#ffd56e,#d0902a);color:var(--ink);display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}
+.relic button .ico{font-size:13px}
+.relic button:disabled{background:#cdbf9f;opacity:.7}
+.relic.own{background:#e9f4cf;border-color:#8bb35a}
+.relic.own button{background:#8bb35a;color:#183008}
+
+.result .bigstars{display:flex;justify-content:center;gap:6px;margin:4px 0}
+.result .bigstars .ico{font-size:54px;animation:starIn .45s cubic-bezier(.2,1.6,.4,1) both}
+.result .bigstars .ico:nth-child(2){animation-delay:.25s;margin-top:-16px}
+.result .bigstars .ico:nth-child(3){animation-delay:.5s}
+@keyframes starIn{from{transform:scale(0) rotate(-40deg);opacity:0}}
+.result h2{text-align:center;font-size:44px}
+.result .lede{text-align:center}
+.brief{display:flex;flex-wrap:wrap;gap:8px}
+.foe{display:flex;align-items:center;gap:6px;background:#fff6dd;border:2px solid var(--parch-dk);border-radius:10px;padding:4px 8px 4px 4px;font-weight:800;font-size:13px}
+.foe canvas{width:34px;height:34px}
+.switch{display:flex;align-items:center;justify-content:space-between;font-weight:800}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Battlefield"></canvas>
+
+<div id="hudTop" class="hud" hidden>
+  <div class="stat" id="sLives"><span class="ico">❤️</span><span class="v">20</span></div>
+  <div class="stat" id="sGold"><span class="ico">🪙</span><span class="v">0</span></div>
+  <div class="stat wave" id="sWave"><span class="v">Wave <b>0/0</b></span></div>
+  <div class="spacer"></div>
+  <button class="rbtn" id="bSpeed" aria-label="Game speed">1×</button>
+  <button class="rbtn" id="bPause" aria-label="Pause"><span class="ico">⏸️</span></button>
+</div>
+
+<div id="hudBot" class="hud" hidden>
+  <div id="heroSlots" style="display:flex;gap:20px;padding:10px 10px 0 6px"></div>
+  <div class="spells" id="spellSlots"></div>
+</div>
+
+<div id="ring" hidden></div>
+<div id="flags"></div>
+<div id="info" hidden></div>
+<div id="hint" hidden></div>
+
+<section class="screen" id="title">
+  <h1 class="logo">Hollowmarch</h1>
+  <p class="tag">Portals have torn open across the march. Build towers, lead two heroes, and break the Hollow Horde before it reaches the gate.</p>
+  <button class="btn" id="bPlay">Take command</button>
+</section>
+
+<section class="screen" id="campaign" hidden>
+  <div class="panel">
+    <h2>The March</h2>
+    <div class="meta"><span>Choose a road to defend</span><span class="pill" id="starPill"></span></div>
+    <div class="stages" id="stageList"></div>
+    <div class="row">
+      <button class="btn alt" id="bSquad">Heroes</button>
+      <button class="btn alt" id="bRelics">Upgrades</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="squad" hidden>
+  <div class="panel">
+    <h2>Pick two heroes</h2>
+    <p class="lede">Both march with you into every stage. Tap a hero to add or swap them.</p>
+    <div class="heroes" id="heroPick"></div>
+    <div class="hdesc" id="heroDesc"></div>
+    <button class="btn" id="bSquadDone">Done</button>
+  </div>
+</section>
+
+<section class="screen" id="relicScr" hidden>
+  <div class="panel">
+    <h2>War Council</h2>
+    <div class="meta"><span>Spend stars earned in battle</span><span class="pill" id="relicPill"></span></div>
+    <div class="relics" id="relicList"></div>
+    <div class="row">
+      <button class="btn dark" id="bRelicReset">Refund all</button>
+      <button class="btn" id="bRelicDone">Done</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="briefing" hidden>
+  <div class="panel">
+    <h2 id="bfName"></h2>
+    <p class="lede" id="bfText"></p>
+    <div class="brief" id="bfFoes"></div>
+    <div class="meta"><span id="bfMeta"></span><span class="stars" id="bfStars"></span></div>
+    <div class="row">
+      <button class="btn alt" id="bBfBack">Back</button>
+      <button class="btn" id="bBfGo">Defend</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="pauseScr" hidden>
+  <div class="panel">
+    <h2>Paused</h2>
+    <div class="switch"><span>Sound</span><button class="btn alt" id="bMute" style="flex:none;padding:6px 14px;font-size:15px">On</button></div>
+    <button class="btn" id="bResume">Resume</button>
+    <div class="row">
+      <button class="btn alt" id="bRestart">Restart</button>
+      <button class="btn dark" id="bQuit">Leave stage</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="resultScr" hidden>
+  <div class="panel result">
+    <h2 id="rsTitle"></h2>
+    <div class="bigstars" id="rsStars"></div>
+    <p class="lede" id="rsText"></p>
+    <div class="row">
+      <button class="btn alt" id="bRsRetry">Retry</button>
+      <button class="btn" id="bRsNext">Continue</button>
+    </div>
+  </div>
+</section>
+
+<script>
+'use strict';
+/* =================== core utils =================== */
+const KS = Math.sin(55 * Math.PI / 180), KC = Math.cos(55 * Math.PI / 180);
+const TILE = 60, W = 8 * TILE, H = 16 * TILE * KS, TAU = Math.PI * 2;
+const PD = 132 / TILE; // sprite pixels per world unit
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+// ground distance: undoes the camera tilt so ranges are true circles on the ground
+const gd = (ax, ay, bx, by) => Math.hypot(ax - bx, (ay - by) / KS);
+const lerp = (a, b, t) => a + (b - a) * t;
+function mulberry(seed) {
+  return function () {
+    seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* =================== paths =================== */
+class Path {
+  constructor(pts) {
+    this.pts = pts;
+    this.cum = [0];
+    for (let i = 1; i < pts.length; i++) this.cum.push(this.cum[i - 1] + dist(pts[i][0], pts[i][1], pts[i - 1][0], pts[i - 1][1]));
+    this.len = this.cum[this.cum.length - 1];
+    this.escD = this.len;
+    for (let d = 0; d < this.len; d += 2) { if (this.at(d).y >= H - 4) { this.escD = d; break; } }
+    this.entryD = 0;
+  }
+  at(d) {
+    const c = this.cum; d = clamp(d, 0, this.len);
+    let lo = 0, hi = c.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (c[m] <= d) lo = m; else hi = m; }
+    const a = this.pts[lo], b = this.pts[hi], sl = (c[hi] - c[lo]) || 1, t = (d - c[lo]) / sl;
+    const dx = (b[0] - a[0]) / sl, dy = (b[1] - a[1]) / sl;
+    return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, dx, dy };
+  }
+  distTo(x, y) {
+    let best = 1e9;
+    for (let i = 1; i < this.pts.length; i++) {
+      const a = this.pts[i - 1], b = this.pts[i];
+      const vx = b[0] - a[0], vy = b[1] - a[1], l2 = vx * vx + vy * vy || 1;
+      const t = clamp(((x - a[0]) * vx + (y - a[1]) * vy) / l2, 0, 1);
+      best = Math.min(best, gd(x, y, a[0] + vx * t, a[1] + vy * t));
+    }
+    return best;
+  }
+}
+
+/* =================== towers =================== */
+const TOWERS = {
+  archer: {
+    name: 'Ballista Tower', short: 'Ballista', dtype: 'phys', air: true,
+    blurb: 'Fast, cheap bolts. Hits fliers.',
+    levels: [
+      { name: 'Ballista Tower', cost: 70, dmg: [4, 7], rate: 0.8, range: 140 },
+      { name: 'Ballista Lodge', cost: 110, dmg: [8, 12], rate: 0.7, range: 150 },
+      { name: 'Ballista Keep', cost: 160, dmg: [12, 19], rate: 0.58, range: 160 },
+    ],
+    branches: [
+      { id: 'ranger', name: 'Venom Repeater', cost: 230, dmg: [14, 21], rate: 0.36, range: 170, poison: 6, desc: 'Rapid-fire darts. Each one poisons for 3 seconds, ignoring armour.' },
+      { id: 'marksman', name: 'Siege Ballista', cost: 250, dmg: [38, 56], rate: 1.05, range: 210, desc: 'Longest reach on the field. 20% chance to land a triple-damage critical bolt.' },
+    ],
+  },
+  barracks: {
+    name: 'Guardhouse', short: 'Guards', dtype: 'phys', air: false,
+    blurb: 'Three guards who block the road.',
+    levels: [
+      { name: 'Watch House', cost: 70, hp: 60, dmg: [2, 4], armor: 0, rate: 1, range: 110, respawn: 10 },
+      { name: 'Guardhouse', cost: 110, hp: 110, dmg: [4, 6], armor: 0.15, rate: 1, range: 110, respawn: 10 },
+      { name: 'Garrison', cost: 160, hp: 170, dmg: [7, 11], armor: 0.3, rate: 1, range: 120, respawn: 10 },
+    ],
+    branches: [
+      { id: 'templar', name: 'Order of the Lantern', cost: 230, hp: 280, dmg: [9, 15], armor: 0.55, rate: 1, range: 125, respawn: 10, regen: 12, desc: 'Heavily armoured defenders that heal themselves mid-fight.' },
+      { id: 'berserker', name: 'Hillclan Brawlers', cost: 230, hp: 220, dmg: [18, 26], armor: 0.2, rate: 0.8, range: 125, respawn: 8, steal: 0.35, desc: 'Brutal fists. Every hit steals back 35% of the damage as health.' },
+    ],
+  },
+  mage: {
+    name: 'Crystal Spire', short: 'Crystal', dtype: 'magic', air: true,
+    blurb: 'Magic bolts that ignore armour.',
+    levels: [
+      { name: 'Crystal Spire', cost: 100, dmg: [8, 15], rate: 1.5, range: 130 },
+      { name: 'Prism Spire', cost: 160, dmg: [21, 39], rate: 1.5, range: 140 },
+      { name: 'Arcane Spire', cost: 240, dmg: [38, 70], rate: 1.5, range: 150 },
+    ],
+    branches: [
+      { id: 'archmage', name: 'Stormglass Spire', cost: 300, dmg: [60, 100], rate: 1.6, range: 160, chain: 2, desc: 'Bolts arc to two more enemies for 60% damage each.' },
+      { id: 'frost', name: 'Rimecrystal Spire', cost: 280, dmg: [44, 70], rate: 1.2, range: 155, splash: 36, slow: 0.4, desc: 'Ice shards splash nearby foes and slow them by 40%.' },
+    ],
+  },
+  artillery: {
+    name: 'Cannon Keep', short: 'Cannon', dtype: 'phys', air: false,
+    blurb: 'Slow shells that blast groups. Cannot hit fliers.',
+    levels: [
+      { name: 'Cannon Keep', cost: 110, dmg: [9, 16], rate: 2.8, range: 140, splash: 48 },
+      { name: 'Heavy Cannon Keep', cost: 180, dmg: [22, 40], rate: 2.8, range: 145, splash: 52 },
+      { name: 'Great Cannon Keep', cost: 260, dmg: [36, 66], rate: 2.8, range: 150, splash: 56 },
+    ],
+    branches: [
+      { id: 'thunder', name: 'Thunderspire', cost: 320, dmg: [45, 75], rate: 2, range: 150, chainN: 5, air: true, dtype: 'magic', desc: 'Lightning leaps between up to five enemies, fliers included.' },
+      { id: 'mortar', name: 'Boulder Catapult', cost: 360, dmg: [60, 110], rate: 3.2, range: 180, splash: 75, desc: 'Huge boulders with a wide blast that leave the ground burning.' },
+    ],
+  },
+};
+const TOWER_ORDER = ['archer', 'barracks', 'mage', 'artillery'];
+const towerSprite = tw => tw.branch || tw.kind + tw.level;
+const WEAPON = { archer1: 'ballista', archer2: 'ballista', archer3: 'ballista', marksman: 'ballista', ranger: 'turret', artillery1: 'cannon', artillery2: 'cannon', artillery3: 'cannon', mortar: 'catapult' };
+
+/* =================== enemies =================== */
+const ENEMIES = {
+  g: { name: 'Shambler', spr: 'zombie', hp: 22, spd: 44, armor: 0, mres: 0, gold: 4, lives: 1, dmg: [1, 3], atk: 1, r: 9, note: 'Slow-witted, quick on its feet, always hungry.' },
+  b: { name: 'Deckhand Brute', spr: 'pirate', hp: 80, spd: 34, armor: 0.3, mres: 0, gold: 10, lives: 1, dmg: [3, 6], atk: 1, r: 10, note: 'Thick hide shrugs off some physical damage.' },
+  p: { name: 'Shadow Runner', spr: 'ninja', walk: 'sprint', hp: 45, spd: 72, armor: 0, mres: 0.3, gold: 6, lives: 1, dmg: [2, 4], atk: 0.8, r: 9, dodge: 0.3, note: 'Very fast. Dodges 30% of melee attacks and shrugs off some magic.' },
+  h: { name: 'Plague Doctor', spr: 'doctor', hp: 70, spd: 36, armor: 0, mres: 0.6, gold: 14, lives: 1, dmg: [2, 5], atk: 1.2, r: 9, heal: { amt: 25, cd: 5, rad: 75 }, note: 'Heals nearby allies. Resists magic.' },
+  d: { name: 'Saucer', spr: 'ufo', hp: 40, spd: 54, armor: 0, mres: 0.5, gold: 9, lives: 1, dmg: [0, 0], atk: 1, r: 12, fly: true, note: 'Flies over guards and resists magic. Ballistas and lightning bring it down.' },
+  i: { name: 'Steel Golem', spr: 'robot', hp: 260, spd: 28, armor: 0.65, mres: 0, gold: 22, lives: 1, dmg: [8, 14], atk: 1.2, r: 11, note: 'Plate armour. Bring magic.' },
+  t: { name: 'Grave Hulk', spr: 'hulk', hp: 480, spd: 26, armor: 0.1, mres: 0, gold: 35, lives: 2, dmg: [14, 24], atk: 1.4, r: 14, regen: 6, note: 'Regenerates. Costs 2 lives if it gets through.' },
+  W: { name: 'The Violet Colossus', spr: 'colossus', hp: 4200, spd: 18, armor: 0.35, mres: 0.2, gold: 250, lives: 20, dmg: [40, 60], atk: 1.6, r: 22, boss: true, slam: { cd: 7, rad: 70, dmg: 45, stun: 2 }, note: 'Stomps the ground to stun everything around it.' },
+};
+
+/* =================== heroes =================== */
+const HEROES = {
+  brannoc: {
+    name: 'Brannoc', title: 'the Bulwark', role: 'Shield warden', spr: 'guard', hp: 340, dmg: [10, 16], rate: 1, armor: 0.45, range: 0, spd: 72, dtype: 'phys',
+    passive: 'Every 7s a shield bash stuns the foe in front of him.',
+    ult: { name: 'Earthshaker', cd: 22, r: 72, desc: 'Leaps to a spot, dealing heavy damage and stunning foes for 2s.' },
+  },
+  wren: {
+    name: 'Wren', title: 'Ashfeather', role: 'Ranger', spr: 'ranger', hp: 210, dmg: [9, 14], rate: 0.75, armor: 0.1, range: 150, spd: 84, dtype: 'phys',
+    passive: 'Shoots fliers. 25% of shots loose a second bolt.',
+    ult: { name: 'Arrow Storm', cd: 20, r: 62, desc: 'Fourteen bolts fall on an area over a second and a half.' },
+  },
+  ysolde: {
+    name: 'Ysolde', title: 'of the Rime', role: 'Frost mage', spr: 'frostmage', hp: 190, dmg: [16, 26], rate: 1.3, armor: 0, range: 130, spd: 70, dtype: 'magic',
+    passive: 'Magic bolts chill their target, slowing it by 30%.',
+    ult: { name: 'Frost Prison', cd: 24, r: 66, desc: 'Freezes every foe in an area solid for 3s, fliers included.' },
+  },
+};
+const HERO_XP = [0, 60, 170, 340, 600];
+
+/* =================== spells =================== */
+const SPELLS = [
+  { id: 'fire', name: 'Rain of Fire', cd: 50, start: 0.5, r: 50, desc: 'Three burning boulders crash into an area. Ignores armour.' },
+  { id: 'arms', name: 'Call to Arms', cd: 14, start: 0, r: 30, desc: 'Two militia join the fight for 16 seconds.' },
+  { id: 'snare', name: 'Bramble Snare', cd: 32, start: 0.3, r: 62, desc: 'Thorns burst from the ground, slowing foes by 70% and cutting them for 4s.' },
+];
+
+/* =================== upgrades (stars) =================== */
+const RELICS = [
+  { id: 'fletch', name: 'Barbed Bolts', cost: 1, desc: 'Ballista towers deal 15% more damage.', ico: 'archer' },
+  { id: 'drill', name: 'Drilled Ranks', cost: 1, desc: 'Guards and militia have 25% more health.', ico: 'barracks' },
+  { id: 'focus', name: 'Arcane Focus', cost: 2, desc: 'Crystal spires deal 15% more damage.', ico: 'mage' },
+  { id: 'powder', name: 'Packed Powder', cost: 2, desc: 'Cannon blasts are 18% wider.', ico: 'artillery' },
+  { id: 'treasury', name: 'Royal Treasury', cost: 2, desc: 'Start every stage with 80 more gold.', ico: 'gold' },
+  { id: 'scrolls', name: 'Quickened Scrolls', cost: 2, desc: 'Spells recharge 20% faster.', ico: 'book' },
+  { id: 'veterans', name: 'Veteran Heroes', cost: 3, desc: 'Heroes start each stage at level 2.', ico: 'hero' },
+];
+
+/* =================== stages =================== */
+const MAPS = [{"paths":[[[330.0,24.57],[330.0,49.15],[330.0,73.72],[330.0,98.3],[328.98,104.66],[325.98,110.59],[321.21,115.68],[315.0,119.58],[307.76,122.04],[300.0,122.87],[270.0,122.87],[240.0,122.87],[210.0,122.87],[180.0,122.87],[150.0,122.87],[120.0,122.87],[112.24,123.71],[105.0,126.17],[98.79,130.07],[94.02,135.16],[91.02,141.09],[90.0,147.45],[90.0,172.02],[90.0,196.6],[90.0,221.17],[90.0,245.75],[90.0,270.32],[90.0,294.89],[91.02,301.26],[94.02,307.18],[98.79,312.27],[105.0,316.18],[112.24,318.63],[120.0,319.47],[150.0,319.47],[180.0,319.47],[210.0,319.47],[240.0,319.47],[270.0,319.47],[300.0,319.47],[330.0,319.47],[360.0,319.47],[367.76,320.31],[375.0,322.76],[381.21,326.67],[385.98,331.76],[388.98,337.68],[390.0,344.04],[390.0,368.62],[390.0,393.19],[390.0,417.77],[390.0,442.34],[390.0,466.92],[390.0,491.49],[388.98,497.85],[385.98,503.78],[381.21,508.87],[375.0,512.77],[367.76,515.23],[360.0,516.07],[330.0,516.07],[300.0,516.07],[270.0,516.07],[240.0,516.07],[210.0,516.07],[180.0,516.07],[172.24,516.9],[165.0,519.36],[158.79,523.26],[154.02,528.35],[151.02,534.28],[150.0,540.64],[150.0,565.21],[150.0,589.79],[150.0,614.36],[150.0,638.94],[151.02,645.3],[154.02,651.23],[158.79,656.32],[165.0,660.22],[172.24,662.68],[180.0,663.51],[210.0,663.51],[240.0,663.51],[247.76,664.35],[255.0,666.81],[261.21,670.71],[265.98,675.8],[268.98,681.73],[270.0,688.09],[270.0,712.66],[270.0,737.24],[270.0,761.81],[270.0,786.39],[270.0,810.96],[270.0,835.54],[270.0,860.11],[270.0,884.68],[270.0,909.26],[270.0,933.83],[270.0,958.41]]],"plots":[[210.0,614.36],[270.0,565.21],[330.0,417.77],[150.0,221.17],[270.0,466.92],[270.0,368.62],[210.0,270.32],[210.0,73.72],[210.0,172.02]],"slow":[],"crystal":null,"bg":{"w":1980,"h":2665,"ax":462,"ay":432.5122793845876,"edge":"#55b475"}},{"paths":[[[30.0,172.02],[60.0,172.02],[90.0,172.02],[120.0,172.02],[150.0,172.02],[180.0,172.02],[187.76,172.86],[195.0,175.31],[201.21,179.22],[205.98,184.31],[208.98,190.24],[210.0,196.6],[210.0,221.17],[210.0,245.75],[210.0,270.32],[210.0,294.89],[210.0,319.47],[210.0,344.04],[208.98,350.4],[205.98,356.33],[201.21,361.42],[195.0,365.33],[187.76,367.78],[180.0,368.62],[150.0,368.62],[120.0,368.62],[112.24,369.46],[105.0,371.91],[98.79,375.82],[94.02,380.91],[91.02,386.83],[90.0,393.19],[90.0,417.77],[90.0,442.34],[90.0,466.92],[90.0,491.49],[90.0,516.07],[90.0,540.64],[91.02,547.0],[94.02,552.93],[98.79,558.02],[105.0,561.92],[112.24,564.38],[120.0,565.21],[150.0,565.21],[180.0,565.21],[210.0,565.21],[240.0,565.21],[247.76,566.05],[255.0,568.51],[261.21,572.41],[265.98,577.5],[268.98,583.43],[270.0,589.79],[270.0,614.36],[270.0,638.94],[270.0,663.51],[270.0,688.09],[270.0,712.66],[270.0,737.24],[270.0,761.81],[270.0,786.39],[270.0,810.96],[270.0,835.54],[270.0,860.11],[270.0,884.68],[270.0,909.26],[270.0,933.83],[270.0,958.41]],[[390.0,24.57],[390.0,49.15],[390.0,73.72],[390.0,98.3],[390.0,122.87],[390.0,147.45],[390.0,172.02],[390.0,196.6],[390.0,221.17],[390.0,245.75],[390.0,270.32],[390.0,294.89],[390.0,319.47],[390.0,344.04],[390.0,368.62],[390.0,393.19],[388.98,399.55],[385.98,405.48],[381.21,410.57],[375.0,414.48],[367.76,416.93],[360.0,417.77],[330.0,417.77],[300.0,417.77],[292.24,418.6],[285.0,421.06],[278.79,424.97],[274.02,430.05],[271.02,435.98],[270.0,442.34],[270.0,466.92],[270.0,491.49],[270.0,516.07],[270.0,540.64],[270.0,565.21],[270.0,589.79],[270.0,614.36],[270.0,638.94],[270.0,663.51],[270.0,688.09],[270.0,712.66],[270.0,737.24],[270.0,761.81],[270.0,786.39],[270.0,810.96],[270.0,835.54],[270.0,860.11],[270.0,884.68],[270.0,909.26],[270.0,933.83],[270.0,958.41]]],"plots":[[210.0,663.51],[210.0,516.07],[330.0,319.47],[270.0,368.62],[210.0,417.77],[330.0,614.36],[330.0,516.07],[150.0,614.36],[150.0,270.32],[330.0,221.17],[330.0,712.66]],"slow":[[90.0,466.92],[270.0,466.92]],"crystal":null,"bg":{"w":1980,"h":2665,"ax":462,"ay":432.5122793845876,"edge":"#d7ddec"}},{"paths":[[[30.0,122.87],[60.0,122.87],[90.0,122.87],[120.0,122.87],[127.76,123.71],[135.0,126.17],[141.21,130.07],[145.98,135.16],[148.98,141.09],[150.0,147.45],[150.0,172.02],[150.0,196.6],[150.0,221.17],[150.0,245.75],[150.0,270.32],[150.0,294.89],[151.02,301.26],[154.02,307.18],[158.79,312.27],[165.0,316.18],[172.24,318.63],[180.0,319.47],[210.0,319.47],[240.0,319.47],[247.76,320.31],[255.0,322.76],[261.21,326.67],[265.98,331.76],[268.98,337.68],[270.0,344.04],[270.0,368.62],[270.0,393.19],[270.0,417.77],[270.0,442.34],[268.98,448.7],[265.98,454.63],[261.21,459.72],[255.0,463.62],[247.76,466.08],[240.0,466.92],[210.0,466.92],[180.0,466.92],[172.24,467.75],[165.0,470.21],[158.79,474.11],[154.02,479.2],[151.02,485.13],[150.0,491.49],[150.0,516.07],[150.0,540.64],[150.0,565.21],[150.0,589.79],[151.02,596.15],[154.02,602.08],[158.79,607.17],[165.0,611.07],[172.24,613.53],[180.0,614.36],[210.0,614.36],[240.0,614.36],[270.0,614.36],[300.0,614.36],[307.76,615.2],[315.0,617.66],[321.21,621.56],[325.98,626.65],[328.98,632.58],[330.0,638.94],[330.0,663.51],[330.0,688.09],[330.0,712.66],[330.0,737.24],[330.0,761.81],[330.0,786.39],[330.0,810.96],[330.0,835.54],[330.0,860.11],[330.0,884.68],[330.0,909.26],[330.0,933.83],[330.0,958.41]],[[450.0,221.17],[420.0,221.17],[412.24,222.01],[405.0,224.46],[398.79,228.37],[394.02,233.46],[391.02,239.39],[390.0,245.75],[390.0,270.32],[390.0,294.89],[390.0,319.47],[390.0,344.04],[390.0,368.62],[390.0,393.19],[390.0,417.77],[390.0,442.34],[388.98,448.7],[385.98,454.63],[381.21,459.72],[375.0,463.62],[367.76,466.08],[360.0,466.92],[330.0,466.92],[300.0,466.92],[270.0,466.92],[240.0,466.92],[210.0,466.92],[180.0,466.92],[172.24,467.75],[165.0,470.21],[158.79,474.11],[154.02,479.2],[151.02,485.13],[150.0,491.49],[150.0,516.07],[150.0,540.64],[150.0,565.21],[150.0,589.79],[151.02,596.15],[154.02,602.08],[158.79,607.17],[165.0,611.07],[172.24,613.53],[180.0,614.36],[210.0,614.36],[240.0,614.36],[270.0,614.36],[300.0,614.36],[307.76,615.2],[315.0,617.66],[321.21,621.56],[325.98,626.65],[328.98,632.58],[330.0,638.94],[330.0,663.51],[330.0,688.09],[330.0,712.66],[330.0,737.24],[330.0,761.81],[330.0,786.39],[330.0,810.96],[330.0,835.54],[330.0,860.11],[330.0,884.68],[330.0,909.26],[330.0,933.83],[330.0,958.41]]],"plots":[[270.0,565.21],[210.0,516.07],[210.0,663.51],[210.0,417.77],[330.0,368.62],[270.0,712.66],[90.0,516.07],[390.0,663.51],[150.0,368.62],[270.0,270.32],[90.0,614.36],[390.0,565.21]],"slow":[],"crystal":[330.0,516.07],"bg":{"w":1980,"h":2665,"ax":462,"ay":432.5122793845876,"edge":"#54b274"}}];
+const STAGES = [
+  {
+    name: 'Millbrook Crossing', sub: 'Stage 1 · The farmland road',
+    text: 'The Hollow Horde has torn a portal open above the mill road. Hold the crossing and learn the ways of the march.',
+    gold: 300, hpMul: 1.6,
+    waves: [
+      [['g', 6, 1.1, 0, 0]],
+      [['g', 8, 0.9, 0, 0], ['p', 3, 1.2, 0, 8]],
+      [['b', 4, 2, 0, 0], ['g', 8, 0.8, 0, 3]],
+      [['p', 8, 0.8, 0, 0], ['b', 4, 1.8, 0, 6]],
+      [['g', 12, 0.6, 0, 0], ['b', 6, 1.6, 0, 4], ['p', 4, 1, 0, 12]],
+      [['b', 8, 1.4, 0, 0], ['p', 8, 0.7, 0, 6], ['g', 10, 0.5, 0, 10]],
+      [['i', 2, 4, 0, 0], ['g', 16, 0.45, 0, 2], ['b', 6, 1.4, 0, 8]],
+      [['b', 10, 1.2, 0, 0], ['p', 10, 0.6, 0, 5], ['i', 4, 3, 0, 10], ['t', 1, 1, 0, 20]],
+    ],
+  },
+  {
+    name: 'Frostmere Ford', sub: 'Stage 2 · Two roads over the ice',
+    text: 'Two portals have opened in the snowfields. Their roads cross the frozen river on icy bridges that slow anything walking over them, so build around the bridges.',
+    gold: 450, hpMul: 1.3, mech: 'ice',
+    waves: [
+      [['g', 8, 0.9, 0, 0], ['g', 8, 0.9, 1, 4]],
+      [['d', 6, 1, 1, 0], ['p', 6, 0.8, 0, 4]],
+      [['b', 6, 1.5, 0, 0], ['h', 2, 3, 0, 5], ['g', 10, 0.6, 1, 2]],
+      [['d', 10, 0.8, 0, 0], ['b', 6, 1.4, 1, 3]],
+      [['t', 1, 1, 1, 0], ['g', 14, 0.5, 0, 2], ['h', 3, 2.5, 1, 6]],
+      [['i', 3, 3, 0, 0], ['p', 10, 0.6, 1, 2], ['d', 8, 0.8, 0, 8]],
+      [['b', 10, 1.1, 0, 0], ['b', 10, 1.1, 1, 0], ['h', 4, 2, 0, 8]],
+      [['t', 2, 6, 0, 0], ['d', 14, 0.6, 1, 2], ['g', 16, 0.45, 0, 8]],
+      [['i', 5, 2.5, 1, 0], ['h', 4, 2, 1, 4], ['p', 14, 0.5, 0, 2], ['t', 1, 1, 0, 14]],
+      [['t', 3, 5, 0, 0], ['t', 2, 6, 1, 4], ['b', 12, 1, 0, 6], ['d', 16, 0.5, 1, 8], ['i', 4, 2.5, 1, 12]],
+    ],
+  },
+  {
+    name: 'Shardfall Vale', sub: 'Stage 3 · The Colossus comes',
+    text: 'The Violet Colossus leads the last assault through the crystal vale. A great unstable crystal grows by the road: tap it to shatter it and blast everything nearby.',
+    gold: 560, hpMul: 1.25, mech: 'crystal',
+    waves: [
+      [['b', 8, 1.2, 0, 0], ['g', 12, 0.6, 1, 0]],
+      [['p', 12, 0.6, 0, 0], ['d', 10, 0.8, 1, 3]],
+      [['h', 4, 2, 0, 0], ['b', 8, 1.2, 0, 2], ['i', 2, 4, 1, 4]],
+      [['t', 2, 5, 1, 0], ['g', 20, 0.4, 0, 0], ['d', 10, 0.6, 0, 8]],
+      [['i', 6, 2, 0, 0], ['h', 4, 2, 1, 2], ['p', 14, 0.5, 1, 6]],
+      [['t', 3, 4, 0, 0], ['b', 14, 0.8, 1, 0], ['d', 14, 0.5, 0, 10]],
+      [['i', 8, 1.6, 1, 0], ['h', 6, 1.6, 0, 0], ['g', 24, 0.35, 0, 6]],
+      [['t', 4, 3.5, 0, 0], ['t', 3, 4, 1, 2], ['d', 18, 0.45, 1, 6]],
+      [['b', 16, 0.7, 0, 0], ['b', 16, 0.7, 1, 0], ['i', 6, 2, 0, 8], ['h', 6, 2, 1, 8]],
+      [['p', 20, 0.4, 0, 0], ['p', 20, 0.4, 1, 0], ['t', 4, 3, 0, 6], ['d', 20, 0.4, 1, 8]],
+      [['i', 10, 1.4, 0, 0], ['t', 5, 3, 1, 0], ['h', 8, 1.5, 0, 6], ['d', 20, 0.4, 0, 10]],
+      [['W', 1, 1, 0, 6], ['b', 14, 0.8, 1, 0], ['i', 6, 2, 0, 0], ['t', 4, 4, 1, 8], ['d', 16, 0.5, 0, 14]],
+    ],
+  },
+];
+
+/* =================== stage building =================== */
+function buildStage(idx) {
+  const S = STAGES[idx], M = MAPS[idx];
+  const paths = M.paths.map(p => new Path(p));
+  const spots = M.plots.map(p => ({ x: p[0], y: p[1], tower: null }));
+  const mech = {};
+  if (S.mech === 'ice') mech.ice = M.slow.map(p => ({ x: p[0], y: p[1] }));
+  if (S.mech === 'crystal') mech.keg = { x: M.crystal[0], y: M.crystal[1], ready: true, cd: 0, max: 40, r: 95 };
+  return { S, M, idx, paths, spots, mech };
+}
+
+/* =================== view & drawing helpers =================== */
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const view = { s: 1, ox: 0, oy: 0, cw: 1, ch: 1, dpr: 1 };
+const OUT = '#1e140c';
+
+function layout(inGame) {
+  view.dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  view.cw = innerWidth; view.ch = innerHeight;
+  cv.width = Math.round(view.cw * view.dpr); cv.height = Math.round(view.ch * view.dpr);
+  const ht = document.getElementById('hudTop'), hb = document.getElementById('hudBot');
+  const top = inGame && !ht.hidden ? ht.offsetHeight - 6 : 0;
+  const bot = inGame && !hb.hidden ? hb.offsetHeight - 14 : 0;
+  const availH = Math.max(200, view.ch - top - bot);
+  view.s = Math.min(view.cw / W, availH / H);
+  if (!inGame) view.s = Math.max(view.cw / W, view.ch / H) * 1.02;
+  view.ox = (view.cw - W * view.s) / 2;
+  view.oy = top + (availH - H * view.s) / 2;
+  if (!inGame) view.oy = (view.ch - H * view.s) / 2;
+}
+const toScreen = (x, y) => [view.ox + x * view.s, view.oy + y * view.s];
+const toWorld = (sx, sy) => [(sx - view.ox) / view.s, (sy - view.oy) / view.s];
+
+function E(g, x, y, rx, ry, fill, stroke = OUT, lw = 1.4) {
+  g.beginPath(); g.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, TAU);
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function RR(g, x, y, w, h, r, fill, stroke = OUT, lw = 1.4) {
+  g.beginPath();
+  if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h);
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function PG(g, pts, fill, stroke = OUT, lw = 1.4) {
+  g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.closePath();
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function LN(g, x1, y1, x2, y2, col, lw = 1.5) {
+  g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.strokeStyle = col; g.lineWidth = lw; g.lineCap = 'round'; g.stroke();
+}
+function glow(g, x, y, r, col, a = 0.5) {
+  const gr = g.createRadialGradient(x, y, 0, x, y, r);
+  gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.save(); g.globalAlpha = a; g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); g.restore();
+}
+
+/* =================== sprite assets (Kenney Tower Defense Kit + Blocky Characters, rendered) =================== */
+const ATLAS = {"t_berserker":[0,0,0,176,189,56.2,147.5,1.786],"t_templar":[0,178,0,176,189,55.2,147.5,1.786],"t_thunder":[0,356,0,176,189,55.2,147.5,1.786],"t_artillery3":[0,534,0,171,181,50.2,139.1,1.102],"t_mortar":[0,707,0,171,181,50.2,139.1,1.102],"t_archer3":[0,880,0,175,178,57.2,137.1,1.102],"t_marksman":[0,1057,0,176,178,58.2,137.1,1.102],"c_colossus_attack_S_2":[0,1235,0,106,176,53.0,151.2],"t_ranger":[0,1343,0,167,172,56.2,131.1,1.102],"t_archmage":[0,1512,0,162,168,58.2,126.5,1.535],"t_frost":[0,1676,0,160,168,56.2,126.5,1.535],"t_mage3":[0,1838,0,161,168,57.2,126.5,1.535],"c_colossus_die_S_4":[0,0,191,106,164,53.0,159.2],"c_colossus_attack_N_4":[0,108,191,106,160,53.0,154.2],"c_colossus_die_S_1":[0,216,191,106,160,53.0,144.2],"c_colossus_die_E_1":[0,324,191,109,158,51.0,156.2],"c_colossus_walk_N_2":[0,435,191,106,158,53.0,132.2],"c_colossus_walk_N_3":[0,543,191,106,158,53.0,130.2],"c_colossus_walk_N_6":[0,651,191,106,158,53.0,132.2],"c_colossus_walk_S_2":[0,759,191,106,158,53.0,132.2],"c_colossus_walk_S_3":[0,867,191,106,158,53.0,130.2],"c_colossus_walk_S_6":[0,975,191,106,158,53.0,132.2],"c_colossus_attack_S_1":[0,1083,191,106,156,53.0,137.2],"c_colossus_walk_N_5":[0,1191,191,106,156,53.0,128.2],"c_colossus_walk_N_7":[0,1299,191,106,156,53.0,130.2],"c_colossus_walk_S_5":[0,1407,191,106,156,53.0,128.2],"c_colossus_walk_S_7":[0,1515,191,106,156,53.0,130.2],"c_colossus_walk_N_1":[0,1623,191,106,153,53.0,127.2],"c_colossus_walk_S_1":[0,1731,191,106,153,53.0,127.2],"t_barracks1":[0,1839,191,151,153,55.2,111.9,1.33],"t_barracks2":[0,0,357,151,153,55.2,111.9,1.33],"c_colossus_walk_E_7":[0,153,357,107,149,60.0,130.2],"t_barracks3":[0,262,357,146,149,50.2,107.9,1.33],"c_colossus_attack_E_3":[0,410,357,90,147,43.0,124.2],"c_colossus_attack_N_3":[0,502,357,106,147,53.0,131.2],"c_colossus_attack_N_5":[0,610,357,106,147,53.0,138.2],"c_colossus_walk_E_3":[0,718,357,113,147,62.0,130.2],"c_colossus_attack_E_0":[0,1992,191,54,146,27.0,124.2],"c_colossus_attack_E_1":[0,833,357,93,146,48.0,123.2],"c_colossus_attack_S_3":[0,928,357,106,146,53.0,123.2],"c_colossus_die_E_0":[0,1036,357,54,146,27.0,124.2],"c_colossus_walk_E_0":[0,1092,357,54,146,27.0,124.2],"c_colossus_walk_E_1":[0,1148,357,90,146,45.0,127.2],"c_colossus_walk_E_4":[0,1240,357,54,146,27.0,124.2],"t_archer2":[0,1296,357,146,146,50.2,104.5,0.646],"t_artillery1":[0,1444,357,151,146,55.2,104.5,0.646],"t_artillery2":[0,1597,357,152,146,55.2,104.5,0.646],"c_colossus_attack_E_5":[0,1751,357,58,145,13.0,123.2],"c_colossus_die_S_3":[0,1811,357,106,145,53.0,159.2],"c_colossus_walk_E_5":[0,1919,357,105,145,54.0,128.2],"c_colossus_attack_E_4":[0,0,512,71,141,8.0,119.2],"c_colossus_attack_E_2":[0,73,512,101,140,62.0,119.2],"c_colossus_walk_E_2":[0,176,512,125,138,62.0,132.2],"c_colossus_walk_E_6":[0,303,512,125,138,62.0,132.2],"t_archer1":[0,430,512,135,138,50.2,96.5,0.646],"c_colossus_attack_N_0":[0,567,512,106,135,53.0,124.2],"c_colossus_attack_S_0":[0,675,512,106,135,53.0,124.2],"c_colossus_die_N_0":[0,783,512,106,135,53.0,124.2],"c_colossus_die_S_0":[0,891,512,106,135,53.0,124.2],"c_colossus_die_S_2":[0,999,512,106,135,53.0,159.2],"c_colossus_walk_N_0":[0,1107,512,106,135,53.0,124.2],"c_colossus_walk_N_4":[0,1215,512,106,135,53.0,124.2],"c_colossus_walk_S_0":[0,1323,512,106,135,53.0,124.2],"c_colossus_walk_S_4":[0,1431,512,106,135,53.0,124.2],"t_mage1":[0,1539,512,129,133,50.2,92.0,1.079],"t_mage2":[0,1670,512,129,133,50.2,92.0,1.079],"c_colossus_attack_N_1":[0,1801,512,106,126,53.0,109.2],"c_colossus_attack_N_2":[0,1909,512,106,125,53.0,87.2],"crystal":[0,0,655,148,124,62.0,72.4],"crystal_dim":[0,150,655,148,124,62.0,72.4],"c_colossus_attack_S_5":[0,300,655,106,121,53.0,108.2],"boom_0":[0,408,655,120,120,60.0,60.0],"boom_4":[0,530,655,116,120,58.0,60.0],"boom_5":[0,648,655,119,120,59.5,60.0],"boom_6":[0,769,655,118,120,59.0,60.0],"boom_7":[0,889,655,119,120,59.5,60.0],"boom_8":[0,1010,655,118,120,59.0,60.0],"c_hulk_attack_S_2":[0,1130,655,72,120,36.0,103.1],"boom_1":[0,1204,655,120,118,60.0,59.0],"ring":[0,1326,655,116,118,58.0,59.0],"c_colossus_attack_S_4":[0,1444,655,106,113,53.0,84.2],"c_hulk_die_S_4":[0,1552,655,72,113,36.0,109.1],"c_colossus_die_N_2":[0,1626,655,106,111,53.0,61.2],"c_hulk_attack_N_4":[0,1734,655,72,110,36.0,105.1],"c_hulk_die_S_1":[0,1808,655,72,109,36.0,98.1],"c_hulk_die_E_1":[0,1882,655,75,108,35.0,106.1],"c_hulk_walk_N_2":[0,1959,655,72,108,36.0,90.1],"c_hulk_walk_N_3":[0,0,781,72,108,36.0,89.1],"c_hulk_walk_N_6":[0,74,781,72,108,36.0,90.1],"c_hulk_walk_S_2":[0,148,781,72,108,36.0,90.1],"c_hulk_walk_S_3":[0,222,781,72,108,36.0,89.1],"c_hulk_walk_S_6":[0,296,781,72,108,36.0,90.1],"c_hulk_walk_N_7":[0,370,781,72,107,36.0,89.1],"c_hulk_walk_S_7":[0,444,781,72,107,36.0,89.1],"select":[0,518,781,126,107,63.3,55.6],"c_hulk_attack_S_1":[0,646,781,72,106,36.0,93.1],"c_hulk_walk_N_5":[0,720,781,72,106,36.0,87.1],"c_hulk_walk_S_5":[0,794,781,72,106,36.0,87.1],"c_hulk_walk_N_1":[0,868,781,72,105,36.0,87.1],"c_hulk_walk_S_1":[0,942,781,72,105,36.0,87.1],"p_berserker":[0,1016,781,96,105,0,-1],"p_colossus":[0,1114,781,96,105,0,-1],"p_doctor":[0,1212,781,96,105,0,-1],"p_foot":[0,1310,781,96,105,0,-1],"p_foot2":[0,1408,781,96,105,0,-1],"p_frostmage":[0,1506,781,96,105,0,-1],"p_guard":[0,1604,781,96,105,0,-1],"p_hulk":[0,1702,781,96,105,0,-1],"p_knight":[0,1800,781,96,105,0,-1],"p_militia":[0,1898,781,96,105,0,-1],"p_ninja":[0,0,891,96,105,0,-1],"p_pirate":[0,98,891,96,105,0,-1],"p_ranger":[0,196,891,96,105,0,-1],"p_robot":[0,294,891,96,105,0,-1],"p_templar":[0,392,891,96,105,0,-1],"p_zombie":[0,490,891,96,105,0,-1],"boom_3":[0,588,891,92,102,46.0,51.0],"c_hulk_walk_E_7":[0,682,891,73,102,41.0,89.1],"c_hulk_walk_E_3":[0,757,891,78,101,43.0,89.1],"beam":[0,837,891,75,100,37.6,68.9],"c_hulk_attack_E_1":[0,914,891,64,100,33.0,84.1],"c_hulk_attack_E_3":[0,980,891,61,100,29.0,84.1],"c_hulk_attack_N_3":[0,1043,891,72,100,36.0,89.1],"c_hulk_attack_N_5":[0,1117,891,72,100,36.0,94.1],"c_hulk_attack_S_3":[0,1191,891,72,100,36.0,84.1],"c_hulk_walk_E_1":[0,1265,891,62,100,31.0,87.1],"c_hulk_attack_E_0":[0,2001,0,36,99,18.0,84.1],"c_hulk_attack_E_5":[0,1996,781,40,99,9.0,84.1],"c_hulk_die_E_0":[0,1329,891,36,99,18.0,84.1],"c_hulk_die_S_3":[0,1367,891,72,99,36.0,109.1],"c_hulk_walk_E_0":[0,1441,891,36,99,18.0,84.1],"c_hulk_walk_E_4":[0,1479,891,36,99,18.0,84.1],"c_hulk_walk_E_5":[0,1517,891,72,98,37.0,87.1],"c_colossus_die_N_1":[0,1591,891,106,97,53.0,116.2],"c_hulk_attack_E_2":[0,1699,891,70,96,43.0,81.1],"c_hulk_attack_E_4":[0,1771,891,49,96,5.0,81.1],"c_hulk_walk_E_2":[0,1822,891,87,94,43.0,90.1],"c_hulk_walk_E_6":[0,1911,891,87,94,43.0,90.1],"light":[0,0,998,93,94,47.0,47.0],"c_hulk_die_S_2":[0,95,998,72,93,36.0,109.1],"c_hulk_attack_N_0":[0,169,998,72,92,36.0,84.1],"c_hulk_attack_S_0":[0,243,998,72,92,36.0,84.1],"c_hulk_die_N_0":[0,317,998,72,92,36.0,84.1],"c_hulk_die_S_0":[0,391,998,72,92,36.0,84.1],"c_hulk_walk_N_0":[0,465,998,72,92,36.0,84.1],"c_hulk_walk_N_4":[0,539,998,72,92,36.0,84.1],"c_hulk_walk_S_0":[0,613,998,72,92,36.0,84.1],"c_hulk_walk_S_4":[0,687,998,72,92,36.0,84.1],"c_robot_attack_S_2":[0,761,998,55,92,27.5,79.0],"boom_2":[0,818,998,82,91,41.0,45.5],"w_catapult_0":[0,902,998,61,89,30.4,67.2],"c_robot_die_S_4":[0,965,998,55,87,27.5,84.0],"c_hulk_attack_N_1":[0,1022,998,72,86,36.0,74.1],"w_ballista_8":[0,1096,998,67,86,33.4,64.2],"w_catapult_1":[0,1165,998,61,86,30.4,64.2],"w_catapult_15":[0,1228,998,61,86,30.4,64.2],"c_hulk_attack_N_2":[0,1291,998,72,85,36.0,59.1],"c_pirate_attack_S_2":[0,1365,998,52,85,26.2,72.8],"c_robot_attack_N_4":[0,1419,998,55,84,27.5,80.0],"c_robot_die_S_1":[0,1476,998,55,84,27.5,75.0],"w_ballista_7":[0,1533,998,63,84,30.4,62.2],"w_ballista_9":[0,1598,998,63,84,32.4,62.2],"c_hulk_attack_S_5":[0,1663,998,72,83,36.0,74.1],"c_robot_walk_N_2":[0,1737,998,55,83,27.5,69.0],"c_robot_walk_N_3":[0,1794,998,55,83,27.5,68.0],"c_robot_walk_N_6":[0,1851,998,55,83,27.5,69.0],"c_robot_walk_S_2":[0,1908,998,55,83,27.5,69.0],"c_robot_walk_S_3":[0,1965,998,55,83,27.5,68.0],"c_robot_walk_S_6":[0,0,1094,55,83,27.5,69.0],"c_robot_die_E_1":[0,57,1094,57,82,26.5,81.0],"c_robot_walk_N_5":[0,116,1094,55,82,27.5,67.0],"c_robot_walk_N_7":[0,173,1094,55,82,27.5,68.0],"c_robot_walk_S_5":[0,230,1094,55,82,27.5,67.0],"c_robot_walk_S_7":[0,287,1094,55,82,27.5,68.0],"w_catapult_14":[0,344,1094,70,82,29.4,60.2],"w_catapult_2":[0,416,1094,70,82,40.4,60.2],"arrowz":[0,2026,357,19,81,9.5,40.5],"c_frostmage_attack_S_2":[0,488,1094,50,81,25.0,69.7],"c_guard_attack_S_2":[0,540,1094,50,81,25.0,69.7],"c_ranger_attack_S_2":[0,592,1094,50,81,25.0,69.7],"c_robot_attack_S_1":[0,644,1094,55,81,27.5,71.0],"c_pirate_die_S_4":[0,701,1094,52,80,26.2,77.8],"c_robot_walk_N_1":[0,755,1094,55,80,27.5,66.0],"c_robot_walk_S_1":[0,812,1094,55,80,27.5,66.0],"c_doctor_attack_S_2":[0,869,1094,47,78,23.8,66.5],"c_robot_walk_E_7":[0,918,1094,56,78,31.5,68.0],"c_zombie_attack_S_2":[0,976,1094,47,78,23.8,66.5],"c_frostmage_die_S_4":[0,1025,1094,50,77,25.0,74.7],"c_guard_die_S_4":[0,1077,1094,50,77,25.0,74.7],"c_hulk_attack_S_4":[0,1129,1094,72,77,36.0,57.1],"c_pirate_attack_N_4":[0,1203,1094,52,77,26.2,73.8],"c_pirate_die_S_1":[0,1257,1094,52,77,26.2,68.8],"c_ranger_die_S_4":[0,1311,1094,50,77,25.0,74.7],"c_robot_attack_E_0":[0,2017,512,29,77,14.5,65.0],"c_robot_attack_E_3":[0,1363,1094,47,77,22.5,65.0],"c_robot_attack_N_3":[0,1412,1094,55,77,27.5,69.0],"c_robot_attack_N_5":[0,1469,1094,55,77,27.5,72.0],"c_robot_die_E_0":[0,2000,891,29,77,14.5,65.0],"c_robot_die_S_3":[0,1526,1094,55,77,27.5,84.0],"c_robot_walk_E_0":[0,1583,1094,29,77,14.5,65.0],"c_robot_walk_E_3":[0,1614,1094,59,77,32.5,68.0],"c_robot_walk_E_4":[0,1675,1094,29,77,14.5,65.0],"c_hulk_die_N_2":[0,1706,1094,72,76,36.0,42.1],"c_pirate_die_E_1":[0,1780,1094,53,76,25.2,74.8],"c_pirate_walk_N_2":[0,1835,1094,52,76,26.2,63.8],"c_pirate_walk_N_3":[0,1889,1094,52,76,26.2,62.8],"c_pirate_walk_N_6":[0,1943,1094,52,76,26.2,63.8],"c_pirate_walk_S_2":[0,0,1179,52,76,26.2,63.8],"c_pirate_walk_S_3":[0,54,1179,52,76,26.2,62.8],"c_pirate_walk_S_6":[0,108,1179,52,76,26.2,63.8],"c_robot_attack_E_1":[0,1997,1094,49,76,25.5,64.0],"c_robot_attack_E_5":[0,162,1179,31,76,7.5,64.0],"c_robot_attack_S_3":[0,195,1179,55,76,27.5,64.0],"c_robot_walk_E_1":[0,252,1179,47,76,23.5,66.0],"c_robot_walk_E_5":[0,301,1179,55,76,28.5,67.0],"w_ballista_10":[0,358,1179,66,76,36.4,54.2],"w_ballista_6":[0,426,1179,66,76,29.4,54.2],"c_colossus_die_E_3":[0,494,1179,61,75,62.0,49.2],"c_pirate_attack_S_1":[0,557,1179,52,75,26.2,65.8],"c_pirate_walk_N_5":[0,611,1179,52,75,26.2,61.8],"c_pirate_walk_N_7":[0,665,1179,52,75,26.2,62.8],"c_pirate_walk_S_5":[0,719,1179,52,75,26.2,61.8],"c_pirate_walk_S_7":[0,773,1179,52,75,26.2,62.8],"w_ballista_12":[0,827,1179,79,75,48.4,53.2],"w_ballista_4":[0,908,1179,79,75,30.4,53.2],"w_cannon_8":[0,989,1179,61,75,30.4,53.2],"c_berserker_attack_S_2":[0,1052,1179,45,74,22.6,63.4],"c_doctor_die_S_4":[0,1099,1179,47,74,23.8,71.5],"c_frostmage_attack_N_4":[0,1148,1179,50,74,25.0,70.7],"c_frostmage_die_S_1":[0,1200,1179,50,74,25.0,66.7],"c_frostmage_walk_N_3":[0,1252,1179,50,74,25.0,60.7],"c_frostmage_walk_S_3":[0,1304,1179,50,74,25.0,60.7],"c_guard_attack_N_4":[0,1356,1179,50,74,25.0,70.7],"c_guard_die_S_1":[0,1408,1179,50,74,25.0,66.7],"c_guard_walk_N_3":[0,1460,1179,50,74,25.0,60.7],"c_guard_walk_S_3":[0,1512,1179,50,74,25.0,60.7],"c_ninja_attack_S_2":[0,1564,1179,45,74,22.6,63.4],"c_ninja_sprint_N_2":[0,1611,1179,45,74,22.6,66.4],"c_ninja_sprint_N_6":[0,1658,1179,45,74,22.6,66.4],"c_pirate_walk_N_1":[0,1705,1179,52,74,26.2,61.8],"c_pirate_walk_S_1":[0,1759,1179,52,74,26.2,61.8],"c_ranger_attack_N_4":[0,1813,1179,50,74,25.0,70.7],"c_ranger_die_S_1":[0,1865,1179,50,74,25.0,66.7],"c_ranger_walk_N_3":[0,1917,1179,50,74,25.0,60.7],"c_ranger_walk_S_3":[0,1969,1179,50,74,25.0,60.7],"c_robot_attack_E_4":[0,0,1257,39,74,4.5,62.0],"c_zombie_die_S_4":[0,41,1257,47,74,23.8,71.5],"p_ufo":[0,90,1257,91,74,-4,-24],"w_ballista_11":[0,183,1257,76,74,45.4,52.2],"w_ballista_5":[0,261,1257,76,74,30.4,52.2],"w_cannon_7":[0,339,1257,61,74,30.4,52.2],"w_cannon_9":[0,402,1257,61,74,30.4,52.2],"w_catapult_8":[0,465,1257,61,74,30.4,52.2],"w_turret_10":[0,528,1257,66,74,31.4,50.2],"w_turret_14":[0,596,1257,66,74,31.4,50.2],"w_turret_2":[0,664,1257,66,74,34.4,50.2],"w_turret_6":[0,732,1257,66,74,34.4,50.2],"w_turret_9":[0,800,1257,59,74,29.4,49.2],"c_frostmage_die_E_1":[0,861,1257,51,73,24.0,71.7],"c_frostmage_walk_N_2":[0,914,1257,50,73,25.0,60.7],"c_frostmage_walk_N_5":[0,966,1257,50,73,25.0,59.7],"c_frostmage_walk_N_6":[0,1018,1257,50,73,25.0,60.7],"c_frostmage_walk_N_7":[0,1070,1257,50,73,25.0,60.7],"c_frostmage_walk_S_2":[0,1122,1257,50,73,25.0,60.7],"c_frostmage_walk_S_5":[0,1174,1257,50,73,25.0,59.7],"c_frostmage_walk_S_6":[0,1226,1257,50,73,25.0,60.7],"c_frostmage_walk_S_7":[0,1278,1257,50,73,25.0,60.7],"c_guard_die_E_1":[0,1330,1257,51,73,24.0,71.7],"c_guard_walk_N_2":[0,1383,1257,50,73,25.0,60.7],"c_guard_walk_N_5":[0,1435,1257,50,73,25.0,59.7],"c_guard_walk_N_6":[0,1487,1257,50,73,25.0,60.7],"c_guard_walk_N_7":[0,1539,1257,50,73,25.0,60.7],"c_guard_walk_S_2":[0,1591,1257,50,73,25.0,60.7],"c_guard_walk_S_5":[0,1643,1257,50,73,25.0,59.7],"c_guard_walk_S_6":[0,1695,1257,50,73,25.0,60.7],"c_guard_walk_S_7":[0,1747,1257,50,73,25.0,60.7],"c_ranger_die_E_1":[0,1799,1257,51,73,24.0,71.7],"c_ranger_walk_N_2":[0,1852,1257,50,73,25.0,60.7],"c_ranger_walk_N_5":[0,1904,1257,50,73,25.0,59.7],"c_ranger_walk_N_6":[0,1956,1257,50,73,25.0,60.7],"c_ranger_walk_N_7":[0,0,1333,50,73,25.0,60.7],"c_ranger_walk_S_2":[0,52,1333,50,73,25.0,60.7],"c_ranger_walk_S_5":[0,104,1333,50,73,25.0,59.7],"c_ranger_walk_S_6":[0,156,1333,50,73,25.0,60.7],"c_ranger_walk_S_7":[0,208,1333,50,73,25.0,60.7],"c_robot_attack_E_2":[0,260,1333,54,73,33.5,62.0],"w_catapult_13":[0,316,1333,80,73,34.4,51.2],"w_catapult_3":[0,398,1333,80,73,45.4,51.2],"w_catapult_7":[0,480,1333,61,73,30.4,51.2],"w_catapult_9":[0,543,1333,61,73,30.4,51.2],"w_turret_1":[0,606,1333,59,73,29.4,48.2],"w_turret_13":[0,667,1333,69,73,33.4,48.2],"w_turret_5":[0,738,1333,69,73,35.4,48.2],"w_turret_7":[0,809,1333,59,73,29.4,49.2],"c_frostmage_attack_S_1":[0,870,1333,50,72,25.0,63.7],"c_guard_attack_S_1":[0,922,1333,50,72,25.0,63.7],"c_ninja_sprint_N_3":[0,974,1333,45,72,22.6,61.4],"c_ninja_sprint_N_5":[0,1021,1333,45,72,22.6,61.4],"c_ninja_sprint_N_7":[0,1068,1333,45,72,22.6,60.4],"c_pirate_walk_E_7":[0,1115,1333,52,72,29.2,62.8],"c_ranger_attack_S_1":[0,1169,1333,50,72,25.0,63.7],"c_robot_die_S_2":[0,1221,1333,55,72,27.5,84.0],"c_robot_walk_E_2":[0,1278,1333,67,72,33.5,69.0],"c_robot_walk_E_6":[0,1347,1333,67,72,33.5,69.0],"puff_1":[0,1416,1333,64,72,32.0,36.0],"puff_2":[0,1482,1333,60,72,30.0,36.0],"puff_4":[0,1544,1333,71,72,35.5,36.0],"w_ballista_0":[0,1617,1333,67,72,33.4,50.2],"w_ballista_13":[0,1686,1333,76,72,45.4,50.2],"w_ballista_3":[0,1764,1333,76,72,30.4,50.2],"w_turret_11":[0,1842,1333,69,72,33.4,48.2],"w_turret_15":[0,1913,1333,59,72,29.4,48.2],"w_turret_3":[0,1974,1333,69,72,35.4,48.2],"c_berserker_die_S_4":[0,0,1408,45,71,22.6,68.4],"c_doctor_attack_N_4":[0,47,1408,47,71,23.8,67.5],"c_doctor_die_S_1":[0,96,1408,47,71,23.8,63.5],"c_frostmage_walk_N_1":[0,145,1408,50,71,25.0,58.7],"c_frostmage_walk_S_1":[0,197,1408,50,71,25.0,58.7],"c_guard_walk_N_1":[0,249,1408,50,71,25.0,58.7],"c_guard_walk_S_1":[0,301,1408,50,71,25.0,58.7],"c_knight_attack_S_2":[0,353,1408,43,71,21.4,61.3],"c_ninja_die_S_4":[0,398,1408,45,71,22.6,68.4],"c_ninja_sprint_N_1":[0,445,1408,45,71,22.6,59.4],"c_pirate_attack_E_0":[0,2008,1257,26,71,13.2,59.8],"c_pirate_attack_E_1":[0,492,1408,45,71,23.2,59.8],"c_pirate_attack_E_3":[0,539,1408,44,71,21.2,59.8],"c_pirate_attack_E_5":[0,585,1408,29,71,7.2,59.8],"c_pirate_attack_N_3":[0,616,1408,52,71,26.2,63.8],"c_pirate_attack_N_5":[0,670,1408,52,71,26.2,66.8],"c_pirate_die_E_0":[0,724,1408,26,71,13.2,59.8],"c_pirate_die_S_3":[0,752,1408,52,71,26.2,77.8],"c_pirate_walk_E_0":[0,806,1408,26,71,13.2,59.8],"c_pirate_walk_E_1":[0,834,1408,44,71,22.2,61.8],"c_pirate_walk_E_3":[0,880,1408,55,71,30.2,62.8],"c_pirate_walk_E_4":[0,937,1408,26,71,13.2,59.8],"c_ranger_walk_N_1":[0,965,1408,50,71,25.0,58.7],"c_ranger_walk_S_1":[0,1017,1408,50,71,25.0,58.7],"c_robot_attack_N_0":[0,1069,1408,55,71,27.5,65.0],"c_robot_attack_S_0":[0,1126,1408,55,71,27.5,65.0],"c_robot_die_N_0":[0,1183,1408,55,71,27.5,65.0],"c_robot_die_S_0":[0,1240,1408,55,71,27.5,65.0],"c_robot_walk_N_0":[0,1297,1408,55,71,27.5,65.0],"c_robot_walk_N_4":[0,1354,1408,55,71,27.5,65.0],"c_robot_walk_S_0":[0,1411,1408,55,71,27.5,65.0],"c_robot_walk_S_4":[0,1468,1408,55,71,27.5,65.0],"c_templar_attack_S_2":[0,1525,1408,43,71,21.4,61.3],"c_zombie_attack_N_4":[0,1570,1408,47,71,23.8,67.5],"c_zombie_die_S_1":[0,1619,1408,47,71,23.8,63.5],"w_ballista_1":[0,1668,1408,63,71,30.4,49.2],"w_ballista_15":[0,1733,1408,63,71,32.4,49.2],"w_cannon_10":[0,1798,1408,59,71,29.4,49.2],"w_cannon_6":[0,1859,1408,59,71,29.4,49.2],"w_turret_8":[0,1920,1408,52,71,26.4,49.2],"c_colossus_die_E_2":[0,0,1481,80,70,62.0,75.2],"c_doctor_die_E_1":[0,1974,1408,49,70,22.8,68.5],"c_doctor_walk_N_2":[0,82,1481,47,70,23.8,58.5],"c_doctor_walk_N_3":[0,131,1481,47,70,23.8,57.5],"c_doctor_walk_N_6":[0,180,1481,47,70,23.8,58.5],"c_doctor_walk_S_2":[0,229,1481,47,70,23.8,58.5],"c_doctor_walk_S_3":[0,278,1481,47,70,23.8,57.5],"c_doctor_walk_S_6":[0,327,1481,47,70,23.8,58.5],"c_frostmage_idle_E_1":[0,376,1481,32,70,20.0,59.7],"c_frostmage_idle_E_3":[0,410,1481,37,70,17.0,59.7],"c_guard_idle_E_1":[0,449,1481,32,70,20.0,59.7],"c_guard_idle_E_3":[0,483,1481,37,70,17.0,59.7],"c_pirate_attack_S_3":[0,522,1481,52,70,26.2,58.8],"c_pirate_walk_E_5":[0,576,1481,51,70,26.2,61.8],"c_ranger_idle_E_1":[0,629,1481,32,70,20.0,59.7],"c_ranger_idle_E_3":[0,663,1481,37,70,17.0,59.7],"c_zombie_die_E_1":[0,702,1481,49,70,22.8,68.5],"c_zombie_walk_N_2":[0,753,1481,47,70,23.8,58.5],"c_zombie_walk_N_3":[0,802,1481,47,70,23.8,57.5],"c_zombie_walk_N_6":[0,851,1481,47,70,23.8,58.5],"c_zombie_walk_S_2":[0,900,1481,47,70,23.8,58.5],"c_zombie_walk_S_3":[0,949,1481,47,70,23.8,57.5],"c_zombie_walk_S_6":[0,998,1481,47,70,23.8,58.5],"scorch":[0,1047,1481,71,70,35.0,36.0],"c_doctor_attack_S_1":[0,1120,1481,47,69,23.8,60.5],"c_doctor_walk_N_5":[0,1169,1481,47,69,23.8,56.5],"c_doctor_walk_N_7":[0,1218,1481,47,69,23.8,57.5],"c_doctor_walk_S_5":[0,1267,1481,47,69,23.8,56.5],"c_doctor_walk_S_7":[0,1316,1481,47,69,23.8,57.5],"c_frostmage_shoot_S_1":[0,1365,1481,50,69,25.0,63.7],"c_frostmage_walk_E_3":[0,1417,1481,52,69,29.0,60.7],"c_frostmage_walk_E_7":[0,1471,1481,50,69,28.0,60.7],"c_guard_walk_E_3":[0,1523,1481,52,69,29.0,60.7],"c_guard_walk_E_7":[0,1577,1481,50,69,28.0,60.7],"c_pirate_attack_E_4":[0,1629,1481,36,69,4.2,57.8],"c_ranger_shoot_S_1":[0,1667,1481,50,69,25.0,63.7],"c_ranger_walk_E_3":[0,1719,1481,52,69,29.0,60.7],"c_ranger_walk_E_7":[0,1773,1481,50,69,28.0,60.7],"c_zombie_attack_S_1":[0,1825,1481,47,69,23.8,60.5],"c_zombie_walk_N_5":[0,1874,1481,47,69,23.8,56.5],"c_zombie_walk_N_7":[0,1923,1481,47,69,23.8,57.5],"c_zombie_walk_S_5":[0,1972,1481,47,69,23.8,56.5],"c_zombie_walk_S_7":[0,0,1553,47,69,23.8,57.5],"puff_3":[0,49,1553,72,69,36.0,34.5],"c_colossus_die_N_3":[0,123,1553,54,68,27.0,16.2],"c_doctor_walk_N_1":[0,179,1553,47,68,23.8,56.5],"c_doctor_walk_S_1":[0,228,1553,47,68,23.8,56.5],"c_foot2_attack_S_2":[0,277,1553,41,68,20.2,58.1],"c_foot_attack_S_2":[0,320,1553,41,68,20.2,58.1],"c_frostmage_attack_E_0":[0,2021,1179,25,68,13.0,57.7],"c_frostmage_attack_E_3":[0,363,1553,42,68,20.0,57.7],"c_frostmage_attack_N_3":[0,407,1553,50,68,25.0,60.7],"c_frostmage_attack_N_5":[0,459,1553,50,68,25.0,63.7],"c_frostmage_die_E_0":[0,2021,1481,25,68,13.0,57.7],"c_frostmage_die_S_3":[0,511,1553,50,68,25.0,74.7],"c_frostmage_idle_E_0":[0,563,1553,25,68,13.0,57.7],"c_frostmage_idle_E_2":[0,590,1553,25,68,13.0,57.7],"c_frostmage_idle_N_3":[0,617,1553,50,68,25.0,62.7],"c_frostmage_idle_S_1":[0,669,1553,50,68,25.0,62.7],"c_frostmage_shoot_E_0":[0,721,1553,41,68,13.0,57.7],"c_frostmage_shoot_E_3":[0,764,1553,41,68,16.0,57.7],"c_frostmage_shoot_S_2":[0,807,1553,50,68,25.0,62.7],"c_frostmage_walk_E_0":[0,859,1553,25,68,13.0,57.7],"c_frostmage_walk_E_4":[0,886,1553,25,68,13.0,57.7],"c_frostmage_walk_E_5":[0,913,1553,48,68,25.0,59.7],"c_guard_attack_E_0":[0,963,1553,25,68,13.0,57.7],"c_guard_attack_E_3":[0,990,1553,42,68,20.0,57.7],"c_guard_attack_N_3":[0,1034,1553,50,68,25.0,60.7],"c_guard_attack_N_5":[0,1086,1553,50,68,25.0,63.7],"c_guard_die_E_0":[0,1138,1553,25,68,13.0,57.7],"c_guard_die_S_3":[0,1165,1553,50,68,25.0,74.7],"c_guard_idle_E_0":[0,1217,1553,25,68,13.0,57.7],"c_guard_idle_E_2":[0,1244,1553,25,68,13.0,57.7],"c_guard_idle_N_3":[0,1271,1553,50,68,25.0,62.7],"c_guard_idle_S_1":[0,1323,1553,50,68,25.0,62.7],"c_guard_walk_E_0":[0,1375,1553,25,68,13.0,57.7],"c_guard_walk_E_4":[0,1402,1553,25,68,13.0,57.7],"c_guard_walk_E_5":[0,1429,1553,48,68,25.0,59.7],"c_militia_attack_S_2":[0,1479,1553,41,68,20.2,58.1],"c_pirate_attack_E_2":[0,1522,1553,50,68,31.2,57.8],"c_ranger_attack_E_0":[0,1574,1553,25,68,13.0,57.7],"c_ranger_attack_E_3":[0,1601,1553,42,68,20.0,57.7],"c_ranger_attack_N_3":[0,1645,1553,50,68,25.0,60.7],"c_ranger_attack_N_5":[0,1697,1553,50,68,25.0,63.7],"c_ranger_die_E_0":[0,1749,1553,25,68,13.0,57.7],"c_ranger_die_S_3":[0,1776,1553,50,68,25.0,74.7],"c_ranger_idle_E_0":[0,1828,1553,25,68,13.0,57.7],"c_ranger_idle_E_2":[0,1855,1553,25,68,13.0,57.7],"c_ranger_idle_N_3":[0,1882,1553,50,68,25.0,62.7],"c_ranger_idle_S_1":[0,1934,1553,50,68,25.0,62.7],"c_ranger_shoot_E_0":[0,1986,1553,41,68,13.0,57.7],"c_ranger_shoot_E_3":[0,0,1624,41,68,16.0,57.7],"c_ranger_shoot_S_2":[0,43,1624,50,68,25.0,62.7],"c_ranger_walk_E_0":[0,95,1624,25,68,13.0,57.7],"c_ranger_walk_E_4":[0,122,1624,25,68,13.0,57.7],"c_ranger_walk_E_5":[0,149,1624,48,68,25.0,59.7],"c_zombie_walk_N_1":[0,199,1624,47,68,23.8,56.5],"c_zombie_walk_S_1":[0,248,1624,47,68,23.8,56.5],"w_cannon_12":[0,297,1624,61,68,30.4,46.2],"w_cannon_4":[0,360,1624,61,68,30.4,46.2],"w_catapult_10":[0,423,1624,70,68,29.4,46.2],"w_catapult_12":[0,495,1624,85,68,35.4,46.2],"w_catapult_4":[0,582,1624,85,68,49.4,46.2],"w_catapult_6":[0,669,1624,70,68,40.4,46.2],"c_berserker_attack_N_4":[0,741,1624,45,67,22.6,64.4],"c_berserker_die_S_1":[0,788,1624,45,67,22.6,60.4],"c_berserker_walk_N_3":[0,835,1624,45,67,22.6,55.4],"c_berserker_walk_N_7":[0,882,1624,45,67,22.6,55.4],"c_berserker_walk_S_3":[0,929,1624,45,67,22.6,55.4],"c_berserker_walk_S_7":[0,976,1624,45,67,22.6,55.4],"c_doctor_emote_N_1":[0,1023,1624,47,67,23.8,61.5],"c_doctor_emote_N_2":[0,1072,1624,47,67,23.8,61.5],"c_doctor_emote_N_3":[0,1121,1624,47,67,23.8,61.5],"c_doctor_emote_N_4":[0,1170,1624,47,67,23.8,61.5],"c_frostmage_attack_E_1":[0,1219,1624,43,67,22.0,56.7],"c_frostmage_attack_E_5":[0,1264,1624,27,67,6.0,56.7],"c_frostmage_attack_S_3":[0,1293,1624,50,67,25.0,56.7],"c_frostmage_shoot_E_1":[0,1345,1624,41,67,21.0,56.7],"c_frostmage_shoot_E_2":[0,1388,1624,41,67,20.0,56.7],"c_frostmage_walk_E_1":[0,1431,1624,42,67,21.0,58.7],"c_guard_attack_E_1":[0,1475,1624,43,67,22.0,56.7],"c_guard_attack_E_5":[0,1520,1624,27,67,6.0,56.7],"c_guard_attack_S_3":[0,1549,1624,50,67,25.0,56.7],"c_guard_walk_E_1":[0,1601,1624,42,67,21.0,58.7],"c_knight_die_S_4":[0,1645,1624,43,67,21.4,65.3],"c_ninja_attack_N_4":[0,1690,1624,45,67,22.6,64.4],"c_ninja_die_S_1":[0,1737,1624,45,67,22.6,60.4],"c_pirate_walk_E_2":[0,1784,1624,62,67,31.2,63.8],"c_pirate_walk_E_6":[0,1848,1624,62,67,31.2,63.8],"c_ranger_attack_E_1":[0,1912,1624,43,67,22.0,56.7],"c_ranger_attack_E_5":[0,1957,1624,27,67,6.0,56.7],"c_ranger_attack_S_3":[0,1986,1624,50,67,25.0,56.7],"c_ranger_shoot_E_1":[0,0,1694,41,67,21.0,56.7],"c_ranger_shoot_E_2":[0,43,1694,41,67,20.0,56.7],"c_ranger_walk_E_1":[0,86,1694,42,67,21.0,58.7],"c_templar_die_S_4":[0,130,1694,43,67,21.4,65.3],"w_turret_0":[0,175,1694,52,67,26.4,45.2],"c_berserker_die_E_1":[0,229,1694,46,66,21.6,65.4],"c_berserker_walk_N_2":[0,277,1694,45,66,22.6,55.4],"c_berserker_walk_N_5":[0,324,1694,45,66,22.6,54.4],"c_berserker_walk_N_6":[0,371,1694,45,66,22.6,55.4],"c_berserker_walk_S_2":[0,418,1694,45,66,22.6,55.4],"c_berserker_walk_S_5":[0,465,1694,45,66,22.6,54.4],"c_berserker_walk_S_6":[0,512,1694,45,66,22.6,55.4],"c_doctor_attack_N_3":[0,559,1694,47,66,23.8,58.5],"c_doctor_emote_N_5":[0,608,1694,47,66,23.8,60.5],"c_doctor_walk_E_7":[0,657,1694,47,66,26.8,57.5],"c_hulk_die_N_1":[0,706,1694,72,66,36.0,79.1],"c_ninja_die_E_1":[0,780,1694,46,66,21.6,65.4],"c_pirate_die_S_2":[0,828,1694,52,66,26.2,77.8],"c_robot_attack_N_1":[0,882,1694,55,66,27.5,57.0],"c_zombie_attack_N_3":[0,939,1694,47,66,23.8,58.5],"c_zombie_walk_E_7":[0,988,1694,47,66,26.8,57.5],"w_ballista_14":[0,1037,1694,66,66,36.4,44.2],"w_ballista_2":[0,1105,1694,66,66,29.4,44.2],"w_cannon_0":[0,1173,1694,61,66,30.4,44.2],"w_cannon_1":[0,1236,1694,61,66,30.4,44.2],"w_cannon_11":[0,1299,1694,63,66,32.4,44.2],"w_cannon_13":[0,1364,1694,62,66,31.4,44.2],"w_cannon_15":[0,1428,1694,61,66,30.4,44.2],"w_cannon_3":[0,1491,1694,62,66,30.4,44.2],"w_cannon_5":[0,1555,1694,62,66,30.4,44.2],"w_catapult_11":[0,1619,1694,80,66,34.4,44.2],"w_catapult_5":[0,1701,1694,80,66,45.4,44.2],"c_berserker_attack_S_1":[0,1783,1694,45,65,22.6,57.4],"c_berserker_walk_N_1":[0,1830,1694,45,65,22.6,53.4],"c_berserker_walk_S_1":[0,1877,1694,45,65,22.6,53.4],"c_doctor_attack_E_1":[0,1924,1694,42,65,21.8,54.5],"c_doctor_attack_E_3":[0,1968,1694,40,65,18.8,54.5],"c_doctor_attack_N_5":[0,0,1763,47,65,23.8,60.5],"c_doctor_attack_S_3":[0,49,1763,47,65,23.8,54.5],"c_doctor_die_S_3":[0,98,1763,47,65,23.8,71.5],"c_doctor_walk_E_1":[0,147,1763,40,65,19.8,56.5],"c_doctor_walk_E_3":[0,189,1763,50,65,27.8,57.5],"c_frostmage_attack_E_4":[0,2010,1694,34,65,4.0,54.7],"c_frostmage_shoot_S_3":[0,241,1763,50,65,25.0,59.7],"c_guard_attack_E_4":[0,293,1763,34,65,4.0,54.7],"c_ninja_attack_S_1":[0,329,1763,45,65,22.6,57.4],"c_pirate_attack_N_0":[0,376,1763,52,65,26.2,59.8],"c_pirate_attack_S_0":[0,430,1763,52,65,26.2,59.8],"c_pirate_die_N_0":[0,484,1763,52,65,26.2,59.8],"c_pirate_die_S_0":[0,538,1763,52,65,26.2,59.8],"c_pirate_walk_N_0":[0,592,1763,52,65,26.2,59.8],"c_pirate_walk_N_4":[0,646,1763,52,65,26.2,59.8],"c_pirate_walk_S_0":[0,700,1763,52,65,26.2,59.8],"c_pirate_walk_S_4":[0,754,1763,52,65,26.2,59.8],"c_ranger_attack_E_4":[0,808,1763,34,65,4.0,54.7],"c_ranger_shoot_S_3":[0,844,1763,50,65,25.0,59.7],"c_robot_attack_N_2":[0,896,1763,55,65,27.5,45.0],"c_zombie_attack_E_1":[0,953,1763,42,65,21.8,54.5],"c_zombie_attack_E_3":[0,997,1763,40,65,18.8,54.5],"c_zombie_attack_N_5":[0,1039,1763,47,65,23.8,60.5],"c_zombie_attack_S_3":[0,1088,1763,47,65,23.8,54.5],"c_zombie_die_S_3":[0,1137,1763,47,65,23.8,71.5],"c_zombie_walk_E_1":[0,1186,1763,40,65,19.8,56.5],"c_zombie_walk_E_3":[0,1228,1763,50,65,27.8,57.5],"c_berserker_idle_E_1":[0,1280,1763,29,64,18.6,54.4],"c_berserker_idle_E_3":[0,1311,1763,34,64,15.6,54.4],"c_doctor_attack_E_0":[0,2022,998,24,64,11.8,54.5],"c_doctor_attack_E_5":[0,1347,1763,26,64,5.8,54.5],"c_doctor_die_E_0":[0,1375,1763,24,64,11.8,54.5],"c_doctor_emote_E_0":[0,1401,1763,24,64,11.8,54.5],"c_doctor_emote_E_1":[0,1427,1763,42,64,12.8,54.5],"c_doctor_emote_E_2":[0,1471,1763,44,64,14.8,54.5],"c_doctor_emote_E_3":[0,1517,1763,44,64,14.8,54.5],"c_doctor_emote_E_4":[0,1563,1763,43,64,13.8,54.5],"c_doctor_emote_E_5":[0,1608,1763,34,64,11.8,54.5],"c_doctor_walk_E_0":[0,1644,1763,24,64,11.8,54.5],"c_doctor_walk_E_4":[0,1670,1763,24,64,11.8,54.5],"c_doctor_walk_E_5":[0,1696,1763,46,64,23.8,56.5],"c_foot2_die_S_4":[0,1744,1763,41,64,20.2,62.1],"c_foot_die_S_4":[0,1787,1763,41,64,20.2,62.1],"c_frostmage_attack_E_2":[0,1830,1763,48,64,30.0,54.7],"c_frostmage_die_S_2":[0,1880,1763,50,64,25.0,74.7],"c_frostmage_walk_E_2":[0,1932,1763,60,64,30.0,60.7],"c_guard_attack_E_2":[0,1994,1763,48,64,30.0,54.7],"c_guard_die_S_2":[0,0,1830,50,64,25.0,74.7],"c_guard_walk_E_2":[0,52,1830,60,64,30.0,60.7],"c_knight_attack_N_4":[0,114,1830,43,64,21.4,61.3],"c_knight_die_S_1":[0,159,1830,43,64,21.4,57.3],"c_knight_walk_N_2":[0,204,1830,43,64,21.4,53.3],"c_knight_walk_N_3":[0,249,1830,43,64,21.4,52.3],"c_knight_walk_N_6":[0,294,1830,43,64,21.4,53.3],"c_knight_walk_S_2":[0,339,1830,43,64,21.4,53.3],"c_knight_walk_S_3":[0,384,1830,43,64,21.4,52.3],"c_knight_walk_S_6":[0,429,1830,43,64,21.4,53.3],"c_militia_die_S_4":[0,474,1830,41,64,20.2,62.1],"c_ranger_attack_E_2":[0,517,1830,48,64,30.0,54.7],"c_ranger_die_S_2":[0,567,1830,50,64,25.0,74.7],"c_ranger_walk_E_2":[0,619,1830,60,64,30.0,60.7],"c_robot_attack_S_5":[0,681,1830,55,64,27.5,57.0],"c_templar_attack_N_4":[0,738,1830,43,64,21.4,61.3],"c_templar_die_S_1":[0,783,1830,43,64,21.4,57.3],"c_templar_walk_N_2":[0,828,1830,43,64,21.4,53.3],"c_templar_walk_N_3":[0,873,1830,43,64,21.4,52.3],"c_templar_walk_N_6":[0,918,1830,43,64,21.4,53.3],"c_templar_walk_S_2":[0,963,1830,43,64,21.4,53.3],"c_templar_walk_S_3":[0,1008,1830,43,64,21.4,52.3],"c_templar_walk_S_6":[0,1053,1830,43,64,21.4,53.3],"c_zombie_attack_E_0":[0,1098,1830,24,64,11.8,54.5],"c_zombie_attack_E_5":[0,1124,1830,26,64,5.8,54.5],"c_zombie_die_E_0":[0,1152,1830,24,64,11.8,54.5],"c_zombie_walk_E_0":[0,1178,1830,24,64,11.8,54.5],"c_zombie_walk_E_4":[0,1204,1830,24,64,11.8,54.5],"c_zombie_walk_E_5":[0,1230,1830,46,64,23.8,56.5],"puff_0":[0,1278,1830,72,64,36.0,31.5],"w_cannon_14":[0,1352,1830,59,64,29.4,42.2],"w_cannon_2":[0,1413,1830,59,64,29.4,42.2],"w_turret_12":[0,1474,1830,63,64,31.4,42.2],"w_turret_4":[0,1539,1830,63,64,31.4,42.2],"c_berserker_die_S_3":[0,1604,1830,45,63,22.6,68.4],"c_berserker_walk_E_7":[0,1651,1830,45,63,25.6,55.4],"c_colossus_die_N_4":[0,1698,1830,54,63,27.0,11.2],"c_frostmage_attack_N_0":[0,1754,1830,50,63,25.0,57.7],"c_frostmage_attack_S_0":[0,1806,1830,50,63,25.0,57.7],"c_frostmage_die_N_0":[0,1858,1830,50,63,25.0,57.7],"c_frostmage_die_S_0":[0,1910,1830,50,63,25.0,57.7],"c_frostmage_idle_N_0":[0,1962,1830,50,63,25.0,57.7],"c_frostmage_idle_N_2":[0,0,1896,50,63,25.0,57.7],"c_frostmage_idle_S_0":[0,52,1896,50,63,25.0,57.7],"c_frostmage_idle_S_2":[0,104,1896,50,63,25.0,57.7],"c_frostmage_shoot_N_0":[0,156,1896,50,63,25.0,57.7],"c_frostmage_shoot_S_0":[0,208,1896,50,63,25.0,57.7],"c_frostmage_walk_E_6":[0,260,1896,60,63,30.0,60.7],"c_frostmage_walk_N_0":[0,322,1896,50,63,25.0,57.7],"c_frostmage_walk_N_4":[0,374,1896,50,63,25.0,57.7],"c_frostmage_walk_S_0":[0,426,1896,50,63,25.0,57.7],"c_frostmage_walk_S_4":[0,478,1896,50,63,25.0,57.7],"c_guard_attack_N_0":[0,530,1896,50,63,25.0,57.7],"c_guard_attack_S_0":[0,582,1896,50,63,25.0,57.7],"c_guard_die_N_0":[0,634,1896,50,63,25.0,57.7],"c_guard_die_S_0":[0,686,1896,50,63,25.0,57.7],"c_guard_idle_N_0":[0,738,1896,50,63,25.0,57.7],"c_guard_idle_N_2":[0,790,1896,50,63,25.0,57.7],"c_guard_idle_S_0":[0,842,1896,50,63,25.0,57.7],"c_guard_idle_S_2":[0,894,1896,50,63,25.0,57.7],"c_guard_walk_E_6":[0,946,1896,60,63,30.0,60.7],"c_guard_walk_N_0":[0,1008,1896,50,63,25.0,57.7],"c_guard_walk_N_4":[0,1060,1896,50,63,25.0,57.7],"c_guard_walk_S_0":[0,1112,1896,50,63,25.0,57.7],"c_guard_walk_S_4":[0,1164,1896,50,63,25.0,57.7],"c_knight_attack_S_1":[0,1216,1896,43,63,21.4,55.3],"c_knight_die_E_1":[0,1261,1896,44,63,20.4,62.3],"c_knight_walk_N_5":[0,1307,1896,43,63,21.4,51.3],"c_knight_walk_N_7":[0,1352,1896,43,63,21.4,52.3],"c_knight_walk_S_5":[0,1397,1896,43,63,21.4,51.3],"c_knight_walk_S_7":[0,1442,1896,43,63,21.4,52.3],"c_ninja_die_S_3":[0,1487,1896,45,63,22.6,68.4],"c_ranger_attack_N_0":[0,1534,1896,50,63,25.0,57.7],"c_ranger_attack_S_0":[0,1586,1896,50,63,25.0,57.7],"c_ranger_die_N_0":[0,1638,1896,50,63,25.0,57.7],"c_ranger_die_S_0":[0,1690,1896,50,63,25.0,57.7],"c_ranger_idle_N_0":[0,1742,1896,50,63,25.0,57.7],"c_ranger_idle_N_2":[0,1794,1896,50,63,25.0,57.7],"c_ranger_idle_S_0":[0,1846,1896,50,63,25.0,57.7],"c_ranger_idle_S_2":[0,1898,1896,50,63,25.0,57.7],"c_ranger_shoot_N_0":[0,1950,1896,50,63,25.0,57.7],"c_ranger_shoot_S_0":[0,0,1961,50,63,25.0,57.7],"c_ranger_walk_E_6":[0,52,1961,60,63,30.0,60.7],"c_ranger_walk_N_0":[0,114,1961,50,63,25.0,57.7],"c_ranger_walk_N_4":[0,166,1961,50,63,25.0,57.7],"c_ranger_walk_S_0":[0,218,1961,50,63,25.0,57.7],"c_ranger_walk_S_4":[0,270,1961,50,63,25.0,57.7],"c_templar_attack_S_1":[0,2002,1896,43,63,21.4,55.3],"c_templar_die_E_1":[0,322,1961,44,63,20.4,62.3],"c_templar_walk_N_5":[0,368,1961,43,63,21.4,51.3],"c_templar_walk_N_7":[0,413,1961,43,63,21.4,52.3],"c_templar_walk_S_5":[0,458,1961,43,63,21.4,51.3],"c_templar_walk_S_7":[0,503,1961,43,63,21.4,52.3],"c_berserker_attack_E_0":[0,2014,1830,23,62,11.6,52.4],"c_berserker_attack_E_1":[0,548,1961,40,62,20.6,52.4],"c_berserker_attack_E_3":[0,590,1961,39,62,18.6,52.4],"c_berserker_attack_E_5":[0,631,1961,25,62,5.6,52.4],"c_berserker_attack_N_3":[0,658,1961,45,62,22.6,55.4],"c_berserker_attack_N_5":[0,705,1961,45,62,22.6,58.4],"c_berserker_die_E_0":[0,752,1961,23,62,11.6,52.4],"c_berserker_idle_E_0":[0,777,1961,23,62,11.6,52.4],"c_berserker_idle_E_2":[0,802,1961,23,62,11.6,52.4],"c_berserker_idle_N_3":[0,827,1961,45,62,22.6,57.4],"c_berserker_idle_S_1":[0,874,1961,45,62,22.6,57.4],"c_berserker_walk_E_0":[0,921,1961,23,62,11.6,52.4],"c_berserker_walk_E_3":[0,946,1961,48,62,26.6,55.4],"c_berserker_walk_E_4":[0,996,1961,23,62,11.6,52.4],"c_berserker_walk_E_5":[0,1021,1961,44,62,22.6,54.4],"c_doctor_attack_E_2":[0,1067,1961,46,62,28.8,52.5],"c_doctor_attack_E_4":[0,1115,1961,33,62,3.8,52.5],"c_foot2_attack_N_4":[0,1150,1961,41,62,20.2,59.1],"c_foot2_die_S_1":[0,1193,1961,41,62,20.2,55.1],"c_foot_attack_N_4":[0,1236,1961,41,62,20.2,59.1],"c_foot_die_S_1":[0,1279,1961,41,62,20.2,55.1],"c_frostmage_shoot_N_3":[0,1322,1961,50,62,25.0,56.7],"c_knight_walk_N_1":[0,1374,1961,43,62,21.4,51.3],"c_knight_walk_S_1":[0,1419,1961,43,62,21.4,51.3],"c_militia_attack_N_4":[0,1464,1961,41,62,20.2,59.1],"c_militia_die_S_1":[0,1507,1961,41,62,20.2,55.1],"c_ninja_attack_E_0":[0,1550,1961,23,62,11.6,52.4],"c_ninja_attack_E_1":[0,1575,1961,40,62,20.6,52.4],"c_ninja_attack_E_3":[0,1617,1961,39,62,18.6,52.4],"c_ninja_attack_E_5":[0,1658,1961,25,62,5.6,52.4],"c_ninja_attack_N_3":[0,1685,1961,45,62,22.6,55.4],"c_ninja_attack_N_5":[0,1732,1961,45,62,22.6,58.4],"c_ninja_die_E_0":[0,1779,1961,23,62,11.6,52.4],"c_ninja_sprint_E_0":[0,1804,1961,23,62,11.6,52.4],"c_ninja_sprint_E_4":[0,1829,1961,23,62,10.6,52.4],"c_ranger_shoot_N_3":[0,1854,1961,50,62,25.0,56.7],"c_templar_walk_N_1":[0,1906,1961,43,62,21.4,51.3],"c_templar_walk_S_1":[0,1951,1961,43,62,21.4,51.3],"c_zombie_attack_E_2":[0,1996,1961,46,62,28.8,52.5],"c_zombie_attack_E_4":[1,0,0,33,62,3.8,52.5],"c_berserker_attack_S_3":[1,35,0,45,61,22.6,51.4],"c_berserker_walk_E_1":[1,82,0,38,61,18.6,53.4],"c_colossus_die_E_4":[1,122,0,63,61,62.0,33.2],"c_doctor_die_S_2":[1,187,0,47,61,23.8,71.5],"c_doctor_walk_E_2":[1,236,0,57,61,28.8,58.5],"c_doctor_walk_E_6":[1,295,0,57,61,28.8,58.5],"c_foot2_walk_N_3":[1,354,0,41,61,20.2,50.1],"c_foot2_walk_S_3":[1,397,0,41,61,20.2,50.1],"c_foot_walk_N_3":[1,440,0,41,61,20.2,50.1],"c_foot_walk_S_3":[1,483,0,41,61,20.2,50.1],"c_frostmage_idle_N_1":[1,526,0,50,61,25.0,55.7],"c_frostmage_idle_S_3":[1,578,0,50,61,25.0,55.7],"c_guard_idle_N_1":[1,630,0,50,61,25.0,55.7],"c_guard_idle_S_3":[1,682,0,50,61,25.0,55.7],"c_knight_idle_E_1":[1,734,0,28,61,17.4,52.3],"c_knight_idle_E_3":[1,764,0,32,61,14.4,52.3],"c_militia_walk_N_3":[1,798,0,41,61,20.2,50.1],"c_militia_walk_S_3":[1,841,0,41,61,20.2,50.1],"c_ninja_attack_S_3":[1,884,0,45,61,22.6,51.4],"c_ninja_sprint_S_7":[1,931,0,45,61,22.6,49.4],"c_pirate_attack_N_1":[1,978,0,52,61,26.2,52.8],"c_ranger_idle_N_1":[1,1032,0,50,61,25.0,55.7],"c_ranger_idle_S_3":[1,1084,0,50,61,25.0,55.7],"c_templar_idle_E_1":[1,1136,0,28,61,17.4,52.3],"c_templar_idle_E_3":[1,1166,0,32,61,14.4,52.3],"c_zombie_die_S_2":[1,1200,0,47,61,23.8,71.5],"c_zombie_walk_E_2":[1,1249,0,57,61,28.8,58.5],"c_zombie_walk_E_6":[1,1308,0,57,61,28.8,58.5],"c_berserker_attack_E_4":[1,1367,0,32,60,3.6,50.4],"c_doctor_attack_N_0":[1,1401,0,47,60,23.8,54.5],"c_doctor_attack_S_0":[1,1450,0,47,60,23.8,54.5],"c_doctor_die_N_0":[1,1499,0,47,60,23.8,54.5],"c_doctor_die_S_0":[1,1548,0,47,60,23.8,54.5],"c_doctor_emote_N_0":[1,1597,0,47,60,23.8,54.5],"c_doctor_emote_S_0":[1,1646,0,47,60,23.8,54.5],"c_doctor_walk_N_0":[1,1695,0,47,60,23.8,54.5],"c_doctor_walk_N_4":[1,1744,0,47,60,23.8,54.5],"c_doctor_walk_S_0":[1,1793,0,47,60,23.8,54.5],"c_doctor_walk_S_4":[1,1842,0,47,60,23.8,54.5],"c_foot2_die_E_1":[1,1891,0,42,60,19.2,59.1],"c_foot2_walk_N_2":[1,1935,0,41,60,20.2,50.1],"c_foot2_walk_N_5":[1,1978,0,41,60,20.2,49.1],"c_foot2_walk_N_6":[1,0,64,41,60,20.2,50.1],"c_foot2_walk_N_7":[1,43,64,41,60,20.2,50.1],"c_foot2_walk_S_2":[1,86,64,41,60,20.2,50.1],"c_foot2_walk_S_5":[1,129,64,41,60,20.2,49.1],"c_foot2_walk_S_6":[1,172,64,41,60,20.2,50.1],"c_foot2_walk_S_7":[1,215,64,41,60,20.2,50.1],"c_foot_die_E_1":[1,258,64,42,60,19.2,59.1],"c_foot_walk_N_2":[1,302,64,41,60,20.2,50.1],"c_foot_walk_N_5":[1,345,64,41,60,20.2,49.1],"c_foot_walk_N_6":[1,388,64,41,60,20.2,50.1],"c_foot_walk_N_7":[1,431,64,41,60,20.2,50.1],"c_foot_walk_S_2":[1,474,64,41,60,20.2,50.1],"c_foot_walk_S_5":[1,517,64,41,60,20.2,49.1],"c_foot_walk_S_6":[1,560,64,41,60,20.2,50.1],"c_foot_walk_S_7":[1,603,64,41,60,20.2,50.1],"c_frostmage_shoot_N_2":[1,646,64,50,60,25.0,54.7],"c_knight_attack_N_3":[1,698,64,43,60,21.4,53.3],"c_knight_die_S_3":[1,743,64,43,60,21.4,65.3],"c_knight_walk_E_7":[1,788,64,43,60,24.4,52.3],"c_militia_die_E_1":[1,833,64,42,60,19.2,59.1],"c_militia_walk_N_2":[1,877,64,41,60,20.2,50.1],"c_militia_walk_N_5":[1,920,64,41,60,20.2,49.1],"c_militia_walk_N_6":[1,963,64,41,60,20.2,50.1],"c_militia_walk_N_7":[1,1006,64,41,60,20.2,50.1],"c_militia_walk_S_2":[1,1049,64,41,60,20.2,50.1],"c_militia_walk_S_5":[1,1092,64,41,60,20.2,49.1],"c_militia_walk_S_6":[1,1135,64,41,60,20.2,50.1],"c_militia_walk_S_7":[1,1178,64,41,60,20.2,50.1],"c_ninja_attack_E_4":[1,1221,64,32,60,3.6,50.4],"c_ninja_sprint_S_3":[1,1255,64,45,60,22.6,49.4],"c_pirate_attack_N_2":[1,1302,64,52,60,26.2,41.8],"c_ranger_shoot_N_2":[1,1356,64,50,60,25.0,54.7],"c_templar_attack_N_3":[1,1408,64,43,60,21.4,53.3],"c_templar_die_S_3":[1,1453,64,43,60,21.4,65.3],"c_templar_walk_E_7":[1,1498,64,43,60,24.4,52.3],"c_zombie_attack_N_0":[1,1543,64,47,60,23.8,54.5],"c_zombie_attack_S_0":[1,1592,64,47,60,23.8,54.5],"c_zombie_die_N_0":[1,1641,64,47,60,23.8,54.5],"c_zombie_die_S_0":[1,1690,64,47,60,23.8,54.5],"c_zombie_walk_N_0":[1,1739,64,47,60,23.8,54.5],"c_zombie_walk_N_4":[1,1788,64,47,60,23.8,54.5],"c_zombie_walk_S_0":[1,1837,64,47,60,23.8,54.5],"c_zombie_walk_S_4":[1,1886,64,47,60,23.8,54.5],"c_berserker_attack_E_2":[1,1935,64,44,59,27.6,50.4],"c_berserker_die_S_2":[1,1981,64,45,59,22.6,68.4],"c_foot2_attack_S_1":[1,0,126,41,59,20.2,52.1],"c_foot2_walk_N_1":[1,43,126,41,59,20.2,49.1],"c_foot2_walk_S_1":[1,86,126,41,59,20.2,49.1],"c_foot_attack_S_1":[1,129,126,41,59,20.2,52.1],"c_foot_walk_N_1":[1,172,126,41,59,20.2,49.1],"c_foot_walk_S_1":[1,215,126,41,59,20.2,49.1],"c_frostmage_attack_N_1":[1,258,126,50,59,25.0,50.7],"c_frostmage_shoot_N_1":[1,310,126,50,59,25.0,53.7],"c_guard_attack_N_1":[1,362,126,50,59,25.0,50.7],"c_knight_attack_E_0":[1,2021,0,22,59,11.4,50.3],"c_knight_attack_E_3":[1,414,126,37,59,17.4,50.3],"c_knight_attack_N_5":[1,453,126,43,59,21.4,55.3],"c_knight_attack_S_3":[1,498,126,43,59,21.4,49.3],"c_knight_die_E_0":[1,543,126,22,59,11.4,50.3],"c_knight_idle_E_0":[1,567,126,22,59,11.4,50.3],"c_knight_idle_E_2":[1,591,126,22,59,11.4,50.3],"c_knight_idle_N_3":[1,615,126,43,59,21.4,54.3],"c_knight_idle_S_1":[1,660,126,43,59,21.4,54.3],"c_knight_walk_E_0":[1,705,126,22,59,11.4,50.3],"c_knight_walk_E_1":[1,729,126,37,59,18.4,51.3],"c_knight_walk_E_3":[1,768,126,46,59,25.4,52.3],"c_knight_walk_E_4":[1,816,126,22,59,11.4,50.3],"c_militia_attack_S_1":[1,840,126,41,59,20.2,52.1],"c_militia_walk_N_1":[1,883,126,41,59,20.2,49.1],"c_militia_walk_S_1":[1,926,126,41,59,20.2,49.1],"c_ninja_attack_E_2":[1,969,126,44,59,27.6,50.4],"c_ninja_die_S_2":[1,1015,126,45,59,22.6,68.4],"c_ninja_sprint_E_1":[1,1062,126,45,59,22.6,53.4],"c_ninja_sprint_E_7":[1,1109,126,52,59,23.6,53.4],"c_ranger_attack_N_1":[1,1163,126,50,59,25.0,50.7],"c_ranger_shoot_N_1":[1,1215,126,50,59,25.0,53.7],"c_robot_attack_S_4":[1,1267,126,55,59,27.5,44.0],"c_templar_attack_E_0":[1,1324,126,22,59,11.4,50.3],"c_templar_attack_E_3":[1,1348,126,37,59,17.4,50.3],"c_templar_attack_N_5":[1,1387,126,43,59,21.4,55.3],"c_templar_attack_S_3":[1,1432,126,43,59,21.4,49.3],"c_templar_die_E_0":[1,1477,126,22,59,11.4,50.3],"c_templar_idle_E_0":[1,1501,126,22,59,11.4,50.3],"c_templar_idle_E_2":[1,1525,126,22,59,11.4,50.3],"c_templar_idle_N_3":[1,1549,126,43,59,21.4,54.3],"c_templar_idle_S_1":[1,1594,126,43,59,21.4,54.3],"c_templar_walk_E_0":[1,1639,126,22,59,11.4,50.3],"c_templar_walk_E_1":[1,1663,126,37,59,18.4,51.3],"c_templar_walk_E_3":[1,1702,126,46,59,25.4,52.3],"c_templar_walk_E_4":[1,1750,126,22,59,11.4,50.3],"c_berserker_walk_E_2":[1,1774,126,55,58,27.6,55.4],"c_berserker_walk_E_6":[1,1831,126,55,58,27.6,55.4],"c_foot2_idle_E_1":[1,1888,126,27,58,17.2,49.1],"c_foot2_idle_E_3":[1,1917,126,31,58,14.2,49.1],"c_foot_idle_E_1":[1,1950,126,27,58,17.2,49.1],"c_foot_idle_E_3":[1,1979,126,31,58,14.2,49.1],"c_knight_attack_E_1":[1,0,187,38,58,19.4,49.3],"c_knight_attack_E_5":[1,2012,126,24,58,5.4,49.3],"c_knight_walk_E_5":[1,40,187,42,58,21.4,51.3],"c_militia_idle_E_1":[1,84,187,27,58,17.2,49.1],"c_militia_idle_E_3":[1,113,187,31,58,14.2,49.1],"c_ninja_sprint_N_4":[1,146,187,45,58,22.6,53.4],"c_ninja_sprint_S_1":[1,193,187,45,58,22.6,46.4],"c_pirate_attack_S_5":[1,240,187,52,58,26.2,51.8],"c_robot_die_N_2":[1,294,187,55,58,27.5,32.0],"c_templar_attack_E_1":[1,351,187,38,58,19.4,49.3],"c_templar_attack_E_5":[1,391,187,24,58,5.4,49.3],"c_templar_walk_E_5":[1,417,187,42,58,21.4,51.3],"c_berserker_attack_N_0":[1,461,187,45,57,22.6,52.4],"c_berserker_attack_S_0":[1,508,187,45,57,22.6,52.4],"c_berserker_die_N_0":[1,555,187,45,57,22.6,52.4],"c_berserker_die_S_0":[1,602,187,45,57,22.6,52.4],"c_berserker_idle_N_0":[1,649,187,45,57,22.6,52.4],"c_berserker_idle_N_2":[1,696,187,45,57,22.6,52.4],"c_berserker_idle_S_0":[1,743,187,45,57,22.6,52.4],"c_berserker_idle_S_2":[1,790,187,45,57,22.6,52.4],"c_berserker_walk_N_0":[1,837,187,45,57,22.6,52.4],"c_berserker_walk_N_4":[1,884,187,45,57,22.6,52.4],"c_berserker_walk_S_0":[1,931,187,45,57,22.6,52.4],"c_berserker_walk_S_4":[1,978,187,45,57,22.6,52.4],"c_foot2_attack_N_5":[1,1025,187,41,57,20.2,53.1],"c_foot2_die_S_3":[1,1068,187,41,57,20.2,62.1],"c_foot2_idle_N_3":[1,1111,187,41,57,20.2,52.1],"c_foot2_idle_S_1":[1,1154,187,41,57,20.2,52.1],"c_foot2_walk_E_3":[1,1197,187,44,57,24.2,50.1],"c_foot2_walk_E_7":[1,1243,187,41,57,23.2,50.1],"c_foot_attack_N_5":[1,1286,187,41,57,20.2,53.1],"c_foot_die_S_3":[1,1329,187,41,57,20.2,62.1],"c_foot_idle_N_3":[1,1372,187,41,57,20.2,52.1],"c_foot_idle_S_1":[1,1415,187,41,57,20.2,52.1],"c_foot_walk_E_3":[1,1458,187,44,57,24.2,50.1],"c_foot_walk_E_7":[1,1504,187,41,57,23.2,50.1],"c_frostmage_attack_N_2":[1,1547,187,50,57,25.0,39.7],"c_guard_attack_N_2":[1,1599,187,50,57,25.0,39.7],"c_knight_attack_E_2":[1,1651,187,42,57,26.4,48.3],"c_knight_attack_E_4":[1,1695,187,30,57,3.4,48.3],"c_militia_attack_N_5":[1,1727,187,41,57,20.2,53.1],"c_militia_die_S_3":[1,1770,187,41,57,20.2,62.1],"c_militia_idle_N_3":[1,1813,187,41,57,20.2,52.1],"c_militia_idle_S_1":[1,1856,187,41,57,20.2,52.1],"c_militia_walk_E_3":[1,1899,187,44,57,24.2,50.1],"c_militia_walk_E_7":[1,1945,187,41,57,23.2,50.1],"c_ninja_attack_N_0":[1,1988,187,45,57,22.6,52.4],"c_ninja_attack_S_0":[1,0,247,45,57,22.6,52.4],"c_ninja_die_N_0":[1,47,247,45,57,22.6,52.4],"c_ninja_die_S_0":[1,94,247,45,57,22.6,52.4],"c_ninja_sprint_N_0":[1,141,247,45,57,22.6,52.4],"c_ninja_sprint_S_0":[1,188,247,45,57,22.6,52.4],"c_ranger_attack_N_2":[1,235,247,50,57,25.0,39.7],"c_templar_attack_E_2":[1,287,247,42,57,26.4,48.3],"c_templar_attack_E_4":[1,331,247,30,57,3.4,48.3],"c_berserker_idle_N_1":[1,363,247,45,56,22.6,51.4],"c_doctor_attack_N_1":[1,410,247,47,56,23.8,48.5],"c_foot2_attack_E_0":[0,2025,1408,21,56,10.2,47.1],"c_foot2_attack_E_1":[1,459,247,36,56,18.2,47.1],"c_foot2_attack_E_3":[1,497,247,34,56,16.2,47.1],"c_foot2_attack_E_5":[1,533,247,22,56,5.2,47.1],"c_foot2_attack_N_3":[1,557,247,41,56,20.2,50.1],"c_foot2_attack_S_3":[1,600,247,41,56,20.2,47.1],"c_foot2_die_E_0":[1,643,247,21,56,10.2,47.1],"c_foot2_idle_E_0":[1,666,247,21,56,10.2,47.1],"c_foot2_idle_E_2":[1,689,247,21,56,10.2,47.1],"c_foot2_walk_E_0":[1,712,247,21,56,10.2,47.1],"c_foot2_walk_E_1":[1,735,247,34,56,17.2,49.1],"c_foot2_walk_E_4":[1,771,247,21,56,10.2,47.1],"c_foot2_walk_E_5":[1,794,247,40,56,20.2,49.1],"c_foot_attack_E_0":[1,836,247,21,56,10.2,47.1],"c_foot_attack_E_1":[1,859,247,36,56,18.2,47.1],"c_foot_attack_E_3":[1,897,247,34,56,16.2,47.1],"c_foot_attack_E_5":[1,933,247,22,56,5.2,47.1],"c_foot_attack_N_3":[1,957,247,41,56,20.2,50.1],"c_foot_attack_S_3":[1,1000,247,41,56,20.2,47.1],"c_foot_die_E_0":[1,1043,247,21,56,10.2,47.1],"c_foot_idle_E_0":[1,1066,247,21,56,10.2,47.1],"c_foot_idle_E_2":[1,1089,247,21,56,10.2,47.1],"c_foot_walk_E_0":[1,1112,247,21,56,10.2,47.1],"c_foot_walk_E_1":[1,1135,247,34,56,17.2,49.1],"c_foot_walk_E_4":[1,1171,247,21,56,10.2,47.1],"c_foot_walk_E_5":[1,1194,247,40,56,20.2,49.1],"c_frostmage_attack_S_5":[1,1236,247,50,56,25.0,49.7],"c_guard_attack_S_5":[1,1288,247,50,56,25.0,49.7],"c_knight_die_S_2":[1,1340,247,43,56,21.4,65.3],"c_knight_walk_E_2":[1,1385,247,52,56,26.4,53.3],"c_knight_walk_E_6":[1,1439,247,52,56,26.4,53.3],"c_militia_attack_E_0":[1,1493,247,21,56,10.2,47.1],"c_militia_attack_E_1":[1,1516,247,36,56,18.2,47.1],"c_militia_attack_E_3":[1,1554,247,34,56,16.2,47.1],"c_militia_attack_E_5":[1,1590,247,22,56,5.2,47.1],"c_militia_attack_N_3":[1,1614,247,41,56,20.2,50.1],"c_militia_attack_S_3":[1,1657,247,41,56,20.2,47.1],"c_militia_die_E_0":[1,1700,247,21,56,10.2,47.1],"c_militia_idle_E_0":[1,1723,247,21,56,10.2,47.1],"c_militia_idle_E_2":[1,1746,247,21,56,10.2,47.1],"c_militia_walk_E_0":[1,1769,247,21,56,10.2,47.1],"c_militia_walk_E_1":[1,1792,247,34,56,17.2,49.1],"c_militia_walk_E_4":[1,1828,247,21,56,10.2,47.1],"c_militia_walk_E_5":[1,1851,247,40,56,20.2,49.1],"c_ninja_sprint_E_2":[1,1893,247,56,56,27.6,57.4],"c_ninja_sprint_E_3":[1,1951,247,55,56,26.6,53.4],"c_ninja_sprint_E_5":[1,0,306,54,56,26.6,53.4],"c_ninja_sprint_S_2":[1,56,306,45,56,22.6,48.4],"c_ninja_sprint_S_4":[1,103,306,45,56,22.6,51.4],"c_ninja_sprint_S_5":[1,150,306,45,56,22.6,45.4],"c_ninja_sprint_S_6":[1,197,306,45,56,22.6,48.4],"c_ranger_attack_S_5":[1,244,306,50,56,25.0,49.7],"c_templar_die_S_2":[1,296,306,43,56,21.4,65.3],"c_templar_walk_E_2":[1,341,306,52,56,26.4,53.3],"c_templar_walk_E_6":[1,395,306,52,56,26.4,53.3],"c_zombie_attack_N_1":[1,449,306,47,56,23.8,48.5],"spark":[1,2008,247,34,56,18.0,28.0],"c_berserker_idle_S_3":[1,498,306,45,55,22.6,50.4],"c_doctor_attack_N_2":[1,545,306,47,55,23.8,38.5],"c_knight_attack_N_0":[1,594,306,43,55,21.4,50.3],"c_knight_attack_S_0":[1,639,306,43,55,21.4,50.3],"c_knight_die_N_0":[1,684,306,43,55,21.4,50.3],"c_knight_die_S_0":[1,729,306,43,55,21.4,50.3],"c_knight_idle_N_0":[1,774,306,43,55,21.4,50.3],"c_knight_idle_N_2":[1,819,306,43,55,21.4,50.3],"c_knight_idle_S_0":[1,864,306,43,55,21.4,50.3],"c_knight_idle_S_2":[1,909,306,43,55,21.4,50.3],"c_knight_walk_N_0":[1,954,306,43,55,21.4,50.3],"c_knight_walk_N_4":[1,999,306,43,55,21.4,50.3],"c_knight_walk_S_0":[1,1044,306,43,55,21.4,50.3],"c_knight_walk_S_4":[1,1089,306,43,55,21.4,50.3],"c_pirate_attack_S_4":[1,1134,306,52,55,26.2,40.8],"c_templar_attack_N_0":[1,1188,306,43,55,21.4,50.3],"c_templar_attack_S_0":[1,1233,306,43,55,21.4,50.3],"c_templar_die_N_0":[1,1278,306,43,55,21.4,50.3],"c_templar_die_S_0":[1,1323,306,43,55,21.4,50.3],"c_templar_idle_N_0":[1,1368,306,43,55,21.4,50.3],"c_templar_idle_N_2":[1,1413,306,43,55,21.4,50.3],"c_templar_idle_S_0":[1,1458,306,43,55,21.4,50.3],"c_templar_idle_S_2":[1,1503,306,43,55,21.4,50.3],"c_templar_walk_N_0":[1,1548,306,43,55,21.4,50.3],"c_templar_walk_N_4":[1,1593,306,43,55,21.4,50.3],"c_templar_walk_S_0":[1,1638,306,43,55,21.4,50.3],"c_templar_walk_S_4":[1,1683,306,43,55,21.4,50.3],"c_zombie_attack_N_2":[1,1728,306,47,55,23.8,38.5],"c_berserker_attack_N_1":[1,1777,306,45,54,22.6,46.4],"c_doctor_attack_S_5":[1,1824,306,47,54,23.8,47.5],"c_foot2_attack_E_4":[1,1873,306,29,54,3.2,45.1],"c_foot_attack_E_4":[1,1904,306,29,54,3.2,45.1],"c_militia_attack_E_4":[1,1935,306,29,54,3.2,45.1],"c_ninja_attack_N_1":[1,1966,306,45,54,22.6,46.4],"c_pirate_die_N_2":[1,0,364,52,54,26.2,29.8],"c_zombie_attack_S_5":[1,54,364,47,54,23.8,47.5],"c_berserker_attack_N_2":[1,103,364,45,53,22.6,36.4],"c_doctor_emote_S_5":[1,150,364,47,53,23.8,47.5],"c_foot2_attack_E_2":[1,199,364,40,53,25.2,45.1],"c_foot2_die_S_2":[1,241,364,41,53,20.2,62.1],"c_foot_attack_E_2":[1,284,364,40,53,25.2,45.1],"c_foot_die_S_2":[1,326,364,41,53,20.2,62.1],"c_knight_idle_N_1":[1,369,364,43,53,21.4,48.3],"c_knight_idle_S_3":[1,414,364,43,53,21.4,48.3],"c_militia_attack_E_2":[1,459,364,40,53,25.2,45.1],"c_militia_die_S_2":[1,501,364,41,53,20.2,62.1],"c_ninja_attack_N_2":[1,544,364,45,53,22.6,36.4],"c_templar_idle_N_1":[1,591,364,43,53,21.4,48.3],"c_templar_idle_S_3":[1,636,364,43,53,21.4,48.3],"c_doctor_emote_S_1":[1,681,364,47,52,23.8,46.5],"c_doctor_emote_S_2":[1,730,364,47,52,23.8,46.5],"c_doctor_emote_S_3":[1,779,364,47,52,23.8,46.5],"c_doctor_emote_S_4":[1,828,364,47,52,23.8,46.5],"c_foot2_attack_N_0":[1,877,364,41,52,20.2,47.1],"c_foot2_attack_S_0":[1,920,364,41,52,20.2,47.1],"c_foot2_die_N_0":[1,963,364,41,52,20.2,47.1],"c_foot2_die_S_0":[1,1006,364,41,52,20.2,47.1],"c_foot2_idle_N_0":[1,1049,364,41,52,20.2,47.1],"c_foot2_idle_N_2":[1,1092,364,41,52,20.2,47.1],"c_foot2_idle_S_0":[1,1135,364,41,52,20.2,47.1],"c_foot2_idle_S_2":[1,1178,364,41,52,20.2,47.1],"c_foot2_walk_E_2":[1,1221,364,50,52,25.2,50.1],"c_foot2_walk_E_6":[1,1273,364,50,52,25.2,50.1],"c_foot2_walk_N_0":[1,1325,364,41,52,20.2,47.1],"c_foot2_walk_N_4":[1,1368,364,41,52,20.2,47.1],"c_foot2_walk_S_0":[1,1411,364,41,52,20.2,47.1],"c_foot2_walk_S_4":[1,1454,364,41,52,20.2,47.1],"c_foot_attack_N_0":[1,1497,364,41,52,20.2,47.1],"c_foot_attack_S_0":[1,1540,364,41,52,20.2,47.1],"c_foot_die_N_0":[1,1583,364,41,52,20.2,47.1],"c_foot_die_S_0":[1,1626,364,41,52,20.2,47.1],"c_foot_idle_N_0":[1,1669,364,41,52,20.2,47.1],"c_foot_idle_N_2":[1,1712,364,41,52,20.2,47.1],"c_foot_idle_S_0":[1,1755,364,41,52,20.2,47.1],"c_foot_idle_S_2":[1,1798,364,41,52,20.2,47.1],"c_foot_walk_E_2":[1,1841,364,50,52,25.2,50.1],"c_foot_walk_E_6":[1,1893,364,50,52,25.2,50.1],"c_foot_walk_N_0":[1,1945,364,41,52,20.2,47.1],"c_foot_walk_N_4":[1,1988,364,41,52,20.2,47.1],"c_foot_walk_S_0":[1,0,420,41,52,20.2,47.1],"c_foot_walk_S_4":[1,43,420,41,52,20.2,47.1],"c_frostmage_attack_S_4":[1,86,420,50,52,25.0,38.7],"c_frostmage_die_N_2":[1,138,420,50,52,25.0,28.7],"c_guard_attack_S_4":[1,190,420,50,52,25.0,38.7],"c_guard_die_N_2":[1,242,420,50,52,25.0,28.7],"c_militia_attack_N_0":[1,294,420,41,52,20.2,47.1],"c_militia_attack_S_0":[1,337,420,41,52,20.2,47.1],"c_militia_die_N_0":[1,380,420,41,52,20.2,47.1],"c_militia_die_S_0":[1,423,420,41,52,20.2,47.1],"c_militia_idle_N_0":[1,466,420,41,52,20.2,47.1],"c_militia_idle_N_2":[1,509,420,41,52,20.2,47.1],"c_militia_idle_S_0":[1,552,420,41,52,20.2,47.1],"c_militia_idle_S_2":[1,595,420,41,52,20.2,47.1],"c_militia_walk_E_2":[1,638,420,50,52,25.2,50.1],"c_militia_walk_E_6":[1,690,420,50,52,25.2,50.1],"c_militia_walk_N_0":[1,742,420,41,52,20.2,47.1],"c_militia_walk_N_4":[1,785,420,41,52,20.2,47.1],"c_militia_walk_S_0":[1,828,420,41,52,20.2,47.1],"c_militia_walk_S_4":[1,871,420,41,52,20.2,47.1],"c_ranger_attack_S_4":[1,914,420,50,52,25.0,38.7],"c_ranger_die_N_2":[1,966,420,50,52,25.0,28.7],"c_berserker_attack_S_5":[1,1018,420,45,51,22.6,45.4],"c_doctor_attack_S_4":[1,1065,420,47,51,23.8,37.5],"c_foot2_idle_N_1":[1,1114,420,41,51,20.2,46.1],"c_foot2_idle_S_3":[1,1157,420,41,51,20.2,46.1],"c_foot_idle_N_1":[1,1200,420,41,51,20.2,46.1],"c_foot_idle_S_3":[1,1243,420,41,51,20.2,46.1],"c_knight_attack_N_1":[1,1286,420,43,51,21.4,44.3],"c_knight_attack_N_2":[1,1331,420,43,51,21.4,35.3],"c_militia_idle_N_1":[1,1376,420,41,51,20.2,46.1],"c_militia_idle_S_3":[1,1419,420,41,51,20.2,46.1],"c_ninja_attack_S_5":[1,1462,420,45,51,22.6,45.4],"c_robot_die_N_1":[1,1509,420,55,51,27.5,61.0],"c_templar_attack_N_1":[1,1566,420,43,51,21.4,44.3],"c_templar_attack_N_2":[1,1611,420,43,51,21.4,35.3],"c_zombie_attack_S_4":[1,1656,420,47,51,23.8,37.5],"c_doctor_die_N_2":[1,1705,420,47,50,23.8,27.5],"c_hulk_die_E_3":[1,1754,420,42,50,43.0,33.1],"c_zombie_die_N_2":[1,1798,420,47,50,23.8,27.5],"ufo_0":[1,1847,420,56,50,27.6,30.4],"ufo_1":[1,1905,420,55,50,27.6,30.4],"ufo_2":[1,1962,420,55,50,27.6,30.4],"ufo_6":[1,0,474,55,50,27.6,30.4],"ufo_7":[1,57,474,55,50,27.6,30.4],"c_foot2_attack_N_1":[1,114,474,41,49,20.2,42.1],"c_foot_attack_N_1":[1,157,474,41,49,20.2,42.1],"c_hulk_die_E_2":[1,200,474,55,49,43.0,52.1],"c_knight_attack_S_5":[1,257,474,43,49,21.4,43.3],"c_militia_attack_N_1":[1,302,474,41,49,20.2,42.1],"c_templar_attack_S_5":[1,345,474,43,49,21.4,43.3],"ufo_3":[1,390,474,56,49,27.6,29.4],"ufo_5":[1,448,474,56,49,27.6,29.4],"c_berserker_attack_S_4":[1,506,474,45,48,22.6,35.4],"c_foot2_attack_N_2":[1,553,474,41,48,20.2,33.1],"c_foot_attack_N_2":[1,596,474,41,48,20.2,33.1],"c_militia_attack_N_2":[1,639,474,41,48,20.2,33.1],"c_ninja_attack_S_4":[1,682,474,45,48,22.6,35.4],"c_ninja_sprint_E_6":[1,729,474,56,48,27.6,53.4],"heal":[1,787,474,47,48,23.0,24.0],"magic":[1,836,474,46,48,23.0,24.0],"magicb":[1,884,474,46,48,23.0,24.0],"star":[1,932,474,48,48,24.0,24.0],"ufo_4":[1,982,474,55,48,27.6,28.4],"c_berserker_die_N_2":[1,1039,474,45,47,22.6,25.4],"c_hulk_die_N_3":[1,1086,474,36,47,18.0,11.1],"c_ninja_die_N_2":[1,1124,474,45,47,22.6,25.4],"c_pirate_die_N_1":[1,1171,474,52,47,26.2,55.8],"c_foot2_attack_S_5":[1,1225,474,41,46,20.2,41.1],"c_foot_attack_S_5":[1,1268,474,41,46,20.2,41.1],"c_knight_attack_S_4":[1,1311,474,43,46,21.4,34.3],"c_militia_attack_S_5":[1,1356,474,41,46,20.2,41.1],"c_templar_attack_S_4":[1,1399,474,43,46,21.4,34.3],"flare":[1,1444,474,46,46,23.0,23.0],"c_frostmage_die_N_1":[1,1492,474,50,45,25.0,53.7],"c_guard_die_N_1":[1,1544,474,50,45,25.0,53.7],"c_knight_die_N_2":[1,1596,474,43,45,21.4,24.3],"c_ranger_die_N_1":[1,1641,474,50,45,25.0,53.7],"c_templar_die_N_2":[1,1693,474,43,45,21.4,24.3],"c_doctor_die_N_1":[1,1738,474,47,43,23.8,51.5],"c_foot2_attack_S_4":[1,1787,474,41,43,20.2,32.1],"c_foot_attack_S_4":[1,1830,474,41,43,20.2,32.1],"c_hulk_die_N_4":[1,1873,474,36,43,18.0,7.1],"c_militia_attack_S_4":[1,1911,474,41,43,20.2,32.1],"c_zombie_die_N_1":[1,1954,474,47,43,23.8,51.5],"c_foot2_die_N_2":[1,2003,474,41,42,20.2,23.1],"c_foot_die_N_2":[1,0,526,41,42,20.2,23.1],"c_hulk_die_E_4":[1,43,526,44,42,43.0,23.1],"c_militia_die_N_2":[1,89,526,41,42,20.2,23.1],"c_berserker_die_N_1":[1,132,526,45,41,22.6,49.4],"c_ninja_die_N_1":[1,179,526,45,41,22.6,49.4],"flame":[1,226,526,41,41,18.0,19.0],"c_knight_die_N_1":[1,269,526,43,39,21.4,46.3],"c_robot_die_E_3":[1,2013,306,33,39,33.5,26.0],"c_templar_die_N_1":[1,314,526,43,39,21.4,46.3],"c_robot_die_E_2":[1,359,526,43,38,33.5,40.0],"c_foot2_die_N_1":[1,404,526,41,37,20.2,44.1],"c_foot_die_N_1":[1,447,526,41,37,20.2,44.1],"c_militia_die_N_1":[1,490,526,41,37,20.2,44.1],"c_robot_die_N_3":[1,533,526,29,37,14.5,9.0],"c_pirate_die_E_3":[1,564,526,31,36,31.2,23.8],"c_pirate_die_E_2":[1,597,526,40,35,31.2,36.8],"ball":[1,639,526,34,34,17.0,17.5],"c_frostmage_die_E_2":[1,675,526,38,34,30.0,35.7],"c_frostmage_die_E_3":[1,715,526,30,34,30.0,22.7],"c_guard_die_E_2":[1,747,526,38,34,30.0,35.7],"c_guard_die_E_3":[1,787,526,30,34,30.0,22.7],"c_pirate_die_N_3":[1,2019,420,26,34,13.2,7.8],"c_ranger_die_E_2":[1,819,526,38,34,30.0,35.7],"c_ranger_die_E_3":[1,859,526,30,34,30.0,22.7],"c_robot_die_N_4":[1,891,526,29,34,14.5,6.0],"boulder":[1,922,526,38,33,19.0,17.0],"c_doctor_die_E_3":[1,962,526,28,33,28.8,21.5],"c_frostmage_die_N_3":[1,992,526,25,33,13.0,7.7],"c_guard_die_N_3":[1,1019,526,25,33,13.0,7.7],"c_ranger_die_N_3":[1,1046,526,25,33,13.0,7.7],"c_zombie_die_E_3":[1,1073,526,28,33,28.8,21.5],"c_doctor_die_E_2":[1,1103,526,37,32,28.8,33.5],"c_doctor_die_N_3":[1,1142,526,24,32,11.8,7.5],"c_pirate_die_N_4":[1,1168,526,26,32,13.2,5.8],"c_robot_die_E_4":[1,1196,526,34,32,33.5,17.0],"c_zombie_die_E_2":[1,1232,526,37,32,28.8,33.5],"c_zombie_die_N_3":[1,1271,526,24,32,11.8,7.5],"c_berserker_die_E_2":[1,1297,526,35,31,27.6,32.4],"c_berserker_die_E_3":[1,1334,526,27,31,27.6,20.4],"c_berserker_die_N_3":[1,1363,526,23,31,11.6,7.4],"c_frostmage_die_N_4":[1,1388,526,25,31,13.0,5.7],"c_guard_die_N_4":[1,1415,526,25,31,13.0,5.7],"c_ninja_die_E_2":[1,1442,526,35,31,27.6,32.4],"c_ninja_die_E_3":[1,1479,526,27,31,27.6,20.4],"c_ninja_die_N_3":[1,1508,526,23,31,11.6,7.4],"c_ranger_die_N_4":[1,1533,526,25,31,13.0,5.7],"c_knight_die_E_2":[1,1560,526,34,30,26.4,31.3],"c_knight_die_E_3":[1,1596,526,26,30,26.4,19.3],"c_knight_die_N_3":[1,1624,526,22,30,11.4,7.3],"c_templar_die_E_2":[1,1648,526,34,30,26.4,31.3],"c_templar_die_E_3":[1,1684,526,26,30,26.4,19.3],"c_templar_die_N_3":[1,1712,526,22,30,11.4,7.3],"c_doctor_die_N_4":[1,1736,526,24,29,11.8,4.5],"c_foot2_die_E_3":[1,1762,526,25,29,25.2,19.1],"c_foot_die_E_3":[1,1789,526,25,29,25.2,19.1],"c_frostmage_die_E_4":[1,1816,526,31,29,30.0,15.7],"c_guard_die_E_4":[1,1849,526,31,29,30.0,15.7],"c_militia_die_E_3":[1,1882,526,25,29,25.2,19.1],"c_pirate_die_E_4":[1,1909,526,32,29,31.2,15.8],"c_ranger_die_E_4":[1,1943,526,31,29,30.0,15.7],"c_zombie_die_N_4":[1,1976,526,24,29,11.8,4.5],"c_berserker_die_N_4":[1,2002,526,23,28,11.6,4.4],"c_foot2_die_E_2":[1,0,570,32,28,25.2,29.1],"c_foot2_die_N_3":[1,34,570,21,28,10.2,6.1],"c_foot_die_E_2":[1,57,570,32,28,25.2,29.1],"c_foot_die_N_3":[1,91,570,21,28,10.2,6.1],"c_militia_die_E_2":[1,114,570,32,28,25.2,29.1],"c_militia_die_N_3":[1,148,570,21,28,10.2,6.1],"c_ninja_die_N_4":[1,171,570,23,28,11.6,4.4],"arrow":[1,196,570,93,27,46.5,13.5],"c_doctor_die_E_4":[1,291,570,29,27,28.8,14.5],"c_knight_die_N_4":[1,322,570,22,27,11.4,4.3],"c_templar_die_N_4":[1,346,570,22,27,11.4,4.3],"c_zombie_die_E_4":[1,370,570,29,27,28.8,14.5],"c_berserker_die_E_4":[1,401,570,28,26,27.6,14.4],"c_foot2_die_N_4":[1,431,570,21,26,10.2,4.1],"c_foot_die_N_4":[1,454,570,21,26,10.2,4.1],"c_militia_die_N_4":[1,477,570,21,26,10.2,4.1],"c_ninja_die_E_4":[1,500,570,28,26,27.6,14.4],"bullet":[1,530,570,36,25,18.0,13.0],"c_knight_die_E_4":[1,568,570,27,25,26.4,13.3],"c_templar_die_E_4":[1,597,570,27,25,26.4,13.3],"c_foot2_die_E_4":[1,626,570,26,24,25.2,13.1],"c_foot_die_E_4":[1,654,570,26,24,25.2,13.1],"c_militia_die_E_4":[1,682,570,26,24,25.2,13.1]};
+const PAGES = [];
+const BGS = [];
+function loadImg(src) {
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('Could not load ' + src)); im.src = src; });
+}
+function loadAssets(onProgress) {
+  const jobs = [loadImg('art/atlas0.webp'), loadImg('art/atlas1.webp'), loadImg('art/bg0.webp'), loadImg('art/bg1.webp'), loadImg('art/bg2.webp')];
+  let done = 0;
+  jobs.forEach(j => j.then(() => onProgress && onProgress(++done / jobs.length)));
+  return Promise.all(jobs).then(ims => { PAGES.push(ims[0], ims[1]); BGS.push(ims[2], ims[3], ims[4]); });
+}
+// draw a named sprite with its anchor at (x, y) in world units
+function spr(g, name, x, y, sc = 1, flip = false) {
+  const f = ATLAS[name]; if (!f) return null;
+  const img = PAGES[f[0]]; if (!img) return null;
+  const k = sc / PD;
+  if (flip) {
+    g.save(); g.translate(x, y); g.scale(-1, 1);
+    g.drawImage(img, f[1], f[2], f[3], f[4], -f[5] * k, -f[6] * k, f[3] * k, f[4] * k);
+    g.restore();
+  } else g.drawImage(img, f[1], f[2], f[3], f[4], x - f[5] * k, y - f[6] * k, f[3] * k, f[4] * k);
+  return f;
+}
+const sprTop = (name, sc = 1) => { const f = ATLAS[name]; return f ? f[6] / PD * sc : 30; };
+const ANIM_N = { walk: 8, sprint: 8, attack: 6, die: 5, idle: 4, shoot: 4, emote: 6 };
+function dirOf(dx, dy) {
+  const gx = dx, gz = dy / KS;
+  if (Math.abs(gx) >= Math.abs(gz) * 0.9) return gx >= 0 ? 'E' : 'W';
+  return gz >= 0 ? 'S' : 'N';
+}
+// draws a blocky character; t01 = progress through the animation (loops for walk)
+function drawChar(g, key, anim, dir, t01, x, y, sc = 1) {
+  const n = ANIM_N[anim] || 1;
+  let i = anim === 'die' ? Math.min(n - 1, Math.floor(t01 * n)) : Math.floor(((t01 % 1) + 1) % 1 * n);
+  const d = dir === 'W' ? 'E' : dir;
+  let name = `c_${key}_${anim}_${d}_${i}`;
+  if (!ATLAS[name]) name = `c_${key}_walk_${d}_0`;
+  return spr(g, name, x, y, sc, dir === 'W');
+}
+function portrait(canvas, key, bg) {
+  const c = canvas; c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, c.height);
+  gr.addColorStop(0, bg[0]); gr.addColorStop(1, bg[1]);
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const f = ATLAS['p_' + key]; if (!f || !PAGES[f[0]]) return;
+  const k = Math.min(124 / f[3], 124 / f[4]);
+  g.drawImage(PAGES[f[0]], f[1], f[2], f[3], f[4], (128 - f[3] * k) / 2, 128 - f[4] * k, f[3] * k, f[4] * k);
+}
+
+/* =================== icons (emoji) =================== */
+const I = (e, c = '') => `<span class="ico ${c}">${e}</span>`;
+const ICONS = {
+  archer: I('🏹'), barracks: I('🛡️'), mage: I('🪄'), artillery: I('💣'),
+  ranger: I('🧪'), marksman: I('🎯'), archmage: I('🌩️'), frost: I('❄️'), thunder: I('⚡'), mortar: I('🪨'), templar: I('🏮'), berserker: I('👊'),
+  up: I('⬆️'), sell: I('💰'), rally: I('🚩'), star: I('⭐'), starOff: I('⭐', 'off'), check: I('✔️'),
+  fire: I('☄️'), arms: I('⚔️'), snare: I('🌿'), gold: I('💰'), hero: I('👑'), book: I('📜'), banner: I('💀'),
+  brannoc: I('💥'), wren: I('🏹'), ysolde: I('🧊'), coin: I('🪙'), trophy: I('🏆'),
+};
+const STAT_ICONS = {
+  dmg: I('⚔️'), hp: I('❤️'), armor: I('🛡️'), speed: I('⏱️'), range: I('🎯'), magic: I('✨'), lives: I('💔'), gold: I('🪙'),
+};
+// a rendered sprite (a tower, say) as a small canvas for menus
+function sprCanvas(name, size = 96, pad = 3) {
+  const c = document.createElement('canvas'); c.width = size; c.height = size;
+  const f = ATLAS[name]; if (!f || !PAGES[f[0]]) return c;
+  const g = c.getContext('2d'), k = Math.min((size - pad * 2) / f[3], (size - pad * 2) / f[4]);
+  g.drawImage(PAGES[f[0]], f[1], f[2], f[3], f[4], (size - f[3] * k) / 2, size - pad - f[4] * k, f[3] * k, f[4] * k);
+  return c;
+}
+
+/* =================== save =================== */
+const SAVE_KEY = 'hollowmarch-v1';
+function defaultSave() { return { stars: [0, 0, 0], relics: {}, heroes: ['brannoc', 'wren'], mute: false, tut: false }; }
+function loadSave() {
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) return Object.assign(defaultSave(), s); } catch (e) { }
+  return defaultSave();
+}
+let SAVE = loadSave();
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) { } }
+const has = id => !!SAVE.relics[id];
+const starsEarned = () => SAVE.stars.reduce((a, b) => a + b, 0);
+const starsSpent = () => RELICS.reduce((a, r) => a + (SAVE.relics[r.id] ? r.cost : 0), 0);
+
+/* =================== game state =================== */
+let G = null;
+const WAVE_GAP = 22, MASTERY_COST = 200;
+
+function tStats(tw) {
+  const T = TOWERS[tw.kind];
+  const base = tw.branch ? T.branches.find(b => b.id === tw.branch) : T.levels[tw.level - 1];
+  const s = Object.assign({ dtype: T.dtype, air: T.air }, base);
+  let m = 1;
+  if (tw.kind === 'archer' && has('fletch')) m *= 1.15;
+  if (tw.kind === 'mage' && has('focus')) m *= 1.15;
+  if (tw.mastery) m *= 1.3;
+  s.dmg = [base.dmg[0] * m, base.dmg[1] * m];
+  if (s.splash && has('powder')) s.splash *= 1.18;
+  if (tw.kind === 'barracks') { if (has('drill')) s.hp *= 1.25; if (tw.mastery) s.hp *= 1.2; }
+  return s;
+}
+
+function newGame(idx) {
+  const st = buildStage(idx);
+  G = {
+    st, idx, S: st.S, paths: st.paths, spots: st.spots, mech: st.mech,
+    towers: [], enemies: [], soldiers: [], heroes: [], projs: [], fx: [], decals: [], zones: [],
+    gold: st.S.gold + (has('treasury') ? 80 : 0), lives: 20, wave: -1, waveTimer: null, queue: [],
+    time: 0, speed: 1, paused: false, over: false, totalWaves: st.S.waves.length, hpMul: st.S.hpMul,
+    spells: SPELLS.map(s => ({ ...s, t: s.cd * s.start })), cdMul: has('scrolls') ? 0.8 : 1,
+    sel: null, pending: null, uid: 0, shake: 0, kills: 0, moved: false,
+  };
+  const p = G.paths[0];
+  SAVE.heroes.forEach((id, i) => {
+    const a = p.at(p.escD * (i ? 0.78 : 0.6));
+    const T = HEROES[id];
+    const h = { kind: 'hero', id, T, x: a.x, y: a.y, hx: a.x, hy: a.y, lvl: 1, xp: 0, mul: 1, hp: T.hp, maxHp: T.hp, armor: T.armor, atkT: 0, target: null, dead: false, respawnT: 0, rate: T.rate, ultT: T.ult.cd * 0.35, moving: false, face: 1, dir: 'S', anim: 0, swing: 0, flash: 0, bashT: 7, stun: 0, jump: null, reT: 0, rangeR: 55 };
+    if (has('veterans')) { h.xp = HERO_XP[1]; setHeroLevel(h, 2); }
+    G.heroes.push(h);
+  });
+}
+function setHeroLevel(h, l) {
+  h.lvl = l; h.mul = 1 + 0.12 * (l - 1);
+  h.maxHp = h.T.hp * h.mul; h.hp = h.maxHp;
+}
+function gainXp(h, amt) {
+  h.xp += amt;
+  while (h.lvl < 5 && h.xp >= HERO_XP[h.lvl]) {
+    setHeroLevel(h, h.lvl + 1);
+    addText(h.x, h.y - 44, 'Level ' + h.lvl, '#ffe28a', 15);
+    G.fx.push({ type: 'ring', x: h.x, y: h.y, r: 34, col: '#ffe28a', t: 0, T: 0.6 });
+    sfx('level');
+  }
+}
+
+/* =================== waves =================== */
+function callWave(early) {
+  const wi = G.wave + 1;
+  if (wi >= G.totalWaves) return;
+  let sub = wi === G.totalWaves - 1 ? 'Final wave' : '';
+  if (early && G.waveTimer !== null && G.waveTimer > 1) {
+    const bonus = Math.round(G.waveTimer * 2);
+    G.gold += bonus; bumpStat('sGold'); sfx('bonus');
+    for (const s of G.spells) s.t = Math.max(0, s.t - G.waveTimer * 0.5);
+    for (const h of G.heroes) h.ultT = Math.max(0, h.ultT - G.waveTimer * 0.3);
+    sub = '+' + bonus + ' gold for calling early';
+  }
+  G.wave = wi; G.waveTimer = null; G.flagArmed = null;
+  for (const [type, count, gap, pi, delay] of G.S.waves[wi])
+    for (let i = 0; i < count; i++) G.queue.push({ t: G.time + delay + i * gap, type, pi });
+  G.queue.sort((a, b) => a.t - b.t);
+  toast('Wave ' + (wi + 1), sub);
+  if (wi === G.totalWaves - 1) { sfx('finalwave'); sfx('vfinal', 0.9); } else sfx('horn');
+  if (wi === 0) sfx('vfight', 0.5);
+}
+function nextWavePaths() {
+  const wi = G.wave + 1;
+  if (wi >= G.totalWaves) return [];
+  return [...new Set(G.S.waves[wi].map(g => g[3]))];
+}
+
+/* =================== enemies =================== */
+function spawnEnemy(type, pi) {
+  const T = ENEMIES[type], p = G.paths[pi], hp = T.hp * G.hpMul;
+  const e = {
+    kind: 'enemy', type, T, p, d: 0, lane: T.boss ? 0 : rnd(-9, 9), dir: 'S', walkT: rnd(0, 1), hp, maxHp: hp, x: 0, y: 0, face: 1, anim: rnd(0, 9),
+    inc: 0, slowF: 0, slowT: 0, stun: 0, frozen: 0, poisonT: 0, poisonD: 0, burnT: 0, burnD: 0, blockedBy: null, atkT: 0.5,
+    healT: T.heal ? T.heal.cd : 0, slamT: T.slam ? T.slam.cd : 0, flash: 0, swing: 0, dead: false, fly: !!T.fly, id: ++G.uid,
+  };
+  placeEnemy(e);
+  G.enemies.push(e);
+  if (!p.beamT || G.time - p.beamT > 0.5) { p.beamT = G.time; G.fx.push({ type: 'beam', x: e.x, y: e.y, t: 0, T: 0.7 }); sfx('spawn'); }
+  if (T.boss) { toast(T.name, 'He stomps to stun everything near him'); G.shake = 0.6; sfx('boss'); }
+}
+function placeEnemy(e) {
+  const a = e.p.at(e.d);
+  e.x = a.x - a.dy * e.lane; e.y = a.y + a.dx * e.lane;
+  if (Math.abs(a.dx) > 0.2) e.face = a.dx > 0 ? 1 : -1;
+  e.dir = dirOf(a.dx, a.dy);
+}
+const aimH = e => e.fly ? 28 : e.T.r * 1.05;
+function hurt(e, amt, type, src, quiet) {
+  if (e.dead) return 0;
+  const m = type === 'phys' ? 1 - e.T.armor : type === 'magic' ? 1 - e.T.mres : 1;
+  const d = amt * m;
+  e.hp -= d;
+  if (!quiet) e.flash = 0.1;
+  if (e.hp <= 0) killEnemy(e, src);
+  return d;
+}
+function killEnemy(e, src) {
+  e.dead = true;
+  G.gold += e.T.gold; bumpStat('sGold');
+  G.kills++;
+  addText(e.x, e.y - 22, '+' + e.T.gold, '#ffd75a', 12);
+  if (e.fly) boom(e.x, e.y - 28, 30, '#c99bff', true);
+  else G.fx.push({ type: 'corpse', key: e.T.spr, dir: e.dir, x: e.x, y: e.y, t: 0, T: 1.3 });
+  for (const h of G.heroes) if (!h.dead && (src === h || gd(h.x, h.y, e.x, e.y) < 150)) gainXp(h, e.T.gold * 1.3 + (e.T.boss ? 300 : 0));
+  sfx(e.T.boss ? 'bigboom' : e.fly ? 'ufodie' : (e.T.spr === 'robot' || e.T.spr === 'colossus') ? 'robotdie' : 'die');
+}
+function escapeEnemy(e) {
+  e.dead = true; e.escaped = true;
+  G.lives = Math.max(0, G.lives - e.T.lives); bumpStat('sLives');
+  G.shake = Math.max(G.shake, 0.25);
+  sfx('leak');
+  if (G.lives <= 0) endGame(false);
+}
+function applySlow(e, f, t) {
+  if (e.slowT <= 0 || f >= e.slowF) { e.slowF = f; e.slowT = Math.max(e.slowT, t); }
+}
+function updEnemy(e, dt) {
+  const T = e.T;
+  e.anim += dt; e.flash = Math.max(0, e.flash - dt);
+  if (e.swing > 0) e.swing = Math.max(0, e.swing - dt * 3);
+  if (e.slowT > 0) e.slowT -= dt;
+  if (e.frozen > 0) e.frozen -= dt;
+  if (e.poisonT > 0) { e.poisonT -= dt; hurt(e, e.poisonD * dt, 'true', null, true); if (Math.random() < dt * 4) G.fx.push({ type: 'p', x: e.x + rnd(-5, 5), y: e.y - aimH(e), vx: 0, vy: -20, g: 0, r: 2, col: '#8be04a', t: 0, T: 0.6 }); }
+  if (e.burnT > 0) { e.burnT -= dt; hurt(e, e.burnD * dt, 'true', null, true); }
+  if (e.dead) return;
+  if (T.regen) e.hp = Math.min(e.maxHp, e.hp + T.regen * G.hpMul * dt);
+  if (e.stun > 0) { e.stun -= dt; return; }
+  if (T.heal) {
+    e.healT -= dt;
+    if (e.healT <= 0) {
+      let did = false;
+      for (const o of G.enemies) if (!o.dead && o !== e && o.hp < o.maxHp && !(o.healedT > G.time) && gd(o.x, o.y, e.x, e.y) < T.heal.rad) {
+        o.hp = Math.min(o.maxHp, o.hp + T.heal.amt * G.hpMul); did = true; o.healedT = G.time + 4;
+        G.fx.push({ type: 'plus', x: o.x, y: o.y - aimH(o) - 6, t: 0, T: 0.8 });
+      }
+      if (did) { e.healT = T.heal.cd; e.swing = 1; G.fx.push({ type: 'ring', x: e.x, y: e.y, r: T.heal.rad, col: '#8dff6a', t: 0, T: 0.5 }); }
+      else e.healT = 0.6;
+    }
+  }
+  const b = e.blockedBy;
+  if (b && (b.dead || b.gone || dist(b.x, b.y, e.x, e.y) > 30)) e.blockedBy = null;
+  if (e.blockedBy) {
+    const u = e.blockedBy;
+    e.face = u.x > e.x ? 1 : -1;
+    e.dir = u.x > e.x ? 'E' : 'W';
+    if (T.slam) {
+      e.slamT -= dt;
+      if (e.slamT <= 0) {
+        e.slamT = T.slam.cd; e.swing = 1;
+        for (const s of [...G.soldiers, ...G.heroes]) if (!s.dead && !s.gone && gd(s.x, s.y, e.x, e.y) < T.slam.rad) { hurtAlly(s, T.slam.dmg); s.stun = T.slam.stun; }
+        G.fx.push({ type: 'ring', x: e.x, y: e.y, r: T.slam.rad, col: '#c79a62', t: 0, T: 0.5, w: 5 });
+        for (let i = 0; i < 14; i++) G.fx.push({ type: 'p', x: e.x + rnd(-40, 40), y: e.y + rnd(-10, 10), vx: rnd(-30, 30), vy: rnd(-90, -30), g: 200, r: rnd(2, 4), col: '#9a7a52', t: 0, T: 0.6 });
+        G.shake = 0.4; sfx('boom'); sfx('heavy');
+      }
+    }
+    e.atkT -= dt;
+    if (e.atkT <= 0) { e.atkT = T.atk; e.swing = 1; hurtAlly(u, rnd(T.dmg[0], T.dmg[1])); }
+    return;
+  }
+  let sp = T.spd;
+  if (e.slowT > 0) sp *= 1 - e.slowF;
+  if (G.mech.ice && !e.fly) for (const c of G.mech.ice) if (gd(e.x, e.y, c.x, c.y) < 30) { sp *= 0.55; break; }
+  e.d += sp * dt;
+  e.walkT += dt * sp / T.spd;
+  placeEnemy(e);
+  if (e.d >= e.p.escD) escapeEnemy(e);
+}
+
+/* =================== soldiers & heroes =================== */
+function hurtAlly(u, amt) {
+  if (u.dead || u.gone) return;
+  u.hp -= amt * (1 - (u.armor || 0));
+  u.flash = 0.1;
+  if (u.hp <= 0) {
+    u.hp = 0; u.dead = true; release(u);
+    G.fx.push({ type: 'puff', x: u.x, y: u.y - 8, r: 10, t: 0, T: 0.5, col: '#d8d2c6' });
+    sfx(u.kind === 'hero' ? 'heavy' : 'allydie');
+    if (u.kind === 'hero') { u.respawnT = 16; u.moving = false; u.jump = null; addText(u.x, u.y - 40, u.T.name + ' falls', '#ffb0a0', 13); }
+    else if (u.owner) u.respawnT = u.respawn || 10;
+    else u.gone = true;
+  }
+}
+function release(u) {
+  if (u.target && u.target.blockedBy === u) u.target.blockedBy = null;
+  u.target = null;
+}
+function acquire(u) {
+  let best = null, bs = 1e9;
+  for (const e of G.enemies) {
+    if (e.dead || e.fly) continue;
+    if (gd(e.x, e.y, u.hx, u.hy) > u.rangeR) continue;
+    let sc = dist(e.x, e.y, u.x, u.y);
+    if (e.blockedBy && e.blockedBy !== u) sc += 70;
+    if (sc < bs) { bs = sc; best = e; }
+  }
+  return best;
+}
+function stepToward(u, tx, ty, spd, dt) {
+  const d = dist(u.x, u.y, tx, ty);
+  if (d < 1.5) { u.moving = false; return true; }
+  const k = Math.min(1, spd * dt / d);
+  if (Math.abs(tx - u.x) > 0.5) u.face = tx > u.x ? 1 : -1;
+  u.dir = dirOf(tx - u.x, ty - u.y);
+  u.x += (tx - u.x) * k; u.y += (ty - u.y) * k; u.moving = true; u.anim += dt;
+  return k >= 1;
+}
+function meleeStep(u, dt, spd, dmg, onHit) {
+  let tg = u.target;
+  if (tg && (tg.dead || gd(tg.x, tg.y, u.hx, u.hy) > u.rangeR + 30)) { release(u); tg = null; }
+  u.reT -= dt;
+  if (!tg || (u.reT <= 0 && tg.blockedBy && tg.blockedBy !== u)) {
+    u.reT = 0.35;
+    const n = acquire(u);
+    if (n && n !== tg) { release(u); u.target = tg = n; }
+  }
+  if (!tg) {
+    stepToward(u, u.hx, u.hy, spd * 0.8, dt);
+    if (!u.moving) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * 0.06 * dt);
+    return;
+  }
+  const side = u.x < tg.x ? -1 : 1;
+  const sx = tg.x + side * (12 + tg.T.r * 0.4), sy = tg.y + ((u.idx || 0) - 1) * 4;
+  const there = dist(u.x, u.y, sx, sy) < 3 ? true : stepToward(u, sx, sy, spd, dt);
+  if (there) {
+    u.moving = false; u.face = -side; u.dir = side < 0 ? 'E' : 'W';
+    if (!tg.blockedBy) tg.blockedBy = u;
+    u.atkT -= dt;
+    if (u.atkT <= 0) {
+      u.atkT = u.rate; u.swing = 1;
+      if (tg.T.dodge && Math.random() < tg.T.dodge) addText(tg.x, tg.y - 26, 'miss', '#e6dcc0', 10);
+      else { const d = hurt(tg, rnd(dmg[0], dmg[1]), 'phys', u.kind === 'hero' ? u : null); if (onHit) onHit(tg, d); sfx('clang'); }
+    }
+  }
+}
+function mkSoldier(owner, i, x, y, st, look, life) {
+  return { kind: 'soldier', owner, idx: i, look, x, y, hx: x, hy: y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, armor: st.armor || 0, rate: st.rate || 1, atkT: 0, target: null, dead: false, gone: false, respawnT: 0, respawn: st.respawn, life, regen: st.regen || 0, steal: st.steal || 0, face: 1, dir: 'S', anim: rnd(0, 1), swing: 0, flash: 0, moving: false, rangeR: 55, reT: 0, stun: 0 };
+}
+const FORMATION = [[0, -9], [-13, 7], [13, 7]];
+function setRally(tw, x, y) {
+  tw.rally = { x, y };
+  tw.soldiers.forEach((u, i) => { u.hx = x + FORMATION[i][0]; u.hy = y + FORMATION[i][1]; release(u); });
+}
+function syncSoldiers(tw) {
+  const s = tStats(tw);
+  const look = tw.branch || ['foot', 'foot2', 'knight'][tw.level - 1];
+  while (tw.soldiers.length < 3) {
+    const u = mkSoldier(tw, tw.soldiers.length, tw.x, tw.y + 4, s, look);
+    tw.soldiers.push(u); G.soldiers.push(u);
+  }
+  for (const u of tw.soldiers) {
+    Object.assign(u, { maxHp: s.hp, dmg: s.dmg, armor: s.armor, rate: s.rate, regen: s.regen || 0, steal: s.steal || 0, respawn: s.respawn, look });
+    if (!u.dead) u.hp = s.hp;
+  }
+  setRally(tw, tw.rally.x, tw.rally.y);
+}
+function updSoldier(u, dt) {
+  u.flash = Math.max(0, u.flash - dt);
+  if (u.swing > 0) u.swing = Math.max(0, u.swing - dt * 3.5);
+  if (u.dead) {
+    if (u.owner && !u.owner.gone) {
+      u.respawnT -= dt;
+      if (u.respawnT <= 0) { u.dead = false; u.hp = u.maxHp; u.x = u.owner.x; u.y = u.owner.y + 4; }
+    } else u.gone = true;
+    return;
+  }
+  if (u.life !== undefined) {
+    u.life -= dt;
+    if (u.life <= 0) { u.gone = true; release(u); G.fx.push({ type: 'puff', x: u.x, y: u.y - 8, r: 9, t: 0, T: 0.5, col: '#e8dccb' }); return; }
+  }
+  if (u.stun > 0) { u.stun -= dt; return; }
+  if (u.regen && u.target) u.hp = Math.min(u.maxHp, u.hp + u.regen * dt);
+  meleeStep(u, dt, 72, u.dmg, u.steal ? (tg, d) => { u.hp = Math.min(u.maxHp, u.hp + d * u.steal); } : null);
+}
+function updHero(h, dt) {
+  const T = h.T;
+  h.flash = Math.max(0, h.flash - dt);
+  if (h.swing > 0) h.swing = Math.max(0, h.swing - dt * 3.5);
+  h.ultT = Math.max(0, h.ultT - dt);
+  if (h.dead) {
+    h.respawnT -= dt;
+    if (h.respawnT <= 0) { h.dead = false; h.hp = h.maxHp; h.x = h.hx; h.y = h.hy; G.fx.push({ type: 'ring', x: h.x, y: h.y, r: 30, col: '#ffe28a', t: 0, T: 0.6 }); }
+    return;
+  }
+  if (h.jump) {
+    const j = h.jump; j.t += dt;
+    const u = Math.min(1, j.t / j.T);
+    h.x = lerp(j.sx, j.tx, u); h.y = lerp(j.sy, j.ty, u); h.z = Math.sin(u * Math.PI) * 60;
+    if (u >= 1) { h.jump = null; h.z = 0; earthshake(h); }
+    return;
+  }
+  if (h.stun > 0) { h.stun -= dt; return; }
+  if (h.moving) {
+    release(h);
+    stepToward(h, h.hx, h.hy, T.spd, dt);
+    if (!h.moving) h.anim = 0;
+    return;
+  }
+  const dmg = [T.dmg[0] * h.mul, T.dmg[1] * h.mul];
+  if (!T.range) {
+    h.bashT -= dt;
+    meleeStep(h, dt, T.spd, dmg, tg => {
+      if (h.bashT <= 0 && !tg.dead) { h.bashT = 7; tg.stun = Math.max(tg.stun, 1.5); addText(tg.x, tg.y - 30, 'Bash!', '#ffe28a', 12); }
+    });
+    return;
+  }
+  // ranged hero: hold position, block anything that walks into them, shoot the rest
+  let tg = h.target;
+  if (tg && (tg.dead || dist(tg.x, tg.y, h.x, h.y) > 28)) { release(h); tg = null; }
+  if (!tg) {
+    for (const e of G.enemies) if (!e.dead && !e.fly && !e.blockedBy && dist(e.x, e.y, h.x, h.y) < 22) { tg = h.target = e; e.blockedBy = h; break; }
+  }
+  if (!tg) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * 0.03 * dt);
+  h.atkT -= dt;
+  if (h.atkT <= 0) {
+    const t2 = tg || pickTarget(h.x, h.y - 14, T.range, true);
+    if (!t2) { h.atkT = 0.1; return; }
+    h.atkT = T.rate; h.swing = 1; h.face = t2.x > h.x ? 1 : -1; h.dir = dirOf(t2.x - h.x, t2.y - h.y);
+    const shoot = (tt, delay) => {
+      const sx = h.x + h.face * 6, sy = h.y - 14, dd = dist(sx, sy, tt.x, tt.y);
+      if (h.id === 'wren') fire({ type: 'arrow', sx, sy, x: sx, y: sy, tgt: tt, tx: tt.x, ty: tt.y, t: 0, T: dd / 420 + 0.08, arc: dd * 0.15, dmg: rnd(dmg[0], dmg[1]), dtype: 'phys', src: h, delay, air: true });
+      else fire({ type: 'hbolt', sx, sy, x: sx, y: sy, tgt: tt, tx: tt.x, ty: tt.y, t: 0, T: dd / 300 + 0.05, arc: 0, dmg: rnd(dmg[0], dmg[1]), dtype: 'magic', src: h, delay, air: true });
+    };
+    shoot(t2, 0);
+    if (h.id === 'wren' && Math.random() < 0.25) shoot(pickTarget(h.x, h.y - 14, T.range, true, t2) || t2, 0.12);
+    sfx(h.id === 'wren' ? 'arrow' : 'zap');
+  }
+}
+
+/* =================== ultimates & spells =================== */
+function earthshake(h) {
+  const r = h.T.ult.r;
+  for (const e of G.enemies) if (!e.dead && !e.fly && gd(e.x, e.y, h.x, h.y) < r) { hurt(e, 90 * h.mul, 'phys', h); e.stun = Math.max(e.stun, 2); }
+  G.fx.push({ type: 'ring', x: h.x, y: h.y, r, col: '#c79a62', t: 0, T: 0.5, w: 6 });
+  for (let i = 0; i < 18; i++) G.fx.push({ type: 'p', x: h.x + rnd(-r, r) * 0.7, y: h.y + rnd(-r, r) * 0.4, vx: rnd(-30, 30), vy: rnd(-110, -40), g: 240, r: rnd(2, 4.5), col: i % 2 ? '#8a6a42' : '#b8935e', t: 0, T: 0.7 });
+  G.decals.push({ type: 'crack', x: h.x, y: h.y, r: r * 0.7, t: 0, T: 6 });
+  G.shake = 0.45; sfx('bigboom'); sfx('heavy');
+}
+function castUlt(h, x, y) {
+  const T = h.T;
+  h.ultT = T.ult.cd * G.cdMul;
+  if (h.id === 'brannoc') {
+    release(h); h.moving = false;
+    h.jump = { sx: h.x, sy: h.y, tx: x, ty: y, t: 0, T: 0.55 };
+    h.hx = x; h.hy = y; sfx('whoosh');
+  } else if (h.id === 'wren') {
+    for (let i = 0; i < 14; i++) {
+      const a = rnd(0, TAU), rr = Math.sqrt(Math.random()) * T.ult.r, px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * 0.7;
+      G.projs.push({ type: 'rain', sx: px - 40, sy: py - 260, x: px - 40, y: py - 260, tx: px, ty: py, t: 0, T: 0.45, arc: 0, dmg: 24 * h.mul, dtype: 'phys', src: h, delay: i * 0.1 });
+    }
+    sfx('whoosh');
+  } else {
+    for (const e of G.enemies) if (!e.dead && gd(e.x, e.y, x, y) < T.ult.r) { hurt(e, 45 * h.mul, 'magic', h); if (!e.dead) { e.stun = Math.max(e.stun, 3); e.frozen = 3; } }
+    G.fx.push({ type: 'ring', x, y, r: T.ult.r, col: '#bfeaff', t: 0, T: 0.6, w: 5 });
+    for (let i = 0; i < 22; i++) G.fx.push({ type: 'shard', x: x + rnd(-T.ult.r, T.ult.r) * 0.8, y: y + rnd(-T.ult.r, T.ult.r) * 0.5, vx: 0, vy: rnd(-60, -20), g: 60, r: rnd(2, 4), t: 0, T: rnd(0.5, 0.9) });
+    sfx('freeze');
+  }
+}
+function castSpell(s, x, y) {
+  s.t = s.cd * G.cdMul;
+  if (s.id === 'fire') {
+    for (let i = 0; i < 3; i++) {
+      const tx = x + rnd(-28, 28), ty = y + rnd(-18, 18);
+      G.projs.push({ type: 'meteor', sx: tx + 90, sy: ty - 340, x: tx + 90, y: ty - 340, tx, ty, t: 0, T: 0.6, arc: 0, dmg: rnd(60, 100), dtype: 'true', delay: i * 0.22 });
+    }
+    sfx('thruster'); sfx('vfire');
+  } else if (s.id === 'arms') {
+    const st = { hp: 60 * (has('drill') ? 1.25 : 1), dmg: [2, 5], armor: 0.1, rate: 1 };
+    for (let i = 0; i < 2; i++) {
+      const u = mkSoldier(null, i, x + (i ? 11 : -11), y, st, 'militia', 16);
+      G.soldiers.push(u);
+      G.fx.push({ type: 'puff', x: u.x, y: u.y - 8, r: 12, t: 0, T: 0.5, col: '#f1dfb4' });
+    }
+    sfx('drop'); sfx('vgo');
+  } else {
+    G.zones.push({ type: 'snare', x, y, r: s.r, t: 0, T: 4, seed: Math.random() * 1000 });
+    sfx('snare'); sfx('slime');
+  }
+}
+
+/* =================== towers =================== */
+function buildTower(spot, kind) {
+  const c = TOWERS[kind].levels[0].cost;
+  if (G.gold < c) return;
+  G.gold -= c; bumpStat('sGold');
+  const tw = { kind, spot, x: spot.x, y: spot.y, level: 1, branch: null, mastery: false, cd: 0.6, spent: c, aim: 0, recoil: 0, soldiers: [], rally: null, gone: false, built: 0 };
+  spot.tower = tw; G.towers.push(tw);
+  if (kind === 'barracks') {
+    let best = null, bd = 1e9;
+    for (const p of G.paths) for (let d = 0; d < p.escD; d += 5) { const a = p.at(d); const dd = dist(a.x, a.y, tw.x, tw.y); if (dd < bd && a.y > 20 && a.x > 10 && a.x < W - 10) { bd = dd; best = { x: a.x, y: a.y }; } }
+    tw.rally = best;
+    syncSoldiers(tw);
+  }
+  dust(tw.x, tw.y); sfx('build');
+}
+function upgradeCost(tw) {
+  const T = TOWERS[tw.kind];
+  if (tw.branch) return tw.mastery ? null : MASTERY_COST;
+  if (tw.level < 3) return T.levels[tw.level].cost;
+  return null;
+}
+function upgradeTower(tw, branchId) {
+  const T = TOWERS[tw.kind];
+  let cost;
+  if (branchId) cost = T.branches.find(b => b.id === branchId).cost;
+  else cost = upgradeCost(tw);
+  if (cost == null || G.gold < cost) return;
+  G.gold -= cost; bumpStat('sGold'); tw.spent += cost;
+  if (branchId) tw.branch = branchId;
+  else if (tw.branch) tw.mastery = true;
+  else tw.level++;
+  tw.built = 0;
+  if (tw.kind === 'barracks') syncSoldiers(tw);
+  dust(tw.x, tw.y); sfx('build'); sfx('upgrade');
+}
+function sellTower(tw) {
+  const v = Math.floor(tw.spent * 0.6);
+  G.gold += v; bumpStat('sGold');
+  tw.gone = true; tw.spot.tower = null;
+  for (const u of tw.soldiers) { release(u); u.gone = true; }
+  G.towers = G.towers.filter(t => t !== tw);
+  addText(tw.x, tw.y - 30, '+' + v, '#ffd75a', 14);
+  dust(tw.x, tw.y); sfx('coin'); sfx('drop');
+}
+function dust(x, y) {
+  for (let i = 0; i < 6; i++) G.fx.push({ type: 'smoke', x: x + rnd(-22, 22), y: y + rnd(-4, 8), vx: rnd(-14, 14), vy: rnd(-24, -8), s: rnd(0.35, 0.6), t: 0, T: rnd(0.6, 0.9) });
+}
+// "first" targeting that skips enemies already doomed by shots in flight
+function pickTarget(x, y, range, air, not) {
+  let best = null, bs = -1e9, fall = null, fs = -1e9;
+  for (const e of G.enemies) {
+    if (e.dead || (e.fly && !air) || e === not) continue;
+    if (gd(e.x, e.y, x, y) > range) continue;
+    const sc = e.d - e.p.escD;
+    if (sc > fs) { fs = sc; fall = e; }
+    if (e.hp - e.inc > 0 && sc > bs) { bs = sc; best = e; }
+  }
+  return best || fall;
+}
+const resist = (e, type) => type === 'phys' ? 1 - e.T.armor : type === 'magic' ? 1 - e.T.mres : 1;
+function fire(p) {
+  if (p.tgt) { p.inc = p.dmg * resist(p.tgt, p.dtype); p.incT = p.tgt; p.tgt.inc += p.inc; }
+  G.projs.push(p);
+}
+function settle(p) { if (p.incT) { p.incT.inc = Math.max(0, p.incT.inc - p.inc); p.incT = null; } }
+function towerMount(tw) { const f = ATLAS['t_' + towerSprite(tw)]; return f && f[7] != null ? f[7] * TILE * KC : 30; }
+function towerTop(tw) { return sprTop('t_' + towerSprite(tw)); }
+function updTower(tw, dt) {
+  tw.built = Math.min(1, tw.built + dt * 3);
+  if (tw.recoil > 0) tw.recoil = Math.max(0, tw.recoil - dt * 4);
+  if (tw.flash > 0) tw.flash = Math.max(0, tw.flash - dt);
+  if (tw.kind === 'barracks') return;
+  tw.cd -= dt;
+  if (tw.cd > 0) return;
+  const s = tStats(tw);
+  const tg = pickTarget(tw.x, tw.y, s.range, s.air);
+  if (!tg) { tw.cd = 0.1; return; }
+  tw.cd = s.rate;
+  const dmg = () => rnd(s.dmg[0], s.dmg[1]);
+  const yaw = (tx, ty) => Math.atan2(tx - tw.x, (ty - tw.y) / KS);
+  if (tw.kind === 'archer') {
+    const sx = tw.x, sy = tw.y - towerMount(tw) - 7, dd = dist(sx, sy, tg.x, tg.y);
+    tw.aim = yaw(tg.x, tg.y); tw.recoil = 1;
+    let dm = dmg(), crit = false;
+    if (tw.branch === 'marksman' && Math.random() < 0.2) { dm *= 3; crit = true; }
+    const type = tw.branch === 'ranger' ? 'dart' : tw.branch === 'marksman' ? 'bolt' : 'arrow';
+    fire({ type, sx, sy, x: sx, y: sy, tgt: tg, tx: tg.x, ty: tg.y, t: 0, T: dd / (type === 'dart' ? 520 : 440) + 0.06, arc: type === 'dart' ? dd * 0.04 : dd * 0.12, dmg: dm, dtype: 'phys', poison: s.poison ? s.poison * (tw.mastery ? 1.3 : 1) : 0, crit, air: true });
+    sfx(tw.branch === 'ranger' ? 'dart' : 'arrow');
+  } else if (tw.kind === 'mage') {
+    const sx = tw.x, sy = tw.y - towerTop(tw) + 12, dd = dist(sx, sy, tg.x, tg.y);
+    tw.flash = 0.3;
+    fire({ type: tw.branch === 'frost' ? 'frost' : 'magic', sx, sy, x: sx, y: sy, tgt: tg, tx: tg.x, ty: tg.y, t: 0, T: dd / 340 + 0.05, arc: 0, dmg: dmg(), dtype: 'magic', chain: s.chain, splash: s.splash, slow: s.slow, arch: tw.branch === 'archmage', air: true });
+    sfx(tw.branch === 'frost' ? 'frostbolt' : 'zap');
+  } else if (tw.branch === 'thunder') {
+    let cur = tg, from = [tw.x, tw.y - towerTop(tw) + 6];
+    tw.flash = 0.3;
+    const hit = new Set();
+    for (let i = 0; i < s.chainN && cur; i++) {
+      hit.add(cur);
+      const to = [cur.x, cur.y - aimH(cur)];
+      G.fx.push({ type: 'bolt', pts: zig(from, to), t: 0, T: 0.22, col: '#bfe6ff' });
+      G.fx.push({ type: 'sprite', name: 'spark', x: to[0], y: to[1], s: 0.6, t: 0, T: 0.25, add: true });
+      hurt(cur, dmg() * (i ? 0.8 : 1), 'magic');
+      from = to;
+      let nx = null, nd = 105;
+      for (const e of G.enemies) if (!e.dead && !hit.has(e)) { const d = gd(e.x, e.y, cur.x, cur.y); if (d < nd) { nd = d; nx = e; } }
+      cur = nx;
+    }
+    sfx('thunder');
+  } else {
+    tw.recoil = 1;
+    const flight = tw.branch === 'mortar' ? 1.05 : 0.8;
+    let px = tg.x, py = tg.y;
+    if (!tg.blockedBy && !tg.stun) { const a = tg.p.at(tg.d + tg.T.spd * (tg.slowT > 0 ? 1 - tg.slowF : 1) * flight); px = a.x - a.dy * tg.lane; py = a.y + a.dx * tg.lane; }
+    tw.aim = yaw(px, py);
+    const sx = tw.x, sy = tw.y - towerMount(tw) - 10;
+    G.projs.push({ type: tw.branch === 'mortar' ? 'bigshell' : 'shell', sx, sy, x: sx, y: sy, tx: px, ty: py, t: 0, T: flight, arc: 70 + dist(sx, sy, px, py) * 0.3, dmg: dmg(), dtype: 'phys', splash: s.splash, rot: rnd(0, 6) });
+    G.fx.push({ type: 'smoke', x: sx + Math.sin(tw.aim) * 10, y: sy - 4, vx: 0, vy: -16, s: 0.45, t: 0, T: 0.6 });
+    sfx(tw.branch === 'mortar' ? 'catapult' : 'cannon');
+  }
+}
+function zig(a, b) {
+  const pts = [a], n = 6;
+  for (let i = 1; i < n; i++) { const u = i / n; pts.push([lerp(a[0], b[0], u) + rnd(-7, 7), lerp(a[1], b[1], u) + rnd(-7, 7)]); }
+  pts.push(b);
+  return pts;
+}
+
+/* =================== projectiles =================== */
+function aoe(x, y, r, amt, type, src, ground) {
+  for (const e of G.enemies) if (!e.dead && !(ground && e.fly) && gd(e.x, e.y, x, y) < r) hurt(e, amt, type, src);
+}
+function boom(x, y, r, col = '#ffb347', air) {
+  G.fx.push({ type: 'boom', x, y, r, t: 0, T: 0.5 });
+  for (let i = 0; i < 8; i++) G.fx.push({ type: 'p', x, y: y - 4, vx: rnd(-80, 80), vy: rnd(-120, -30), g: 260, r: rnd(1.5, 3), col: i % 2 ? '#ffcf6a' : '#5a4a3a', t: 0, T: rnd(0.4, 0.7) });
+  if (!air) {
+    for (let i = 0; i < 3; i++) G.fx.push({ type: 'smoke', x: x + rnd(-r, r) * 0.4, y: y - 6, vx: rnd(-10, 10), vy: rnd(-26, -12), s: r / 60 + rnd(0, 0.2), t: 0, T: rnd(0.8, 1.1), dark: true });
+    G.decals.push({ type: 'scorch', x, y, r: r * 0.55, t: 0, T: 6, rot: rnd(0, 6) });
+  }
+}
+function impact(p) {
+  settle(p);
+  const tg = p.tgt && !p.tgt.dead ? p.tgt : null;
+  switch (p.type) {
+    case 'arrow': case 'bolt': case 'dart':
+      if (tg) {
+        hurt(tg, p.dmg, p.dtype, p.src); sfx('hit');
+        if (p.crit) addText(p.tx, p.ty - 12, 'Critical', '#ff7a5a', 12);
+        if (p.poison && !tg.dead) { tg.poisonT = 3; tg.poisonD = p.poison; }
+      } else G.decals.push({ type: 'arrow', x: p.tx, y: p.ty + 8, a: Math.atan2(p.ty - p.py, p.tx - p.px), t: 0, T: 1.2 });
+      break;
+    case 'magic':
+      if (tg) {
+        hurt(tg, p.dmg, 'magic');
+        if (p.arch) {
+          const hit = new Set([tg]); let cur = tg;
+          for (let i = 0; i < p.chain; i++) {
+            let nx = null, nd = 85;
+            for (const e of G.enemies) if (!e.dead && !hit.has(e)) { const d = gd(e.x, e.y, cur.x, cur.y); if (d < nd) { nd = d; nx = e; } }
+            if (!nx) break;
+            G.fx.push({ type: 'bolt', pts: zig([cur.x, cur.y - aimH(cur)], [nx.x, nx.y - aimH(nx)]), t: 0, T: 0.2, col: '#9ad8ff' });
+            hurt(nx, p.dmg * 0.6, 'magic'); hit.add(nx); cur = nx;
+          }
+        }
+      }
+      G.fx.push({ type: 'spark', x: p.tx, y: p.ty, r: 12, t: 0, T: 0.3, col: p.arch ? '#9ad8ff' : '#e0b3ff' });
+      sfx('magichit');
+      break;
+    case 'frost':
+      for (const e of G.enemies) if (!e.dead && gd(e.x, e.y, p.tx, p.ty + aimH(tg || { fly: 0, T: { r: 10 } })) < p.splash) {
+        hurt(e, e === tg ? p.dmg : p.dmg * 0.5, 'magic');
+        if (!e.dead) applySlow(e, p.slow, 2);
+      }
+      for (let i = 0; i < 8; i++) G.fx.push({ type: 'shard', x: p.tx, y: p.ty, vx: rnd(-60, 60), vy: rnd(-60, 10), g: 100, r: rnd(1.5, 3), t: 0, T: 0.5 });
+      sfx('frosthit');
+      break;
+    case 'hbolt':
+      if (tg) { hurt(tg, p.dmg, 'magic', p.src); if (!tg.dead) applySlow(tg, 0.3, 1.5); }
+      G.fx.push({ type: 'spark', x: p.tx, y: p.ty, r: 10, t: 0, T: 0.3, col: '#bfeaff' });
+      break;
+    case 'shell': case 'bigshell':
+      aoe(p.tx, p.ty, p.splash, p.dmg, 'phys', null, true);
+      boom(p.tx, p.ty, p.splash);
+      if (p.type === 'bigshell') { G.zones.push({ type: 'burn', x: p.tx, y: p.ty, r: p.splash * 0.6, t: 0, T: 2.5 }); G.shake = Math.max(G.shake, 0.18); }
+      sfx('boom');
+      break;
+    case 'meteor':
+      aoe(p.tx, p.ty, 50, p.dmg, 'true', null, false);
+      boom(p.tx, p.ty, 56, '#ff7a2a');
+      G.zones.push({ type: 'burn', x: p.tx, y: p.ty, r: 34, t: 0, T: 3 });
+      G.shake = Math.max(G.shake, 0.3); sfx('bigboom');
+      break;
+    case 'rain': {
+      let best = null, bd = 26;
+      for (const e of G.enemies) if (!e.dead) { const d = gd(e.x, e.y, p.tx, p.ty); if (d < bd) { bd = d; best = e; } }
+      if (best) hurt(best, p.dmg, 'phys', p.src);
+      else G.decals.push({ type: 'arrow', x: p.tx, y: p.ty, a: Math.atan2(p.ty - p.sy, p.tx - p.sx), t: 0, T: 1.5 });
+      break;
+    }
+  }
+}
+function updProj(p, dt) {
+  if (p.delay > 0) { p.delay -= dt; return; }
+  p.t += dt;
+  if (p.tgt && p.tgt.dead && p.air) {
+    // the target died in flight: swerve to the nearest live enemy instead of wasting the shot
+    settle(p);
+    let nx = null, nd = 70;
+    for (const e of G.enemies) if (!e.dead) { const d = gd(e.x, e.y - aimH(e), p.tx, p.ty); if (d < nd) { nd = d; nx = e; } }
+    if (nx) { p.tgt = nx; p.inc = p.dmg * resist(nx, p.dtype); p.incT = nx; nx.inc += p.inc; p.T = Math.max(p.T, p.t + 0.12); }
+  }
+  if (p.tgt && !p.tgt.dead) { p.tx = p.tgt.x; p.ty = p.tgt.y - aimH(p.tgt); }
+  const u = Math.min(1, p.t / p.T);
+  p.px = p.x; p.py = p.y;
+  p.x = lerp(p.sx, p.tx, u); p.y = lerp(p.sy, p.ty, u) - (p.arc || 0) * 4 * u * (1 - u);
+  if ((p.type === 'shell' || p.type === 'bigshell') && Math.random() < 0.4) G.fx.push({ type: 'p', x: p.x, y: p.y, vx: 0, vy: -6, g: 0, r: 2.4, col: 'rgba(200,200,200,.6)', t: 0, T: 0.4 });
+  if (p.type === 'meteor' && Math.random() < 0.8) G.fx.push({ type: 'p', x: p.x + rnd(-4, 4), y: p.y + rnd(-4, 4), vx: rnd(-10, 10), vy: rnd(-20, 0), g: 0, r: rnd(3, 6), col: Math.random() < 0.5 ? '#ffb347' : '#6a5a4a', t: 0, T: 0.4 });
+  if (u >= 1) { impact(p); p.done = true; }
+}
+
+/* =================== zones, keg, fx =================== */
+function updZone(z, dt) {
+  z.t += dt;
+  for (const e of G.enemies) {
+    if (e.dead || gd(e.x, e.y, z.x, z.y) > z.r) continue;
+    if (z.type === 'snare') { if (!e.fly) { applySlow(e, 0.7, 0.25); hurt(e, 14 * dt, 'true', null, true); } }
+    else if (!e.fly) { e.burnT = Math.max(e.burnT, 0.5); e.burnD = 10; }
+  }
+}
+function blowKeg() {
+  const k = G.mech.keg;
+  if (!k || !k.ready) return;
+  k.ready = false; k.cd = k.max;
+  aoe(k.x, k.y, k.r, 280, 'true', null, false);
+  boom(k.x, k.y - 14, k.r, '#ff9a3a');
+  G.fx.push({ type: 'ring', x: k.x, y: k.y, r: k.r, col: '#e7a6ff', t: 0, T: 0.6, w: 5 });
+  for (let i = 0; i < 26; i++) G.fx.push({ type: 'shard', x: k.x, y: k.y - 20, vx: rnd(-140, 140), vy: rnd(-180, -40), g: 320, r: rnd(2, 4.5), t: 0, T: rnd(0.6, 1), col: '#e08cff' });
+  G.zones.push({ type: 'burn', x: k.x, y: k.y, r: 60, t: 0, T: 3 });
+  G.shake = 0.6; sfx('crystal'); sfx('bigboom');
+}
+function addText(x, y, s, col, size = 12) { G.fx.push({ type: 'txt', x, y, s, col, size, t: 0, T: 1 }); }
+function updFx(f, dt) {
+  f.t += dt;
+  if (f.type === 'p' || f.type === 'shard' || f.type === 'smoke') { f.vy += (f.g || 0) * dt; f.x += f.vx * dt; f.y += f.vy * dt; }
+  if (f.type === 'txt') f.y -= 22 * dt;
+  if (f.type === 'plus') f.y -= 18 * dt;
+}
+
+/* =================== main update =================== */
+function update(dt) {
+  G.time += dt;
+  while (G.queue.length && G.queue[0].t <= G.time) { const q = G.queue.shift(); spawnEnemy(q.type, q.pi); }
+  if (G.waveTimer !== null) { G.waveTimer -= dt; if (G.waveTimer <= 0) callWave(false); }
+  else if (G.wave >= 0 && !G.queue.length && G.wave + 1 < G.totalWaves) G.waveTimer = WAVE_GAP;
+  for (const s of G.spells) s.t = Math.max(0, s.t - dt);
+  const k = G.mech.keg;
+  if (k && !k.ready) { k.cd -= dt; if (k.cd <= 0) { k.ready = true; } }
+  for (const tw of G.towers) updTower(tw, dt);
+  for (const u of G.soldiers) updSoldier(u, dt);
+  for (const h of G.heroes) updHero(h, dt);
+  for (const e of G.enemies) updEnemy(e, dt);
+  for (const p of G.projs) updProj(p, dt);
+  for (const z of G.zones) updZone(z, dt);
+  for (const f of G.fx) updFx(f, dt);
+  for (const d of G.decals) d.t += dt;
+  G.enemies = G.enemies.filter(e => !e.dead);
+  G.soldiers = G.soldiers.filter(u => !u.gone);
+  G.projs = G.projs.filter(p => !p.done);
+  G.zones = G.zones.filter(z => z.t < z.T);
+  G.fx = G.fx.filter(f => f.t < f.T);
+  G.decals = G.decals.filter(d => d.t < d.T);
+  if (G.fx.length > 700) G.fx.splice(0, G.fx.length - 700);
+  G.shake = Math.max(0, G.shake - dt);
+  if (!G.over && G.wave === G.totalWaves - 1 && !G.queue.length && !G.enemies.length) endGame(true);
+}
+
+/* =================== world rendering =================== */
+function drawRange(g, x, y, r, col) {
+  g.save();
+  g.beginPath(); g.ellipse(x, y, r, r * KS, 0, 0, TAU);
+  g.fillStyle = col + '24'; g.fill();
+  g.setLineDash([7, 6]); g.lineDashOffset = -(G ? G.time : 0) * 12;
+  g.strokeStyle = col + 'dd'; g.lineWidth = 2; g.stroke();
+  g.restore();
+}
+function drawRallyFlag(g, x, y) {
+  E(g, x, y, 6, 2.5, 'rgba(0,0,0,.3)', null);
+  LN(g, x, y, x, y - 22, '#5a3b22', 2);
+  const f = Math.sin(G.time * 6) * 1.5;
+  PG(g, [[x, y - 22], [x + 13, y - 19 + f], [x, y - 15]], '#3d6fb6', OUT, 1);
+}
+function additive(g, fn) { g.save(); g.globalCompositeOperation = 'lighter'; fn(); g.restore(); }
+function drawKeg(g, k) {
+  if (k.ready) {
+    const pul = 0.5 + Math.sin(G.time * 4) * 0.5;
+    g.save(); g.globalAlpha = 0.3 + pul * 0.4;
+    g.beginPath(); g.ellipse(k.x, k.y, 30, 30 * KS, 0, 0, TAU); g.strokeStyle = '#f0b6ff'; g.lineWidth = 2.5; g.stroke(); g.restore();
+    spr(g, 'crystal', k.x, k.y);
+    additive(g, () => { g.globalAlpha = 0.25 + pul * 0.3; spr(g, 'light', k.x, k.y - 26, 0.9); });
+  } else {
+    spr(g, 'crystal_dim', k.x, k.y);
+    const u = 1 - k.cd / k.max;
+    g.beginPath(); g.arc(k.x, k.y - 44, 9, -Math.PI / 2, -Math.PI / 2 + u * TAU);
+    g.strokeStyle = '#e7a6ff'; g.lineWidth = 3; g.stroke();
+  }
+}
+function drawZone(g, z) {
+  const a = Math.min(1, z.t * 5, (z.T - z.t) * 3);
+  g.save(); g.globalAlpha = a;
+  if (z.type === 'snare') {
+    const rng = mulberry(z.seed | 0);
+    E(g, z.x, z.y, z.r, z.r * KS, 'rgba(60,90,30,.3)', null);
+    for (let i = 0; i < 18; i++) {
+      const an = rng() * TAU, rr = Math.sqrt(rng()) * z.r * 0.9, x = z.x + Math.cos(an) * rr, y = z.y + Math.sin(an) * rr * KS;
+      const h = 9 + rng() * 9, grow = Math.min(1, z.t * 4);
+      g.beginPath(); g.moveTo(x - 3, y); g.quadraticCurveTo(x - 6 + Math.sin(G.time * 3 + i), y - h * grow * 0.6, x + 1, y - h * grow);
+      g.strokeStyle = '#2f4a18'; g.lineWidth = 3.6; g.stroke();
+      g.strokeStyle = '#7ab83f'; g.lineWidth = 2.1; g.stroke();
+      PG(g, [[x - 2, y - h * grow * 0.5], [x - 6, y - h * grow * 0.6], [x - 3, y - h * grow * 0.35]], '#c4e48a', null);
+    }
+  } else {
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 5; i++) {
+      const x = z.x + Math.sin(i * 2.1 + G.time * 3) * z.r * 0.5, y = z.y + Math.cos(i * 1.7) * z.r * 0.3;
+      g.globalAlpha = a * (0.55 + Math.sin(G.time * 14 + i) * 0.25);
+      spr(g, 'flame', x, y - 6, 0.55 + 0.15 * Math.sin(G.time * 9 + i));
+    }
+  }
+  g.restore();
+}
+function drawDecal(g, d) {
+  const a = 1 - d.t / d.T;
+  g.save(); g.globalAlpha = Math.min(1, a * 2);
+  if (d.type === 'scorch') { g.translate(d.x, d.y); g.scale(1, KS); g.rotate(d.rot || 0); spr(g, 'scorch', 0, 0, d.r / 34); }
+  else if (d.type === 'crack') {
+    E(g, d.x, d.y, d.r, d.r * KS, 'rgba(40,25,12,.3)', null);
+    for (let i = 0; i < 7; i++) { const an = i / 7 * TAU + 0.3; LN(g, d.x, d.y, d.x + Math.cos(an) * d.r, d.y + Math.sin(an) * d.r * KS, 'rgba(30,18,8,.6)', 1.6); }
+  } else if (d.type === 'arrow') {
+    g.translate(d.x, d.y); g.rotate(d.a); spr(g, 'arrow', 0, 0, 0.55);
+  }
+  g.restore();
+}
+function flashOver(g, fn) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55; fn(); g.restore(); }
+const charTop = key => sprTop(`c_${key}_walk_S_0`);
+function drawEnemy(g, e) {
+  const T = e.T;
+  if (e.fly) {
+    const bob = Math.sin(G.time * 3 + e.id) * 3, y = e.y - 26 + bob;
+    E(g, e.x, e.y, 11, 4.5, 'rgba(0,0,0,.25)', null);
+    const fr = 'ufo_' + (Math.floor(G.time * 10 + e.id) % 8 + 8) % 8;
+    spr(g, fr, e.x, y);
+    if (e.flash > 0) flashOver(g, () => spr(g, fr, e.x, y));
+    if (e.frozen > 0) { g.save(); g.globalAlpha = 0.6; RR(g, e.x - 16, y - 18, 32, 22, 5, '#bfeaff', '#e8f8ff', 1.5); g.restore(); }
+    else if (e.stun > 0) stars(g, e.x, y - 18);
+    hpBar(g, e.x, y - 22, 20, e.hp / e.maxHp, '#d9412b');
+    return;
+  }
+  E(g, e.x, e.y, T.r * 0.95, T.r * 0.42, 'rgba(0,0,0,.28)', null);
+  if (e.slowT > 0 && !e.frozen) { g.beginPath(); g.ellipse(e.x, e.y, T.r + 4, (T.r + 4) * 0.45, 0, 0, TAU); g.strokeStyle = 'rgba(154,216,255,.85)'; g.lineWidth = 2; g.stroke(); }
+  const key = T.spr;
+  let anim = T.walk || 'walk', t01 = e.walkT / (anim === 'sprint' ? 0.5 : 0.67);
+  if (e.frozen > 0 || e.stun > 0) t01 = 0;
+  else if (e.swing > 0 && (e.blockedBy || T.heal)) { anim = e.blockedBy ? 'attack' : 'emote'; t01 = 1 - e.swing; }
+  else if (e.blockedBy) { anim = 'attack'; t01 = 0; }
+  const x = e.x + (e.flash > 0 ? rnd(-0.8, 0.8) : 0);
+  drawChar(g, key, anim, e.dir, t01, x, e.y);
+  if (e.flash > 0) flashOver(g, () => drawChar(g, key, anim, e.dir, t01, x, e.y));
+  const top = charTop(key);
+  if (e.frozen > 0) {
+    g.save(); g.globalAlpha = 0.6;
+    RR(g, e.x - T.r - 4, e.y - top - 2, (T.r + 4) * 2, top + 4, 4, '#bfeaff', '#e8f8ff', 1.5);
+    g.restore();
+  } else if (e.stun > 0) stars(g, e.x, e.y - top - 4);
+  if (e.poisonT > 0 && Math.sin(G.time * 8 + e.id) > 0.6) E(g, e.x + rnd(-4, 4), e.y - top * 0.6, 2, 2, 'rgba(139,224,74,.9)', null);
+  hpBar(g, e.x, e.y - top - 5, T.boss ? 50 : Math.max(16, T.r * 1.7), e.hp / e.maxHp, e.poisonT > 0 ? '#7cc04a' : '#d9412b');
+}
+function stars(g, x, y) {
+  for (let i = 0; i < 3; i++) { const an = G.time * 5 + i * TAU / 3; E(g, x + Math.cos(an) * 8, y + Math.sin(an) * 3, 1.9, 1.9, '#ffe25a', null); }
+}
+function hpBar(g, x, y, w, frac, col = '#d9412b') {
+  RR(g, x - w / 2 - 1, y - 1, w + 2, 5, 1.5, '#1a0f08', null);
+  RR(g, x - w / 2, y, w * clamp(frac, 0, 1), 3, 1, col, null);
+}
+function drawAlly(g, u) {
+  const isHero = u.kind === 'hero';
+  const key = isHero ? u.T.spr : u.look;
+  if (isHero && G.sel && G.sel.h === u) {
+    g.beginPath(); g.ellipse(u.x, u.y, 15 + Math.sin(G.time * 6) * 1.5, 6.5, 0, 0, TAU);
+    g.strokeStyle = '#ffe28a'; g.lineWidth = 2.4; g.stroke();
+  }
+  E(g, u.x, u.y, isHero ? 10 : 8, isHero ? 4 : 3.4, 'rgba(0,0,0,.28)', null);
+  let anim, t01;
+  if (u.swing > 0) { anim = isHero && u.T.range ? 'shoot' : 'attack'; t01 = 1 - u.swing; }
+  else if (u.moving || u.jump) { anim = 'walk'; t01 = u.anim / 0.67; }
+  else { anim = 'idle'; t01 = G.time / 1.33 + (u.idx || 0) * 0.3; }
+  const z = u.z || 0;
+  g.save();
+  if (u.life !== undefined && u.life < 2) g.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(G.time * 10));
+  drawChar(g, key, anim, u.dir || 'S', t01, u.x, u.y - z);
+  if (u.flash > 0) flashOver(g, () => drawChar(g, key, anim, u.dir || 'S', t01, u.x, u.y - z));
+  g.restore();
+  const top = charTop(key);
+  if (u.stun > 0) stars(g, u.x, u.y - top - 6 - z);
+  if (isHero) hpBar(g, u.x, u.y - top - 6 - z, 24, u.hp / u.maxHp, '#7cc04a');
+  else if (u.hp < u.maxHp) hpBar(g, u.x, u.y - top - 4, 14, u.hp / u.maxHp, '#7cc04a');
+}
+function drawTowerAt(g, tw) {
+  const name = 't_' + towerSprite(tw);
+  let sc = 1;
+  if (tw.built < 1) sc = 0.8 + 0.2 * Math.sin(tw.built * Math.PI * 0.5) + Math.sin(tw.built * Math.PI) * 0.1;
+  g.save(); g.translate(tw.x, tw.y); g.scale(sc, sc);
+  spr(g, name, 0, 0);
+  const wpn = WEAPON[towerSprite(tw)];
+  if (wpn) {
+    const yaw = tw.aim || 0;
+    const idx = ((Math.round(yaw / (Math.PI / 8)) % 16) + 16) % 16;
+    const rc = (tw.recoil || 0) * 3;
+    spr(g, `w_${wpn}_${idx}`, -Math.sin(yaw) * rc, -towerMount(tw) - Math.cos(yaw) * rc * KS);
+  }
+  if (tw.kind === 'mage' || tw.branch === 'thunder') {
+    const top = towerTop(tw) - (tw.kind === 'mage' ? 14 : 4);
+    const col = tw.branch === 'frost' ? 'spark' : tw.branch === 'archmage' || tw.branch === 'thunder' ? 'magicb' : 'magic';
+    const pul = 0.35 + Math.sin(G.time * 3 + tw.x) * 0.15 + (tw.flash || 0) * 2;
+    additive(g, () => { g.globalAlpha = clamp(pul, 0, 1); spr(g, col, 0, -top, 0.7 + (tw.flash || 0)); });
+  }
+  g.restore();
+}
+function drawProj(g, p) {
+  if (p.delay > 0) return;
+  const ang = Math.atan2(p.y - (p.py ?? p.sy), p.x - (p.px ?? p.sx));
+  switch (p.type) {
+    case 'arrow': case 'rain': case 'bolt':
+      g.save(); g.translate(p.x, p.y); g.rotate(ang); spr(g, 'arrow', 0, 0, p.type === 'bolt' ? 0.8 : 0.62); g.restore(); break;
+    case 'dart':
+      g.save(); g.translate(p.x, p.y); g.rotate(ang); spr(g, 'bullet', 0, 0, 0.7); g.restore(); break;
+    case 'magic':
+      additive(g, () => { spr(g, p.arch ? 'magicb' : 'magic', p.x, p.y, 0.55); g.globalAlpha = 0.4; spr(g, p.arch ? 'magicb' : 'magic', p.px ?? p.x, p.py ?? p.y, 0.4); }); break;
+    case 'frost': case 'hbolt':
+      additive(g, () => { spr(g, 'spark', p.x, p.y, p.type === 'frost' ? 0.6 : 0.45); g.rotate(0); }); break;
+    case 'shell': case 'bigshell': {
+      const u = Math.min(1, p.t / p.T), gx = lerp(p.sx, p.tx, u), gy = lerp(p.sy + 30, p.ty, u);
+      E(g, gx, gy, 5, 2, 'rgba(0,0,0,.25)', null);
+      g.save(); g.translate(p.x, p.y); g.rotate((p.rot || 0) + p.t * 8);
+      spr(g, p.type === 'bigshell' ? 'boulder' : 'ball', 0, 0, p.type === 'bigshell' ? 0.8 : 0.75); g.restore();
+      break;
+    }
+    case 'meteor':
+      additive(g, () => { spr(g, 'flame', p.x, p.y - 6, 1.1); spr(g, 'light', p.x, p.y, 0.6); });
+      g.save(); g.translate(p.x, p.y); g.rotate(p.t * 9); spr(g, 'boulder', 0, 0, 1.2); g.restore();
+      break;
+  }
+}
+function drawFx(g, f) {
+  const u = f.t / f.T, a = 1 - u;
+  switch (f.type) {
+    case 'p': g.globalAlpha = a; E(g, f.x, f.y, f.r, f.r, f.col, null); g.globalAlpha = 1; break;
+    case 'shard': g.globalAlpha = a; PG(g, [[f.x - f.r, f.y], [f.x, f.y - f.r * 1.6], [f.x + f.r, f.y], [f.x, f.y + f.r * 1.6]], f.col || '#dff6ff', '#5a7ea8', 0.8); g.globalAlpha = 1; break;
+    case 'smoke': {
+      const k = Math.min(4, Math.floor(u * 5));
+      g.globalAlpha = (f.dark ? 0.55 : 0.75) * Math.min(1, a * 1.6);
+      spr(g, 'puff_' + k, f.x, f.y, (f.s || 0.5) * (0.7 + u * 0.6));
+      g.globalAlpha = 1; break;
+    }
+    case 'puff': g.globalAlpha = a * 0.7; spr(g, 'puff_' + Math.min(4, Math.floor(u * 5)), f.x, f.y - u * 8, (f.r || 10) / 24 * (0.7 + u * 0.5)); g.globalAlpha = 1; break;
+    case 'boom': spr(g, 'boom_' + Math.min(8, Math.floor(u * 9)), f.x, f.y - f.r * 0.25, f.r / 38); break;
+    case 'beam': g.globalAlpha = Math.sin(u * Math.PI) * 0.85; spr(g, 'beam', f.x, f.y + 4, 0.8); g.globalAlpha = 1; break;
+    case 'corpse': {
+      const k = Math.min(1, f.t / 0.35);
+      g.globalAlpha = f.t > 0.8 ? Math.max(0, 1 - (f.t - 0.8) / (f.T - 0.8)) : 1;
+      E(g, f.x, f.y, 8, 3.5, 'rgba(0,0,0,.2)', null);
+      drawChar(g, f.key, 'die', f.dir, k * 0.999, f.x, f.y);
+      g.globalAlpha = 1; break;
+    }
+    case 'sprite':
+      g.save(); g.globalAlpha = a; if (f.add) g.globalCompositeOperation = 'lighter';
+      spr(g, f.name, f.x, f.y - (f.rise || 0) * u, (f.s || 1) * (1 + u * (f.grow || 0))); g.restore(); break;
+    case 'ring':
+      g.globalAlpha = a; g.beginPath(); g.ellipse(f.x, f.y, f.r * (0.3 + 0.7 * u), f.r * (0.3 + 0.7 * u) * KS, 0, 0, TAU);
+      g.strokeStyle = f.col; g.lineWidth = f.w || 3; g.stroke(); g.globalAlpha = 1; break;
+    case 'spark':
+      additive(g, () => { g.globalAlpha = a; spr(g, f.col === '#9ad8ff' ? 'magicb' : f.col === '#bfeaff' ? 'spark' : 'magic', f.x, f.y, 0.5 + u * 0.4); }); break;
+    case 'bolt':
+      g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
+      g.beginPath(); f.pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]));
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = f.col; g.lineWidth = 6; g.globalAlpha = a * 0.35; g.stroke();
+      g.strokeStyle = '#ffffff'; g.lineWidth = 1.8; g.globalAlpha = a; g.stroke();
+      g.restore(); break;
+    case 'plus':
+      additive(g, () => { g.globalAlpha = a; spr(g, 'heal', f.x, f.y, 0.4); }); break;
+    case 'txt':
+      g.globalAlpha = u > 0.6 ? (1 - u) / 0.4 : 1;
+      g.font = `900 ${f.size}px "Alegreya Sans",sans-serif`; g.textAlign = 'center';
+      g.lineWidth = 3; g.strokeStyle = '#1e140c'; g.strokeText(f.s, f.x, f.y);
+      g.fillStyle = f.col; g.fillText(f.s, f.x, f.y);
+      g.globalAlpha = 1; break;
+  }
+}
+function drawBg(g, idx) {
+  const M = MAPS[idx], img = BGS[idx];
+  if (!img) return;
+  g.drawImage(img, -M.bg.ax / PD, -M.bg.ay / PD, M.bg.w / PD, M.bg.h / PD);
+}
+let titleIdx = 0;
+function render() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const idx = G ? G.idx : titleIdx;
+  ctx.fillStyle = MAPS[idx].bg.edge; ctx.fillRect(0, 0, cv.width, cv.height);
+  let sx = 0, sy = 0;
+  if (G && G.shake > 0) { sx = rnd(-1, 1) * G.shake * 7; sy = rnd(-1, 1) * G.shake * 7; }
+  const k = view.dpr * view.s;
+  const g = ctx;
+  g.setTransform(k, 0, 0, k, view.dpr * view.ox + sx * k, view.dpr * view.oy + sy * k);
+  g.imageSmoothingQuality = 'high';
+  drawBg(g, idx);
+  if (!G) return;
+  for (const d of G.decals) drawDecal(g, d);
+  for (const z of G.zones) drawZone(g, z);
+  if (G.mech.keg) drawKeg(g, G.mech.keg);
+  const sel = G.sel, P = G.pending;
+  if (sel && sel.kind === 'spot') {
+    const tw = sel.spot.tower, arm = UI.armed;
+    const r = arm && arm.range ? arm.range : tw ? tStats(tw).range : 0;
+    if (r) drawRange(g, sel.spot.x, sel.spot.y, r, tw && tw.kind === 'barracks' ? '#9cc6ff' : '#fff3c4');
+    if (!tw) { g.save(); g.globalAlpha = 0.85 + Math.sin(G.time * 6) * 0.15; spr(g, 'select', sel.spot.x, sel.spot.y); g.restore(); }
+  }
+  if (P && P.kind === 'rally') drawRange(g, P.tw.x, P.tw.y, tStats(P.tw).range, '#9cc6ff');
+  for (const h of G.heroes) if (h.moving && !h.dead) {
+    g.save(); g.globalAlpha = 0.5 + Math.sin(G.time * 8) * 0.3;
+    g.beginPath(); g.ellipse(h.hx, h.hy, 10, 10 * KS * 0.6, 0, 0, TAU); g.strokeStyle = '#ffe28a'; g.lineWidth = 2; g.stroke(); g.restore();
+  }
+  const list = [];
+  for (const tw of G.towers) list.push(tw);
+  for (const e of G.enemies) if (!e.fly) list.push(e);
+  for (const u of G.soldiers) if (!u.dead) list.push(u);
+  for (const h of G.heroes) if (!h.dead) list.push(h);
+  for (const f of G.fx) if (f.type === 'corpse') list.push(f);
+  list.sort((a, b) => a.y - b.y);
+  for (const o of list) {
+    if (o.kind === 'enemy') drawEnemy(g, o);
+    else if (o.kind === 'soldier' || o.kind === 'hero') drawAlly(g, o);
+    else if (o.type === 'corpse') drawFx(g, o);
+    else drawTowerAt(g, o);
+  }
+  if (sel && sel.kind === 'spot' && sel.spot.tower && sel.spot.tower.kind === 'barracks' && sel.spot.tower.rally) drawRallyFlag(g, sel.spot.tower.rally.x, sel.spot.tower.rally.y);
+  if (sel && sel.kind === 'enemy' && !sel.e.dead) {
+    const e = sel.e; g.beginPath(); g.ellipse(e.x, e.y, e.T.r + 6, (e.T.r + 6) * 0.45, 0, 0, TAU); g.strokeStyle = '#ff8f7a'; g.lineWidth = 2; g.stroke();
+  }
+  const fl = G.enemies.filter(e => e.fly).sort((a, b) => a.y - b.y);
+  for (const e of fl) drawEnemy(g, e);
+  for (const p of G.projs) drawProj(g, p);
+  for (const f of G.fx) if (f.type !== 'corpse') drawFx(g, f);
+  if (P && (P.kind === 'spell' || P.kind === 'ult')) {
+    g.save(); g.globalAlpha = 0.06 + Math.sin(G.time * 6) * 0.03; g.fillStyle = '#fff3c4';
+    g.fillRect(-2000, -2000, 4000 + W, 4000 + H); g.restore();
+  }
+}
+
+/* =================== audio (Kenney RPG Audio + Digital Audio) =================== */
+let AC = null, MASTER = null, NOISE = null;
+const BUF = {};
+const SFX = {
+  arrow: [['drawKnife1', 'drawKnife2', 'drawKnife3'], 0.24], ballista: [['plank000', 'plank001', 'plank002'], 0.2], dart: [['metall000', 'metall001', 'metall002'], 0.12],
+  hit: [['hitl000', 'hitl001', 'hitl002'], 0.16], zap: [['glass001', 'glass002', 'glass003'], 0.14], magichit: [['glassl000', 'glassl001', 'glassl002'], 0.12],
+  frostbolt: [['phaserDown2'], 0.13], frosthit: [['glassl000', 'glassl001'], 0.2], thunder: [['zapTwoTone'], 0.18], thunder2: [['field000'], 0.12],
+  cannon: [['lowRandom'], 0.24], catapult: [['creak1'], 0.32], crunch: [['crunch000', 'crunch001', 'crunch002'], 0.28], lowboom: [['lowboom000', 'lowboom001'], 0.34],
+  clang: [['punch000', 'punch001', 'punch002'], 0.24], heavy: [['punchh000', 'punchh001'], 0.35],
+  die: [['cloth2', 'dropLeather'], 0.28], robotdie: [['metalh000', 'metalh001'], 0.28], ufodie: [['phaserDown1'], 0.2], allydie: [['plate000'], 0.3],
+  coin: [['handleCoins2'], 0.45], bonus: [['handleCoins'], 0.45], drop: [['drop002'], 0.3],
+  build: [['doorClose_2'], 0.38], plank: [['plank001'], 0.4], upgrade: [['powerUp2'], 0.26], confirm: [['confirm001', 'confirm002'], 0.3],
+  ui: [['click001', 'click002'], 0.35], open: [['open001'], 0.35], close: [['close001'], 0.28], select: [['select001'], 0.3], back: [['back001'], 0.3],
+  toggle: [['toggle001'], 0.35], error: [['error004'], 0.35], question: [['question001'], 0.3],
+  horn: [['jwave'], 0.4], bell: [['bell000'], 0.22], finalwave: [['jfinal'], 0.42], vfinal: [['v_final_round'], 0.5], vfight: [['vf_fight'], 0.5],
+  leak: [['lowDown'], 0.35], level: [['powerUp10'], 0.3], vlevel: [['vlevelup'], 0.45],
+  freeze: [['glassh000'], 0.4], freeze2: [['highUp'], 0.24], snare: [['creak1'], 0.4], slime: [['slime000'], 0.3],
+  whoosh: [['cloth1', 'clothBelt'], 0.4], thruster: [['thruster000'], 0.32], vfire: [['v_war_fire_in_the_hole'], 0.45], vgo: [['v_war_go_go_go'], 0.42],
+  boss: [['zapThreeToneDown'], 0.4], win: [['jwin'], 0.5], vwin: [['v_you_win'], 0.55], vflawless: [['vf_flawless_victory'], 0.55],
+  lose: [['jlose'], 0.5], vlose: [['v_game_over'], 0.55], spawn: [['phaseJump1'], 0.1], step: [['stepg000', 'stepg001'], 0.45], stepsnow: [['steps000', 'steps001'], 0.45],
+  crystal: [['zapThreeToneUp'], 0.35], crystal2: [['glassh000'], 0.45], star: [['pluck001', 'pluck002'], 0.45], bigboom2: [['spaceTrash2'], 0.2],
+};
+function ensureAudio() {
+  if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => { }); return; }
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    MASTER = AC.createGain(); MASTER.gain.value = 0.8; MASTER.connect(AC.destination);
+    NOISE = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const names = new Set(Object.values(SFX).flatMap(v => v[0]));
+    for (const n of names) {
+      fetch('sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(ab => new Promise((res, rej) => AC.decodeAudioData(ab, res, rej))).then(b => { BUF[n] = b; }).catch(() => { });
+    }
+  } catch (e) { AC = null; }
+}
+function tone(f, d, type = 'sine', v = 0.1, f2 = null, delay = 0) {
+  const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime + delay;
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0008, t + d);
+  o.connect(g).connect(MASTER); o.start(t); o.stop(t + d + 0.03);
+}
+function noise(d, v = 0.15, freq = 1000, type = 'lowpass', delay = 0) {
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(), t = AC.currentTime + delay;
+  s.buffer = NOISE; f.type = type; f.frequency.value = freq;
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0008, t + d);
+  s.connect(f).connect(g).connect(MASTER); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.03);
+}
+function sample(name, delay = 0, rate = 1) {
+  const def = SFX[name]; if (!def) return false;
+  const pick = def[0][Math.floor(Math.random() * def[0].length)], b = BUF[pick];
+  if (!b) return false;
+  const s = AC.createBufferSource(), g = AC.createGain();
+  s.buffer = b; s.playbackRate.value = rate * (0.94 + Math.random() * 0.12);
+  g.gain.value = def[1];
+  s.connect(g).connect(MASTER); s.start(AC.currentTime + delay);
+  return true;
+}
+const sfxLast = {};
+function sfx(n, delay = 0) {
+  if (!AC || SAVE.mute || AC.state !== 'running') return;
+  const now = AC.currentTime;
+  const gap = { arrow: 0.07, dart: 0.06, clang: 0.07, die: 0.06, zap: 0.08, spawn: 0.3, hit: 0.06, magichit: 0.08, crunch: 0.08, robotdie: 0.1, vlevel: 4, vfire: 6, vgo: 6 }[n] ?? 0.04;
+  if (sfxLast[n] && now - sfxLast[n] < gap) return;
+  sfxLast[n] = now;
+  switch (n) {
+    case 'arrow': sample('arrow', delay); sample('ballista', delay); break;
+    case 'boom': sample('crunch', delay); tone(85, 0.22, 'sine', 0.12, 40); break;
+    case 'bigboom': sample('lowboom', delay); sample('crunch', delay); tone(65, 0.5, 'sine', 0.18, 30); break;
+    case 'cannon': sample('cannon', delay); tone(110, 0.16, 'sine', 0.1, 50); break;
+    case 'thunder': sample('thunder', delay); sample('thunder2', delay); break;
+    case 'freeze': sample('freeze', delay); sample('freeze2', delay); break;
+    case 'crystal': sample('crystal', delay); sample('crystal2', delay); break;
+    case 'build': sample('build', delay); sample('plank', delay + 0.05); break;
+    case 'upgrade': sample('upgrade', delay); sample('confirm', delay); break;
+    case 'level': sample('level', delay); sfx('vlevel', 0.35); break;
+    case 'lose': sample('lose', delay); sample('vlose', delay + 1.2); break;
+    case 'horn': sample('horn', delay); sample('bell', delay); break;
+    case 'ufodie': sample('ufodie', delay); sample('crunch', delay); break;
+    default: sample(n, delay);
+  }
+}
+/* =================== UI helpers =================== */
+const $ = id => document.getElementById(id);
+const UI = { armed: null, last: {}, infoT: 0 };
+const fmt = n => Math.round(n);
+function hideScreens() { for (const s of document.querySelectorAll('.screen')) s.hidden = true; }
+function showScreen(id) { for (const s of document.querySelectorAll('.screen')) s.hidden = s.id !== id; }
+function bumpStat(id) { const el = $(id); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+function toast(title, sub) {
+  const old = $('toast'); if (old) old.remove();
+  const el = document.createElement('div'); el.id = 'toast';
+  el.innerHTML = title + (sub ? `<small>${sub}</small>` : '');
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2300);
+}
+function chip(icon, v) { return `<span>${STAT_ICONS[icon]}${v}</span>`; }
+function towerChips(kind, st) {
+  const pct = v => Math.round(v * 100) + '%';
+  if (kind === 'barracks') return chip('hp', fmt(st.hp)) + chip('dmg', fmt(st.dmg[0]) + '–' + fmt(st.dmg[1])) + chip('armor', pct(st.armor || 0)) + chip('range', fmt(st.range));
+  const dps = (st.dmg[0] + st.dmg[1]) / 2 / st.rate;
+  return chip(st.dtype === 'magic' || kind === 'mage' ? 'magic' : 'dmg', fmt(st.dmg[0]) + '–' + fmt(st.dmg[1])) + chip('speed', (1 / st.rate).toFixed(1) + '/s') + chip('range', fmt(st.range)) + `<span>≈${fmt(dps)} dps</span>`;
+}
+function showInfo(title, sub, desc, chips) {
+  const el = $('info');
+  el.innerHTML = `<h3>${title}</h3>${sub ? `<div class="sub">${sub}</div>` : ''}${chips ? `<div class="chips">${chips}</div>` : ''}${desc ? `<p>${desc}</p>` : ''}`;
+  el.classList.toggle('top', !!UI.ringLow && !$('ring').hidden);
+  if (el.classList.contains('top')) { const t = $('toast'); if (t) t.remove(); }
+  el.hidden = false;
+}
+function hideInfo() { $('info').hidden = true; }
+function closeRing() {
+  $('ring').hidden = true; $('ring').innerHTML = '';
+  UI.armed = null; UI.ringLow = false;
+  if (G && G.sel && G.sel.kind === 'spot') G.sel = null;
+  hideInfo();
+}
+function clearPending() {
+  if (!G) return;
+  G.pending = null;
+  document.querySelectorAll('.arm').forEach(e => { if (!e.classList.contains('opt') && !e.classList.contains('flag')) e.classList.remove('arm'); });
+}
+function closeAll(quiet) {
+  if (!quiet && G && !$('ring').hidden) sfx('close');
+  closeRing(); clearPending();
+  if (G) { G.sel = null; G.flagArmed = null; }
+  hideInfo();
+}
+
+/* =================== build ring =================== */
+function ringOptions(spot) {
+  const tw = spot.tower;
+  if (!tw) return TOWER_ORDER.map((k, i) => {
+    const L = TOWERS[k].levels[0];
+    return { ang: [-135, -45, 135, 45][i], icon: k, cost: L.cost, title: TOWERS[k].name, sub: TOWERS[k].blurb, range: L.range, chips: towerChips(k, { dtype: TOWERS[k].dtype, ...L }), act: () => buildTower(spot, k) };
+  });
+  const T = TOWERS[tw.kind], out = [];
+  if (!tw.branch && tw.level < 3) {
+    const n = T.levels[tw.level];
+    out.push({ ang: -90, icon: 'up', cost: n.cost, title: n.name, sub: 'Upgrade to level ' + (tw.level + 1), range: n.range, chips: towerChips(tw.kind, { dtype: T.dtype, ...n }), act: () => upgradeTower(tw) });
+  }
+  if (!tw.branch && tw.level === 3) T.branches.forEach((b, i) => out.push({
+    ang: i ? -45 : -135, icon: b.id, tint: i ? '#8fc0ff' : '#9be06a', cost: b.cost, title: b.name, sub: 'Specialisation', desc: b.desc, range: b.range,
+    chips: towerChips(tw.kind, { dtype: b.dtype || T.dtype, ...b }), act: () => upgradeTower(tw, b.id),
+  }));
+  if (tw.branch && !tw.mastery) out.push({ ang: -90, icon: 'star', cost: MASTERY_COST, title: 'Veteran training', sub: 'Final upgrade', desc: tw.kind === 'barracks' ? 'Soldiers hit 30% harder and have 20% more health.' : 'This tower deals 30% more damage.', act: () => upgradeTower(tw) });
+  const sv = Math.floor(tw.spent * 0.6);
+  out.push({ ang: 90, icon: 'sell', cost: null, label: '+' + sv, title: 'Sell tower', sub: 'Refunds ' + sv + ' gold', act: () => sellTower(tw) });
+  if (tw.kind === 'barracks') out.push({ ang: 180, icon: 'rally', cost: null, instant: true, title: 'Rally point', act: () => { G.pending = { kind: 'rally', tw }; G.sel = null; } });
+  return out;
+}
+function towerTitle(tw) {
+  const T = TOWERS[tw.kind];
+  const n = tw.branch ? T.branches.find(b => b.id === tw.branch).name : T.levels[tw.level - 1].name;
+  return n;
+}
+function showTowerInfo(tw) {
+  const st = tStats(tw);
+  const sub = tw.branch ? (tw.mastery ? 'Specialised · veteran' : 'Specialised') : 'Level ' + tw.level;
+  const desc = tw.branch ? TOWERS[tw.kind].branches.find(b => b.id === tw.branch).desc : TOWERS[tw.kind].blurb;
+  showInfo(towerTitle(tw), sub, desc, towerChips(tw.kind, st));
+}
+function openRing(spot) {
+  closeAll(true);
+  G.sel = { kind: 'spot', spot };
+  const ring = $('ring');
+  ring.innerHTML = '<div class="halo"></div>';
+  ring.hidden = false;
+  const [sx, sy] = toScreen(spot.x, spot.y - (spot.tower ? 24 : 4));
+  const top = $('hudTop').offsetHeight + 40, bot = view.ch - $('hudBot').offsetHeight - 40;
+  const cx = clamp(sx, 76, view.cw - 76), cy = clamp(sy, top + 30, bot - 30);
+  ring.style.transform = `translate(${cx}px,${cy}px)`;
+  UI.ringLow = cy > view.ch * 0.46;
+  for (const o of ringOptions(spot)) {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    const a = o.ang * Math.PI / 180, R = 64;
+    b.style.left = Math.cos(a) * R + 'px'; b.style.top = Math.sin(a) * R + 'px';
+    if (o.tint) b.style.borderColor = o.tint;
+    b.setAttribute('aria-label', o.title);
+    const ico = o.spr && o.spr.startsWith('t_') && ICONS[o.spr.slice(2)] && !o.badge ? ICONS[o.spr.slice(2)] : ICONS[o.icon];
+    b.innerHTML = ico + (o.badge === 'star' ? `<span class="badge">${ICONS.star}</span>` : '') + (o.cost != null ? `<span class="price">${o.cost}</span>` : o.label ? `<span class="price">${o.label}</span>` : '') + `<span class="ok">${ICONS.check}</span>`;
+    b._o = o;
+    b.addEventListener('pointerdown', e => e.stopPropagation());
+    b.addEventListener('click', e => { e.stopPropagation(); onOpt(o, b); });
+    ring.appendChild(b);
+  }
+  refreshRing();
+  if (spot.tower) showTowerInfo(spot.tower);
+  else showInfo('Empty plot', 'Choose a tower', 'Tap a tower once to see what it does, then tap it again to build.');
+  sfx('open');
+}
+function refreshRing() {
+  for (const b of $('ring').querySelectorAll('.opt')) {
+    const o = b._o;
+    b.classList.toggle('poor', o.cost != null && G.gold < o.cost);
+    b.classList.toggle('arm', UI.armed === o);
+  }
+}
+function onOpt(o, btn) {
+  ensureAudio();
+  if (o.instant) { $('ring').hidden = true; $('ring').innerHTML = ''; UI.armed = null; hideInfo(); o.act(); sfx('ui'); return; }
+  if (UI.armed === o) {
+    if (o.cost != null && G.gold < o.cost) { sfx('error'); btn.animate([{ transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'none' }], 200); return; }
+    const spot = G.sel && G.sel.spot;
+    o.act();
+    closeRing();
+    if (spot && spot.tower && o.icon !== 'sell') { G.sel = { kind: 'spot', spot }; showTowerInfo(spot.tower); setTimeout(() => { if (G && G.sel && G.sel.spot === spot && $('ring').hidden) { G.sel = null; hideInfo(); } }, 1400); }
+    return;
+  }
+  UI.armed = o;
+  sfx('select');
+  refreshRing();
+  const need = o.cost != null && G.gold < o.cost ? ` <b style="color:#a3301e">Need ${o.cost - G.gold} more gold.</b>` : ' Tap again to confirm.';
+  showInfo(o.title, o.sub, (o.desc ? o.desc + ' ' : '') + need, o.chips);
+}
+
+/* =================== HUD =================== */
+function buildHud() {
+  const hs = $('heroSlots'); hs.innerHTML = '';
+  G.heroes.forEach((h, i) => {
+    const card = document.createElement('button');
+    card.className = 'heroCard'; card.setAttribute('aria-label', 'Select ' + h.T.name);
+    card.innerHTML = `<canvas></canvas><span class="hp"><i></i></span><span class="lvl">1</span><span class="down" hidden></span>`;
+    portrait(card.querySelector('canvas'), h.T.spr, ['#7a9cc6', '#2b3550']);
+    const ult = document.createElement('span');
+    ult.className = 'ult'; ult.setAttribute('role', 'button'); ult.setAttribute('aria-label', h.T.ult.name);
+    ult.innerHTML = ICONS[h.id] + '<span class="cd"></span>';
+    card.appendChild(ult);
+    card.addEventListener('click', e => {
+      e.stopPropagation(); ensureAudio();
+      if (e.target.closest('.ult')) return onUlt(h, ult);
+      if (h.dead) { showInfo(h.T.name + ' ' + h.T.title, 'Recovering', 'Back on the field in ' + Math.ceil(h.respawnT) + 's.'); return; }
+      selectHero(G.sel && G.sel.h === h ? null : h);
+    });
+    h.card = card; h.ultBtn = ult;
+    hs.appendChild(card);
+  });
+  const sp = $('spellSlots'); sp.innerHTML = '';
+  for (const s of G.spells) {
+    const b = document.createElement('button');
+    b.className = 'spell ' + s.id; b.setAttribute('aria-label', s.name);
+    b.innerHTML = ICONS[s.id] + '<span class="cd"></span><span class="t"></span>';
+    b.addEventListener('click', e => { e.stopPropagation(); ensureAudio(); onSpell(s, b); });
+    s.btn = b; sp.appendChild(b);
+  }
+}
+function heroInfo(h) {
+  const T = h.T, ch = chip('hp', fmt(h.hp) + '/' + fmt(h.maxHp)) + chip(T.dtype === 'magic' ? 'magic' : 'dmg', fmt(T.dmg[0] * h.mul) + '–' + fmt(T.dmg[1] * h.mul)) + chip('armor', Math.round(T.armor * 100) + '%') + (T.range ? chip('range', T.range) : '');
+  showInfo(`${T.name} ${T.title}`, `Level ${h.lvl} ${T.role}`, `Tap anywhere on the map to send ${T.name} there. ${T.passive}`, ch);
+}
+function selectHero(h) {
+  closeRing(); clearPending();
+  G.sel = h ? { kind: 'hero', h } : null;
+  if (h) { heroInfo(h); sfx('select'); } else hideInfo();
+}
+function onUlt(h, btn) {
+  if (h.dead) return;
+  if (h.ultT > 0) { btn.animate([{ transform: 'scale(1.2)' }, { transform: 'none' }], 200); return; }
+  if (G.pending && G.pending.kind === 'ult' && G.pending.h === h) { clearPending(); hideInfo(); return; }
+  closeRing(); clearPending(); G.sel = null;
+  G.pending = { kind: 'ult', h };
+  btn.classList.add('arm');
+  showInfo(h.T.ult.name, 'Tap the map to aim', h.T.ult.desc);
+  sfx('ui');
+}
+function onSpell(s, btn) {
+  if (!G || G.over) return;
+  if (s.t > 0) { btn.animate([{ transform: 'scale(1.1)' }, { transform: 'none' }], 200); return; }
+  if (G.pending && G.pending.s === s) { clearPending(); hideInfo(); return; }
+  closeRing(); clearPending(); G.sel = null;
+  G.pending = { kind: 'spell', s };
+  btn.classList.add('arm');
+  showInfo(s.name, 'Tap the map to aim', s.desc);
+  sfx('ui');
+}
+function tutorialHint() {
+  if (!G || G.idx !== 0 || SAVE.tut) return null;
+  if (!G.towers.length) return 'Tap a stone plot by the road to build';
+  if (G.wave < 0) return 'Tap the red banner twice to send the first wave';
+  if (!G.moved && G.time < 90) return 'Tap a hero card, then tap the road to move them';
+  SAVE.tut = true; persist();
+  return null;
+}
+function setStat(id, html) { if (UI.last[id] !== html) { UI.last[id] = html; const el = $(id); (el.querySelector('.v') || el).innerHTML = html; } }
+function updateFlags() {
+  const box = $('flags');
+  const showF = !G.over && (G.wave === -1 || G.waveTimer !== null);
+  const paths = showF ? nextWavePaths() : [];
+  const key = paths.join(',');
+  if (box.dataset.k !== key) {
+    box.dataset.k = key; box.innerHTML = '';
+    for (const pi of paths) {
+      const b = document.createElement('button');
+      b.className = 'flag'; b.setAttribute('aria-label', 'Call next wave');
+      b.innerHTML = '<span class="ring"></span>' + ICONS.banner;
+      b.addEventListener('pointerdown', e => e.stopPropagation());
+      b.addEventListener('click', e => { e.stopPropagation(); ensureAudio(); onFlag(); });
+      b._pi = pi; box.appendChild(b);
+    }
+  }
+  const p = G.waveTimer === null ? 1 : clamp(G.waveTimer / WAVE_GAP, 0, 1);
+  const top = $('hudTop').offsetHeight + 26, bot = view.ch - $('hudBot').offsetHeight - 30;
+  for (const b of box.children) {
+    const path = G.paths[b._pi], a = path.at(path.entryD);
+    const [sx, sy] = toScreen(a.x, a.y);
+    b.style.transform = `translate(${clamp(sx, 30, view.cw - 30)}px,${clamp(sy, top, bot)}px)`;
+    b.style.setProperty('--p', p.toFixed(3));
+    b.classList.toggle('arm', !!G.flagArmed);
+  }
+}
+function onFlag() {
+  if (G.flagArmed) { G.flagArmed = null; hideInfo(); callWave(true); return; }
+  closeRing(); clearPending(); G.sel = null;
+  G.flagArmed = true; sfx('question');
+  const wi = G.wave + 1, counts = {};
+  for (const [type, count] of G.S.waves[wi]) counts[type] = (counts[type] || 0) + count;
+  const list = Object.entries(counts).map(([t, c]) => `<span>${c} × ${ENEMIES[t].name}${ENEMIES[t].fly ? ' (flying)' : ''}</span>`).join('');
+  const bonus = G.waveTimer !== null ? `Tap again to call it now for +${Math.round(G.waveTimer * 2)} gold.` : 'Tap again to start the battle.';
+  showInfo(`Wave ${wi + 1} of ${G.totalWaves}`, 'Coming up', bonus, list);
+}
+function updateUI() {
+  setStat('sLives', String(G.lives));
+  setStat('sGold', String(G.gold));
+  setStat('sWave', `Wave <b>${Math.max(0, G.wave + 1)}/${G.totalWaves}</b>`);
+  updateFlags();
+  for (const h of G.heroes) {
+    const c = h.card; if (!c) continue;
+    c.querySelector('.hp i').style.transform = `scaleX(${clamp(h.hp / h.maxHp, 0, 1)})`;
+    const lv = c.querySelector('.lvl'); if (lv.textContent !== String(h.lvl)) lv.textContent = h.lvl;
+    const dn = c.querySelector('.down'); dn.hidden = !h.dead; if (h.dead) dn.textContent = Math.ceil(h.respawnT);
+    c.classList.toggle('sel', !!(G.sel && G.sel.h === h));
+    h.ultBtn.querySelector('.cd').style.setProperty('--p', (h.ultT / (h.T.ult.cd * G.cdMul)).toFixed(3));
+  }
+  for (const s of G.spells) {
+    s.btn.querySelector('.cd').style.setProperty('--p', (s.t / (s.cd * G.cdMul)).toFixed(3));
+    const t = s.btn.querySelector('.t'), v = s.t > 0 ? String(Math.ceil(s.t)) : '';
+    if (t.textContent !== v) t.textContent = v;
+  }
+  if (!$('ring').hidden) refreshRing();
+  // live info refresh for heroes and enemies
+  UI.infoT -= 1 / 60;
+  if (UI.infoT <= 0 && G.sel) {
+    UI.infoT = 0.3;
+    if (G.sel.kind === 'hero') heroInfo(G.sel.h);
+    else if (G.sel.kind === 'enemy') { if (G.sel.e.dead) { G.sel = null; hideInfo(); } else enemyInfo(G.sel.e); }
+  }
+  const hint = $('hint');
+  let msg = null;
+  if (G.pending && G.pending.kind === 'rally') msg = 'Tap inside the blue circle to move the soldiers';
+  else if (!G.pending && $('info').hidden) msg = tutorialHint();
+  if (G.over) msg = null;
+  if (msg) { if (hint.textContent !== msg) hint.textContent = msg; hint.hidden = false; } else hint.hidden = true;
+}
+function enemyInfo(e) {
+  const T = e.T, pct = v => Math.round(v * 100) + '%';
+  const ch = chip('hp', fmt(e.hp) + '/' + fmt(e.maxHp)) + chip('armor', pct(T.armor)) + chip('magic', pct(T.mres)) + chip('lives', T.lives) + chip('gold', T.gold);
+  showInfo(T.name, T.fly ? 'Flying' : T.boss ? 'Boss' : 'Enemy', T.note, ch);
+}
+
+/* =================== input =================== */
+const inField = (x, y) => x > -10 && x < W + 10 && y > -10 && y < H + 10;
+let down = null;
+cv.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
+cv.addEventListener('pointerup', e => {
+  if (!down || down.id !== e.pointerId) return;
+  const moved = dist(e.clientX, e.clientY, down.x, down.y);
+  down = null;
+  if (moved < 14) onTap(e.clientX, e.clientY);
+});
+cv.addEventListener('contextmenu', e => e.preventDefault());
+function onTap(sx, sy) {
+  ensureAudio();
+  if (!G || G.over || G.paused) return;
+  const [wx, wy] = toWorld(sx, sy);
+  const P = G.pending;
+  if (P) {
+    if (P.kind === 'spell') { if (inField(wx, wy)) castSpell(P.s, wx, wy); clearPending(); hideInfo(); return; }
+    if (P.kind === 'ult') { if (inField(wx, wy)) castUlt(P.h, clamp(wx, 8, W - 8), clamp(wy, 16, H - 26)); clearPending(); hideInfo(); return; }
+    if (P.kind === 'rally') {
+      const tw = P.tw;
+      if (dist(wx, wy, tw.x, tw.y) <= tStats(tw).range) { setRally(tw, wx, wy); G.fx.push({ type: 'ring', x: wx, y: wy, r: 16, col: '#9cc6ff', t: 0, T: 0.5 }); sfx('ui'); }
+      clearPending(); return;
+    }
+  }
+  const hh = G.heroes.find(h => !h.dead && dist(wx, wy, h.x, h.y - 14) < 22);
+  if (hh) { selectHero(G.sel && G.sel.h === hh ? null : hh); return; }
+  if (G.sel && G.sel.kind === 'hero') {
+    const h = G.sel.h;
+    if (!h.dead && !h.jump) {
+      h.hx = clamp(wx, 8, W - 8); h.hy = clamp(wy, 16, H - 26); h.moving = true; release(h); G.moved = true; sfx(G.idx === 1 ? 'stepsnow' : 'step');
+      G.fx.push({ type: 'ring', x: h.hx, y: h.hy, r: 16, col: '#ffe28a', t: 0, T: 0.5 });
+    }
+    selectHero(null); return;
+  }
+  const k = G.mech.keg;
+  if (k && dist(wx, wy, k.x, k.y - 26) < 34) {
+    closeAll();
+    if (k.ready) blowKeg(); else showInfo('Unstable crystal', 'Regrowing', 'The shards are knitting back together. Ready in ' + Math.ceil(k.cd) + 's.');
+    return;
+  }
+  const spot = G.spots.find(s => dist(wx, wy, s.x, s.y - (s.tower ? 26 : 6)) < (s.tower ? 36 : 32));
+  if (spot) { if (G.sel && G.sel.spot === spot && !$('ring').hidden) closeAll(); else openRing(spot); return; }
+  let en = null, bd = 24;
+  for (const e of G.enemies) { const d = dist(wx, wy, e.x, e.y - aimH(e)); if (d < bd) { bd = d; en = e; } }
+  if (en) { closeAll(); G.sel = { kind: 'enemy', e: en }; enemyInfo(en); return; }
+  closeAll();
+}
+
+/* =================== screens & flow =================== */
+function showTitleBg(idx) {
+  G = null;
+  $('hudTop').hidden = true; $('hudBot').hidden = true; $('ring').hidden = true; $('flags').innerHTML = ''; $('flags').dataset.k = '';
+  hideInfo(); $('hint').hidden = true;
+  if (idx != null) titleIdx = idx;
+  layout(false);
+}
+function starsHtml(n, max = 3) { let s = ''; for (let i = 0; i < max; i++) s += i < n ? ICONS.star : ICONS.starOff; return s; }
+function openCampaign() {
+  showTitleBg();
+  const list = $('stageList'); list.innerHTML = '';
+  STAGES.forEach((S, i) => {
+    const unlocked = i === 0 || SAVE.stars[i - 1] > 0;
+    const b = document.createElement('button');
+    b.className = 'stage'; b.disabled = !unlocked;
+    b.innerHTML = `<span class="medal">${i + 1}</span><span><b>${S.name}</b><small>${unlocked ? S.sub : 'Win the previous stage to unlock'}</small></span><span class="stars">${starsHtml(SAVE.stars[i])}</span>`;
+    b.addEventListener('click', () => { ensureAudio(); sfx('ui'); openBriefing(i); });
+    list.appendChild(b);
+  });
+  $('starPill').innerHTML = ICONS.star + (starsEarned() - starsSpent()) + ' to spend';
+  showScreen('campaign');
+}
+function openBriefing(i) {
+  const S = STAGES[i];
+  titleIdx = i;
+  $('bfName').textContent = S.name;
+  $('bfText').textContent = S.text;
+  const types = [...new Set(S.waves.flat().map(g => g[0]))];
+  const foes = $('bfFoes'); foes.innerHTML = '';
+  for (const t of types) {
+    const d = document.createElement('span'); d.className = 'foe';
+    const c = document.createElement('canvas'); portrait(c, ENEMIES[t].spr, ['#e9d6a8', '#d6bb82']);
+    d.appendChild(c); d.appendChild(document.createTextNode(ENEMIES[t].name));
+    foes.appendChild(d);
+  }
+  $('bfMeta').textContent = `${S.waves.length} waves · ${S.gold + (has('treasury') ? 80 : 0)} gold · 20 lives`;
+  $('bfStars').innerHTML = starsHtml(SAVE.stars[i]);
+  $('bBfGo').onclick = () => { ensureAudio(); sfx('confirm'); startStage(i); };
+  showScreen('briefing');
+}
+function openSquad() {
+  const box = $('heroPick'); box.innerHTML = '';
+  let focus = SAVE.heroes[0];
+  const render = () => {
+    for (const el of box.children) el.classList.toggle('on', SAVE.heroes.includes(el._id));
+    const T = HEROES[focus];
+    $('heroDesc').innerHTML = `<b>${T.name} ${T.title}</b> · ${T.role}<br>${T.hp} health · ${T.dmg[0]}–${T.dmg[1]} ${T.dtype === 'magic' ? 'magic' : 'physical'} damage${T.range ? ' · ranged' : ' · melee'}<br>${T.passive}<br><b>${T.ult.name}:</b> ${T.ult.desc}`;
+    $('bSquadDone').disabled = SAVE.heroes.length !== 2;
+  };
+  for (const id of Object.keys(HEROES)) {
+    const T = HEROES[id];
+    const b = document.createElement('button');
+    b.className = 'hpick'; b._id = id;
+    b.innerHTML = `<span class="chk">${ICONS.check}</span><canvas></canvas><b>${T.name}</b><small>${T.role}</small>`;
+    portrait(b.querySelector('canvas'), T.spr, ['#7a9cc6', '#2b3550']);
+    b.addEventListener('click', () => {
+      sfx('ui'); focus = id;
+      const at = SAVE.heroes.indexOf(id);
+      if (at >= 0) { if (SAVE.heroes.length > 1) SAVE.heroes.splice(at, 1); }
+      else { SAVE.heroes.push(id); if (SAVE.heroes.length > 2) SAVE.heroes.shift(); }
+      persist(); render();
+    });
+    box.appendChild(b);
+  }
+  render();
+  showScreen('squad');
+}
+function openRelics() {
+  const list = $('relicList');
+  const render = () => {
+    const avail = starsEarned() - starsSpent();
+    $('relicPill').innerHTML = ICONS.star + avail + ' of ' + starsEarned();
+    list.innerHTML = '';
+    for (const r of RELICS) {
+      const own = has(r.id);
+      const row = document.createElement('div'); row.className = 'relic' + (own ? ' own' : '');
+      row.innerHTML = `<span class="rico">${ICONS[r.ico]}</span><span><b>${r.name}</b><small>${r.desc}</small></span>`;
+      const b = document.createElement('button');
+      b.innerHTML = own ? 'Owned' : ICONS.star + r.cost;
+      b.disabled = own || avail < r.cost;
+      b.addEventListener('click', () => { SAVE.relics[r.id] = true; persist(); sfx('upgrade'); render(); });
+      row.appendChild(b); list.appendChild(row);
+    }
+  };
+  render();
+  $('bRelicReset').onclick = () => { SAVE.relics = {}; persist(); sfx('coin'); render(); };
+  showScreen('relicScr');
+}
+function startStage(i) {
+  hideScreens();
+  newGame(i);
+  $('hudTop').hidden = false; $('hudBot').hidden = false;
+  $('flags').innerHTML = ''; $('flags').dataset.k = '';
+  UI.last = {}; UI.armed = null;
+  buildHud();
+  layout(true);
+  $('bSpeed').textContent = '1×';
+  toast(G.S.name, `${G.totalWaves} waves · build, then tap the red banner`);
+}
+function endGame(win) {
+  if (G.over) return;
+  G.over = true; G.win = win;
+  closeAll();
+  $('flags').innerHTML = ''; $('flags').dataset.k = '';
+  setTimeout(() => showResult(win), win ? 900 : 1300);
+}
+function showResult(win) {
+  if (!G) return;
+  const stars = win ? (G.lives >= 18 ? 3 : G.lives >= 6 ? 2 : 1) : 0;
+  const idx = G.idx;
+  if (win && stars > SAVE.stars[idx]) { SAVE.stars[idx] = stars; persist(); }
+  $('rsTitle').textContent = win ? 'Victory' : 'The gate has fallen';
+  $('rsStars').innerHTML = win ? starsHtml(stars) : '';
+  $('rsStars').hidden = !win;
+  $('rsText').textContent = win
+    ? `${G.lives} lives left · ${G.kills} foes slain.` + (stars < 3 ? ' Finish with 18 or more lives for all three stars.' : ' A flawless defence.') + (idx === STAGES.length - 1 ? ' The Hollow Horde is broken.' : '')
+    : `You held until wave ${G.wave + 1} of ${G.totalWaves}. Mix magic in against armour, and park a hero where the roads meet.`;
+  $('bRsRetry').onclick = () => startStage(idx);
+  const nx = $('bRsNext');
+  if (win && idx < STAGES.length - 1) { nx.textContent = 'Next stage'; nx.onclick = () => { showTitleBg(idx + 1); openBriefing(idx + 1); }; }
+  else { nx.textContent = 'Campaign'; nx.onclick = openCampaign; }
+  showScreen('resultScr');
+  if (win) { sfx('win'); if (AC && !SAVE.mute && AC.state === 'running') for (let i = 0; i < stars; i++) sample('star', 0.25 + i * 0.25); sfx(stars === 3 ? 'vflawless' : 'vwin', 1.1); } else sfx('lose');
+}
+
+/* =================== buttons =================== */
+$('bPlay').addEventListener('click', () => { ensureAudio(); sfx('ui'); openCampaign(); });
+$('bSquad').addEventListener('click', () => { sfx('open'); openSquad(); });
+$('bRelics').addEventListener('click', () => { sfx('open'); openRelics(); });
+$('bSquadDone').addEventListener('click', () => { sfx('confirm'); openCampaign(); });
+$('bRelicDone').addEventListener('click', () => { sfx('confirm'); openCampaign(); });
+$('bBfBack').addEventListener('click', () => { sfx('back'); openCampaign(); });
+$('bSpeed').addEventListener('click', e => { e.stopPropagation(); if (!G) return; G.speed = G.speed === 1 ? 2 : 1; $('bSpeed').textContent = G.speed + '×'; sfx('toggle'); });
+function pauseGame() {
+  if (!G || G.over) return;
+  G.paused = true; closeAll();
+  $('bMute').textContent = SAVE.mute ? 'Off' : 'On';
+  showScreen('pauseScr');
+}
+$('bPause').addEventListener('click', e => { e.stopPropagation(); ensureAudio(); sfx('toggle'); pauseGame(); });
+$('bResume').addEventListener('click', () => { sfx('confirm'); hideScreens(); G.paused = false; });
+$('bRestart').addEventListener('click', () => startStage(G.idx));
+$('bQuit').addEventListener('click', () => openCampaign());
+$('bMute').addEventListener('click', () => { SAVE.mute = !SAVE.mute; persist(); $('bMute').textContent = SAVE.mute ? 'Off' : 'On'; sfx('ui'); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+for (const id of ['hudTop', 'hudBot']) $(id).addEventListener('pointerdown', e => e.stopPropagation());
+let resizeT = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    if (G) { closeRing(); layout(true); }
+    else layout(false);
+  }, 120);
+});
+
+/* =================== loop =================== */
+let lastT = performance.now();
+function frame(now) {
+  const raw = Math.min(0.05, Math.max(0, (now - lastT) / 1000));
+  lastT = now;
+  if (G && !G.paused && !G.over) {
+    let dt = raw * G.speed;
+    while (dt > 1e-6) { const s = Math.min(dt, 1 / 60); update(s); dt -= s; }
+  } else if (G && G.over) {
+    G.time += raw;
+    for (const f of G.fx) updFx(f, raw);
+    G.fx = G.fx.filter(f => f.t < f.T);
+    G.shake = Math.max(0, G.shake - raw);
+  }
+  render();
+  if (G) updateUI();
+  requestAnimationFrame(frame);
+}
+function boot(data) {
+  if (data && data.save) SAVE = Object.assign(defaultSave(), data.save);
+  showTitleBg(0);
+  showScreen('title');
+  const play = $('bPlay');
+  play.disabled = true; play.textContent = 'Loading…';
+  loadAssets(p => { play.textContent = 'Loading ' + Math.round(p * 100) + '%'; })
+    .then(() => { play.disabled = false; play.textContent = 'Take command'; })
+    .catch(() => { play.textContent = 'Could not load the art. Reload to try again.'; });
+  requestAnimationFrame(t => { lastT = t; frame(t); });
+}
+boot();
+
+</script>
+</body>
+</html>

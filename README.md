@@ -1,6 +1,6 @@
 # Games
 
-A small arcade of browser games, made for touch screens. Each game is a single self-contained HTML file with no build step and no dependencies.
+A small arcade of browser games, made for touch screens. Each game lives in its own folder with no build step. Most are a single self-contained HTML file; Hollowmarch also ships its art and sound files next to its `index.html`.
 
 | Game | Folder | What it is |
 | --- | --- | --- |
@@ -9,6 +9,7 @@ A small arcade of browser games, made for touch screens. Each game is a single s
 | Vector Front | [`vector-front/`](vector-front/) | First-person wireframe tank battle with a TV-static camera look. |
 | Naughts and Crosses | [`naughts-and-crosses/`](naughts-and-crosses/) | The classic, against an easy or unbeatable computer, or two players. |
 | Hex Colour Balance | [`hex-colour-balance/`](hex-colour-balance/) | Place red, green and blue gems until each hexagon balances to white, across endless levels. |
+| Hollowmarch | [`hollowmarch/`](hollowmarch/) | Tower defense: build and upgrade towers, lead two heroes and cast spells to hold the road across three stages. |
 
 The root `index.html` is a landing page linking to all of them.
 
@@ -29,3 +30,7 @@ Open any `index.html` in a browser, or serve the folder:
 ```sh
 python3 -m http.server 8000
 ```
+
+## Credits
+
+Hollowmarch uses free CC0 assets by [Kenney](https://kenney.nl): Tower Defense Kit, Blocky Characters, Explosion Pack, Smoke Particles, Particle Pack, RPG Audio, Digital Audio, Impact Sounds, Interface Sounds, Sci-fi Sounds, Music Jingles and Voiceover packs.
