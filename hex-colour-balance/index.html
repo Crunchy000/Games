@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Hex Colour Balance</title>
+<meta name="description" content="Place red, green and blue gems until each hexagon balances to white, across endless levels.">
+<style>
+:root {
+  /* one visual world: gems floating in a dark glass studio. full-bleed canvas, stats strip on top, closable rules dock below */
+  --ink: #04060b;
+  --panel: rgba(12, 16, 26, 0.78);
+  --rule: rgba(170, 190, 235, 0.14);
+  --text: #e9edf7;
+  --muted: #8b95ad;
+  --white: #f4f6ff;
+  --red: #ff3d52;
+  --green: #3df08c;
+  --blue: #4f7fff;
+  --display: 'Syne', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+  --body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; color: var(--text); font-family: var(--body); overflow: hidden; }
+body {
+  background: radial-gradient(120% 80% at 50% 45%, #0d1220 0%, #070a12 55%, var(--ink) 100%);
+  touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+#board { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+
+.top {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 2; pointer-events: none;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) calc(env(safe-area-inset-right, 0px) + 16px) 0 calc(env(safe-area-inset-left, 0px) + 16px);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+}
+.brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 19px; line-height: 1.1; letter-spacing: 0.01em; text-wrap: balance; }
+.brand h1 .mark { display: inline-flex; gap: 2px; margin-right: 8px; vertical-align: 1px; }
+.brand h1 .mark i { display: inline-block; width: 9px; height: 10px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.brand p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); max-width: 30ch; }
+.status { font-size: 12px; color: var(--muted); }
+.status[data-state="settling"] { color: #ffd27a; }
+
+.stats {
+  display: grid; grid-template-columns: repeat(4, auto); gap: 4px 14px; padding: 10px 12px; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--rule); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.stat { display: grid; gap: 1px; }
+.stat span { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.stat b { font-family: var(--mono); font-weight: 500; font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.stat b small { font-size: 12px; color: var(--muted); }
+#left { font-size: 16px; white-space: nowrap; }
+#left .sep { display: inline-block; width: 4px; }
+
+#toast {
+  position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%) scale(0.9); z-index: 3; pointer-events: none;
+  font-family: var(--display); font-weight: 700; font-size: 26px; color: var(--white); opacity: 0;
+  text-shadow: 0 0 18px rgba(244,246,255,0.7), 0 0 40px rgba(160,180,255,0.4);
+}
+#toast.show { animation: toast 1.5s ease-out forwards; }
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, -40%) scale(0.85); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -62%) scale(1); } }
+
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; display: flex; justify-content: center; pointer-events: none;
+  padding: 12px calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 14px) calc(env(safe-area-inset-left, 0px) + 16px);
+}
+.dock > * { pointer-events: auto; }
+.dock-inner {
+  width: 100%; max-width: 560px; display: grid; gap: 10px; padding: 12px 14px;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 16px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.dock-inner[hidden], .pill[hidden], .win[hidden] { display: none; }
+.head { display: flex; align-items: center; gap: 10px; }
+.head h2 { margin: 0; font-size: 13px; font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; border-right: 1px solid var(--rule); min-height: 34px; padding: 8px 14px; }
+.seg button:last-child { border-right: 0; }
+button[aria-pressed="true"], button[aria-checked="true"] { background: rgba(244,246,255,0.16); color: var(--white); }
+.build[hidden], .rules[hidden], #empty[hidden], #hint[hidden], .level[hidden], #retry[hidden], #nextLv[hidden], #new[hidden], .build-help[hidden], .picker button[hidden] { display: none; }
+.level { display: grid; gap: 4px; }
+.seg[hidden], .status[hidden] { display: none; }
+.head .level-nav { flex: 1; min-width: 0; }
+.level-nav { display: flex; align-items: center; gap: 6px; }
+button.sq { width: 38px; padding: 0; display: inline-grid; place-items: center; }
+button.pu { display: inline-flex; align-items: center; gap: 6px; padding: 9px 10px; }
+.pu-n { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+button.pu[aria-pressed="true"] { background: var(--white); color: var(--ink); }
+button.pu:disabled { opacity: 0.4; }
+.level-nav .nav { margin: 0; width: 36px; min-height: 36px; border: 1px solid var(--rule); background: rgba(255,255,255,0.04); color: var(--text); }
+.level-nav .nav:disabled { opacity: 0.3; }
+.level-title { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 10px; min-width: 0; }
+.level-title b { font-family: var(--display); font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stars { color: #ffd27a; letter-spacing: 2px; font-size: 14px; white-space: nowrap; }
+.stars .off { color: rgba(255,255,255,0.18); }
+.win-card .stars { font-size: 26px; letter-spacing: 4px; }
+.inv { font-size: 11.5px; }
+.test-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.test-row span { margin-right: auto; }
+button.mini { min-height: 28px; padding: 5px 9px; font-size: 12px; border-style: dashed; text-transform: none; letter-spacing: 0; }
+.test-row input { width: 64px; min-height: 28px; padding: 4px 8px; border-radius: 8px; border: 1px dashed var(--rule); background: rgba(255,255,255,0.04); color: var(--text); font: 500 12.5px var(--mono); -webkit-user-select: text; user-select: text; touch-action: manipulation; }
+.test-row input:focus-visible { outline: 2px solid var(--white); outline-offset: 1px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#balRemove:disabled { opacity: 0.45; }
+.build { display: grid; gap: 8px; }
+.build-help { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.build-help b { color: var(--text); font-weight: 600; }
+.picker { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+.picker button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 6px; }
+.picker button[aria-checked="true"] { box-shadow: inset 0 0 0 1.5px var(--white); }
+.sw { display: inline-block; width: 13px; height: 15px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); flex: none; }
+#play[hidden] { display: none; }
+#play[aria-pressed="true"] { background: var(--white); color: var(--ink); }
+.head .status { margin-left: auto; }
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.rules li { display: grid; grid-template-columns: 16px 1fr; gap: 6px; }
+.rules li::before { content: ''; width: 8px; height: 8px; margin-top: 5px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--white); opacity: 0.7; }
+.rules b { color: var(--text); font-weight: 600; }
+.row { display: flex; align-items: center; gap: 8px; }
+.spacer { flex: 1; }
+button {
+  font: 500 13px/1 var(--body); color: var(--text); background: rgba(255,255,255,0.05); white-space: nowrap;
+  border: 1px solid var(--rule); border-radius: 10px; padding: 9px 13px; min-height: 38px; cursor: pointer;
+}
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
+button.primary { background: var(--white); color: var(--ink); border-color: transparent; font-weight: 600; }
+button.icon { width: 34px; min-height: 34px; padding: 0; display: inline-grid; place-items: center; margin: -4px -6px -4px 0; background: transparent; border-color: transparent; color: var(--muted); }
+button.icon:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+#soundBtn { margin: -4px 0; }
+#soundBtn[aria-pressed="true"] { color: var(--text); background: transparent; }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 12px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--rule); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 13px;
+}
+.pill svg { color: var(--muted); }
+.pill .dots { display: inline-flex; gap: 3px; }
+.pill .dots i { width: 7px; height: 8px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+
+.bal {
+  position: fixed; left: 0; top: 0; z-index: 3; width: 230px; padding: 10px 12px 12px; border-radius: 14px; display: grid; gap: 7px;
+  background: rgba(12, 16, 26, 0.92); border: 1px solid var(--rule); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45); will-change: transform;
+}
+.bal[hidden] { display: none; }
+.bal-head { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; }
+.bal-status { margin-left: auto; font-size: 11px; font-weight: 500; letter-spacing: 0.04em; padding: 3px 7px; border-radius: 999px; background: rgba(255,210,122,0.14); color: #ffd27a; white-space: nowrap; }
+.bal-status.ok { background: rgba(244,246,255,0.16); color: var(--white); }
+.bal-head .icon { margin: -6px -8px -6px 0; }
+.bal-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.bal-counts .c { display: grid; gap: 4px; justify-items: center; padding: 6px 4px; border-radius: 9px; background: rgba(255,255,255,0.04); border: 1px solid var(--rule); }
+.bal-counts .c b { font-family: var(--mono); font-weight: 500; font-size: 18px; line-height: 1; font-variant-numeric: tabular-nums; }
+.bal-counts .pips { display: flex; gap: 2px; min-height: 9px; }
+.bal-counts .pips i { width: 7px; height: 8px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.bal-note { margin: 0; font-size: 11.5px; color: var(--muted); }
+.bal-advice { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--text); }
+#balRemove { width: 100%; }
+.win {
+  position: fixed; inset: 0; z-index: 4; display: grid; place-items: center; padding: 24px;
+  background: rgba(4, 6, 11, 0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.win-card {
+  width: min(340px, 100%); padding: 20px 20px 16px; border-radius: 18px; text-align: center; display: grid; gap: 6px;
+  background: var(--panel); border: 1px solid var(--rule); box-shadow: 0 0 60px rgba(200,215,255,0.18);
+}
+.win-card h2 { margin: 0; font-family: var(--display); font-size: 22px; }
+.win-card .big { font-family: var(--mono); font-size: 40px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.win-card p { margin: 0; font-size: 13px; color: var(--muted); }
+.win-card .row { justify-content: center; margin-top: 10px; }
+
+@media (max-width: 440px) {
+  .brand p { display: none; }
+  .head .status { display: none; }
+  .seg button { padding: 8px 11px; }
+  .row button:not(.sq) { padding: 9px 10px; }
+  .level-title b { font-size: 15px; }
+  .brand h1 { font-size: 17px; max-width: 12ch; }
+  .stats { gap: 2px 10px; padding: 8px 10px; }
+  .stat b { font-size: 17px; }
+  #left { font-size: 13px; }
+  .stats { gap: 2px 8px; }
+  .stat span { font-size: 9.5px; letter-spacing: 0.03em; }
+}
+@media (prefers-reduced-motion: reduce) { #toast.show { animation-duration: 0.8s; } }
+</style>
+</head>
+<body>
+<canvas id="board" aria-label="Hexagonal gem formation. Tap a gem to remove it."></canvas>
+
+<header class="top">
+  <div class="brand">
+    <h1><span class="mark" aria-hidden="true"><i style="background:var(--red)"></i><i style="background:var(--green)"></i><i style="background:var(--blue)"></i></span>Hex Colour Balance</h1>
+    <p>Red, green and blue together make white. A balanced gem clears with the gems that balance it.</p>
+  </div>
+  <div class="stats" aria-live="polite">
+    <div class="stat"><span id="l1">Taps</span><b id="taps">0</b></div>
+    <div class="stat"><span id="l2">Par</span><b id="par">…</b></div>
+    <div class="stat"><span id="l3">Gems</span><b id="left">0</b></div>
+    <div class="stat"><span id="l4">Best</span><b id="chain">0</b></div>
+  </div>
+</header>
+
+<div id="toast" role="status"></div>
+
+<div class="dock" id="dock">
+  <div class="dock-inner" id="dockPanel">
+    <div class="head">
+      <div class="level-nav">
+        <button type="button" class="icon nav" id="lvPrev" aria-label="Previous level"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="level-title"><b id="lvName">Level 1</b><span class="stars" id="lvStars"></span></div>
+        <button type="button" class="icon nav" id="lvNext" aria-label="Next level"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div class="seg" role="group" aria-label="Mode" hidden>
+        <button type="button" id="modeLevels" aria-pressed="true">Levels</button>
+        <button type="button" id="modeBuild" aria-pressed="false">Build</button>
+        <button type="button" id="modeClear" aria-pressed="false">Clear</button>
+      </div>
+      <span class="status" id="status" data-state="idle" hidden>Your move</span>
+      <button type="button" id="soundBtn" class="icon" aria-pressed="true" aria-label="Sound on (tap to mute)">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2.5 6h2.2L8 3.3v9.4L4.7 10H2.5z" fill="currentColor"/><g class="waves" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M10.4 5.6a3.4 3.4 0 0 1 0 4.8"/><path d="M12.2 3.9a5.8 5.8 0 0 1 0 8.2"/></g><g class="mute" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display:none"><path d="M10.5 6l4 4M14.5 6l-4 4"/></g><g class="note" fill="currentColor"><circle cx="13.2" cy="14" r="1.5"/><path d="M14.1 14V9.2l1.6-.6v1.2l-1 .4V14z"/></g></svg>
+      </button>
+      <button type="button" id="dockClose" class="icon" aria-label="Hide rules and controls" aria-controls="dockPanel" aria-expanded="true">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <ul class="rules" id="rules" hidden>
+      <li><span><b>Goal:</b> leave only two colours (or none) in as few taps as you can.</span></li>
+      <li><span><b>Tap</b> a gem to remove it. Press and hold to preview what will clear.</span></li>
+      <li><span>A gem is <b>in balance</b> when it and the gems touching it hold equal red, green and blue. It clears, taking those touching gems with it.</span></li>
+      <li><span>Gems <b>slide into gaps</b> when that brings their neighbourhood closer to white, and <b>broken-off clusters drift back</b> to the main formation. Both can set off chains.</span></li>
+    </ul>
+    <div class="level" id="levelRow">
+      <p class="build-help" id="lvGoal">Preparing the level…</p>
+      <p class="build-help inv" id="lvInv"></p>
+      <div class="test-row" id="testRow">
+        <span>Testing</span>
+        <button type="button" class="mini" id="skipLv">Skip level</button>
+        <label for="gotoLv" class="sr-only">Go to level</label>
+        <input id="gotoLv" type="number" min="1" max="999" inputmode="numeric" placeholder="Level">
+        <button type="button" class="mini" id="gotoBtn">Go</button>
+      </div>
+    </div>
+    <div class="build" id="buildRow">
+      <p class="build-help" id="buildHelp" hidden><b>Tap a space</b> to add a gem (Auto uses the colour suggested there), <b>tap a gem</b> to see its balance. Small gems in a space show colours that would balance a neighbour at once. Balance down to 1 or 2 gems to win.</p>
+      <div class="picker" role="radiogroup" aria-label="Colour of the next gem">
+        <button type="button" role="radio" data-pick="0" aria-checked="false"><i class="sw" style="background:var(--red)"></i>Red</button>
+        <button type="button" role="radio" data-pick="1" aria-checked="false"><i class="sw" style="background:var(--green)"></i>Green</button>
+        <button type="button" role="radio" data-pick="2" aria-checked="false"><i class="sw" style="background:var(--blue)"></i>Blue</button>
+        <button type="button" role="radio" data-pick="auto" aria-checked="true"><i class="sw" style="background:conic-gradient(var(--red) 0 33%, var(--green) 0 66%, var(--blue) 0)"></i>Auto</button>
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" id="undo" class="sq" aria-label="Undo" title="Undo"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5.5 4L2.5 7l3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 7h6.5a3.5 3.5 0 0 1 0 7H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+      <button type="button" id="retry" class="sq" aria-label="Restart level" title="Restart level"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.6-3.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12.6 1.8v3.1H9.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" id="hint" class="pu"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 1.8a4.4 4.4 0 0 0-2.6 8c.5.4.8.9.8 1.5V12h3.6v-.7c0-.6.3-1.1.8-1.5A4.4 4.4 0 0 0 8 1.8z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.3 14.2h3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="pu-n" id="hintN">3</span></button>
+      <button type="button" id="del" class="pu" aria-pressed="false"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 1.5l5.6 3.25v6.5L8 14.5l-5.6-3.25v-6.5z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.8 5.8l4.4 4.4M10.2 5.8l-4.4 4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="pu-n" id="delN">2</span></button>
+      <button type="button" id="chainPu" class="pu" aria-pressed="false"><svg viewBox="0 0 18 16" width="18" height="16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4.5 2.2l3 1.7v3.4l-3 1.7-3-1.7V3.9z"/><path d="M10.5 2.2l3 1.7v3.4l-3 1.7-3-1.7V3.9z"/><path d="M7.5 7.4l3 1.7v3.4l-3 1.7-3-1.7V9.1z"/></g></svg><span class="pu-n" id="chainN">1</span></button>
+      <button type="button" id="play" aria-pressed="false" hidden>Play to end</button>
+      <button type="button" id="empty" hidden>Empty</button>
+      <span class="spacer"></span>
+      <button type="button" id="new" class="primary" hidden>New formation</button>
+      <button type="button" id="nextLv" class="primary">Next</button>
+    </div>
+  </div>
+  <button type="button" id="dockOpen" class="pill" aria-label="Show rules and controls" aria-controls="dockPanel" aria-expanded="false" hidden>
+    <span class="dots" aria-hidden="true"><i style="background:var(--red)"></i><i style="background:var(--green)"></i><i style="background:var(--blue)"></i></span>
+    <span>Controls</span>
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 10l4.5-4.5L12.5 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+
+<div class="bal" id="balCard" hidden role="dialog" aria-label="Gem balance">
+  <div class="bal-head">
+    <i class="sw" id="balSw"></i>
+    <span id="balTitle">Red gem</span>
+    <span class="bal-status" id="balStatus">Off balance</span>
+    <button type="button" class="icon" id="balClose" aria-label="Close balance">
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="bal-counts" id="balCounts"></div>
+  <p class="bal-note" id="balNote"></p>
+  <p class="bal-advice" id="balAdvice"></p>
+  <button type="button" id="balRemove">Remove gem</button>
+</div>
+
+<div class="win" id="win" hidden>
+  <div class="win-card" role="dialog" aria-labelledby="winTitle">
+    <h2 id="winTitle">Formation cleared</h2>
+    <div class="big"><span id="winTaps">0</span> <small id="winUnit" style="font-size:16px;color:var(--muted)">taps</small></div>
+    <p id="winPar"></p>
+    <p id="winCleared"></p>
+    <div class="row">
+      <button type="button" id="winUndo">Undo last tap</button>
+      <button type="button" id="winNew" class="primary">New formation</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Hex Colour Balance: engine + renderer + UI
+(function () {
+  'use strict';
+
+  // ================= engine =================
+  const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+  const K = (q, r) => (q + 64) * 128 + (r + 64);
+  const KQ = k => Math.floor(k / 128) - 64;
+  const KR = k => (k % 128) - 64;
+  const NBC = new Map();
+  function nbs(k) {
+    let v = NBC.get(k);
+    if (!v) { const q = KQ(k), r = KR(k); v = DIRS.map(d => K(q + d[0], r + d[1])); NBC.set(k, v); }
+    return v;
+  }
+  const SQ3 = Math.sqrt(3);
+  const MINOCC = 4; // a gap must be bordered by at least this many gems before others slide in
+
+  function counts(b, k) {
+    const c = [0, 0, 0];
+    c[b.get(k).col]++;
+    for (const n of nbs(k)) { const g = b.get(n); if (g) c[g.col]++; }
+    return c;
+  }
+  const imb = c => c[0] * c[0] + c[1] * c[1] + c[2] * c[2] - c[0] * c[1] - c[1] * c[2] - c[0] * c[2];
+  function isBalanced(b, k) { const c = counts(b, k); return c[0] === c[1] && c[1] === c[2]; }
+
+  function bestMove(b) {
+    let best = null, bd = -1e-9;
+    const holes = new Set();
+    for (const k of b.keys()) for (const n of nbs(k)) if (!b.has(n)) holes.add(n);
+    const hs = [...holes].sort((x, y) => x - y);
+    for (const h of hs) {
+      let occ = 0;
+      for (const n of nbs(h)) if (b.has(n)) occ++;
+      if (occ < MINOCC) continue;
+      for (const x of nbs(h)) {
+        if (!b.has(x)) continue;
+        const aff = new Set();
+        for (const n of nbs(x)) aff.add(n);
+        for (const n of nbs(h)) aff.add(n);
+        aff.delete(x); aff.delete(h);
+        let e0 = imb(counts(b, x));
+        for (const a of aff) if (b.has(a)) e0 += imb(counts(b, a));
+        const g = b.get(x);
+        b.delete(x); b.set(h, g);
+        let e1 = imb(counts(b, h));
+        for (const a of aff) if (b.has(a)) e1 += imb(counts(b, a));
+        b.delete(h); b.set(x, g);
+        const d = e1 - e0;
+        if (d < bd) { bd = d; best = [x, h]; }
+      }
+    }
+    return best;
+  }
+
+  function components(b) {
+    const seen = new Set(), comps = [];
+    for (const k of [...b.keys()].sort((x, y) => x - y)) {
+      if (seen.has(k)) continue;
+      const comp = [], st = [k];
+      seen.add(k);
+      while (st.length) {
+        const x = st.pop();
+        comp.push(x);
+        for (const n of nbs(x)) if (b.has(n) && !seen.has(n)) { seen.add(n); st.push(n); }
+      }
+      comps.push(comp);
+    }
+    return comps;
+  }
+  const hexDist = (a, c) => { const dq = KQ(a) - KQ(c), dr = KR(a) - KR(c); return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2; };
+  const ux = k => SQ3 * (KQ(k) + KR(k) / 2), uy = k => 1.5 * KR(k);
+  // separated clusters drift one cell toward the largest cluster
+  function driftStep(b) {
+    const comps = components(b);
+    if (comps.length < 2) return null;
+    let anchor = comps[0];
+    for (const c of comps) if (c.length > anchor.length) anchor = c;
+    let ax = 0, ay = 0;
+    for (const k of anchor) { ax += ux(k); ay += uy(k); }
+    ax /= anchor.length; ay /= anchor.length;
+    const score = cells => {
+      let md = Infinity, cx = 0, cy = 0;
+      for (const k of cells) {
+        cx += ux(k); cy += uy(k);
+        for (const a of anchor) { const d = hexDist(k, a); if (d < md) md = d; }
+      }
+      cx /= cells.length; cy /= cells.length;
+      return md * 1000 + Math.hypot(cx - ax, cy - ay);
+    };
+    const others = comps.filter(c => c !== anchor).map(c => ({ c, sc: score(c) }));
+    others.sort((p, q) => p.sc - q.sc || Math.min(...p.c) - Math.min(...q.c));
+    const work = new Map(b), moves = [];
+    for (const { c, sc } of others) {
+      const own = new Set(c);
+      let best = null, bs = sc - 1e-6;
+      for (const d of DIRS) {
+        const to = c.map(k => K(KQ(k) + d[0], KR(k) + d[1]));
+        if (to.some(t => work.has(t) && !own.has(t))) continue;
+        const ns = score(to);
+        if (ns < bs) { bs = ns; best = to; }
+      }
+      if (!best) continue;
+      const gems = c.map(k => work.get(k));
+      for (const k of c) work.delete(k);
+      best.forEach((k, i) => work.set(k, gems[i]));
+      moves.push({ from: c, to: best });
+    }
+    return moves.length ? { type: 'drift', moves } : null;
+  }
+
+  function nextStep(b) {
+    const centers = [];
+    for (const k of b.keys()) if (isBalanced(b, k)) centers.push(k);
+    if (centers.length) {
+      // a balanced gem clears together with the gems touching it that make up its balance
+      const all = new Set(centers);
+      for (const c of centers) for (const n of nbs(c)) if (b.has(n)) all.add(n);
+      return { type: 'pop', keys: [...all], centers };
+    }
+    const m = bestMove(b);
+    if (m) return { type: 'move', from: m[0], to: m[1] };
+    return driftStep(b);
+  }
+  function applyStep(b, s) {
+    if (s.type === 'pop') { for (const k of s.keys) b.delete(k); }
+    else if (s.type === 'move') { const g = b.get(s.from); b.delete(s.from); b.set(s.to, g); }
+    else {
+      for (const m of s.moves) {
+        const gems = m.from.map(k => b.get(k));
+        for (const k of m.from) b.delete(k);
+        m.to.forEach((k, i) => b.set(k, gems[i]));
+      }
+    }
+  }
+  function simulate(b, tapKey) {
+    const c = new Map(b);
+    c.delete(tapKey);
+    const popped = [];
+    let moves = 0;
+    for (let i = 0; i < 600; i++) {
+      const s = nextStep(c);
+      if (!s) break;
+      if (s.type === 'pop') for (const k of s.keys) popped.push(c.get(k).id);
+      else moves++;
+      applyStep(c, s);
+    }
+    return { popped, moves, board: c };
+  }
+  function simulateAdd(b, k, col) {
+    const c = new Map(b);
+    c.set(k, { id: -1, col });
+    const popped = [];
+    let moves = 0;
+    for (let i = 0; i < 600; i++) {
+      const s = nextStep(c);
+      if (!s) break;
+      if (s.type === 'pop') for (const kk of s.keys) popped.push(c.get(kk).id);
+      else moves++;
+      applyStep(c, s);
+    }
+    return { popped, moves, board: c };
+  }
+  function colourCounts(b) { const c = [0, 0, 0]; for (const g of b.values()) c[g.col]++; return c; }
+  function coloursLeft(b) { return colourCounts(b).filter(x => x > 0).length; }
+  function rarest(b) { const c = colourCounts(b).filter(x => x > 0); return c.length ? Math.min(...c) : 0; }
+  function totalImb(b) { let e = 0; for (const k of b.keys()) e += imb(counts(b, k)); return e; }
+
+  function rng(seed) { return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
+  let gemId = 1;
+  function generate(seed, N, maxD) {
+    const R = rng(seed);
+    for (let tries = 0; tries < 30; tries++) {
+      const cells = new Set([K(0, 0)]);
+      let guard = 0;
+      while (cells.size < N && guard++ < 20000) {
+        const arr = [...cells];
+        const k = arr[Math.floor(R() * arr.length)];
+        const d = DIRS[Math.floor(R() * 6)];
+        const nq = KQ(k) + d[0], nr = KR(k) + d[1];
+        const dist = (Math.abs(nq) + Math.abs(nr) + Math.abs(-nq - nr)) / 2;
+        if (dist > maxD || R() < dist * 0.08) continue;
+        cells.add(K(nq, nr));
+      }
+      // fill pockets so the formation starts solid
+      let changed = true;
+      while (changed) {
+        changed = false;
+        const cand = new Set();
+        for (const k of cells) for (const n of nbs(k)) if (!cells.has(n)) cand.add(n);
+        for (const h of cand) { let o = 0; for (const n of nbs(h)) if (cells.has(n)) o++; if (o >= MINOCC) { cells.add(h); changed = true; } }
+      }
+      const b = new Map();
+      for (const k of cells) b.set(k, { id: gemId++, col: Math.floor(R() * 3) });
+      // reroll colours until nothing is balanced and nothing wants to slide
+      for (let it = 0; it < 4000; it++) {
+        const bad = [];
+        for (const k of b.keys()) if (isBalanced(b, k)) bad.push(k);
+        let pool = bad;
+        if (!bad.length) {
+          const m = bestMove(b);
+          if (!m) return { board: b, sockets: new Set(cells) };
+          pool = [m[0]].concat(nbs(m[1]).filter(k => b.has(k)));
+        }
+        const k = pool[Math.floor(R() * pool.length)];
+        b.get(k).col = Math.floor(R() * 3);
+      }
+    }
+    return null;
+  }
+
+  // ================= rendering setup =================
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const MS = reduceMotion ? 0.35 : 1;
+  const COLS = [
+    { h: 352, s: 92, l: 56, rgb: [255, 61, 82] },
+    { h: 148, s: 82, l: 50, rgb: [61, 240, 140] },
+    { h: 222, s: 96, l: 62, rgb: [79, 127, 255] },
+  ];
+  let dpr = 1, W = 0, H = 0, S = 30, ox = 0, oy = 0;
+  let sprites = [], glows = [], whiteSprite = null;
+
+  function hexPts(cx, cy, R) {
+    const p = [];
+    for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 90); p.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]); }
+    return p;
+  }
+  function pathPts(c, pts) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); }
+
+  function makeGem(ci, R) {
+    const col = COLS[ci];
+    const size = Math.ceil(R * 2 + 6);
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const c = cv.getContext('2d');
+    const cx = size / 2, cy = size / 2;
+    const out = hexPts(cx, cy, R), inn = hexPts(cx, cy - R * 0.04, R * 0.56);
+    const light = -128 * Math.PI / 180;
+    for (let i = 0; i < 6; i++) {
+      const j = (i + 1) % 6;
+      const mid = Math.PI / 180 * (60 * i - 60);
+      const sh = Math.cos(mid - light);
+      const l = Math.max(18, Math.min(86, col.l + sh * 20 - 4));
+      c.fillStyle = `hsl(${col.h},${col.s}%,${l}%)`;
+      pathPts(c, [out[i], out[j], inn[j], inn[i]]);
+      c.fill();
+    }
+    // table
+    const g = c.createLinearGradient(cx - R * 0.5, cy - R * 0.55, cx + R * 0.45, cy + R * 0.5);
+    g.addColorStop(0, `hsl(${col.h},${col.s}%,${Math.min(90, col.l + 22)}%)`);
+    g.addColorStop(0.55, `hsl(${col.h},${col.s}%,${col.l + 4}%)`);
+    g.addColorStop(1, `hsl(${col.h},${col.s}%,${col.l - 10}%)`);
+    c.fillStyle = g;
+    pathPts(c, inn);
+    c.fill();
+    // inner fire
+    const rg = c.createRadialGradient(cx, cy + R * 0.1, 0, cx, cy, R * 0.75);
+    rg.addColorStop(0, 'rgba(255,255,255,0.32)');
+    rg.addColorStop(0.5, `hsla(${col.h},100%,75%,0.12)`);
+    rg.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = rg;
+    pathPts(c, out);
+    c.fill();
+    // facet lines
+    c.strokeStyle = `hsla(${col.h},100%,88%,0.35)`;
+    c.lineWidth = Math.max(0.6, R * 0.03);
+    for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(out[i][0], out[i][1]); c.lineTo(inn[i][0], inn[i][1]); c.stroke(); }
+    pathPts(c, inn); c.stroke();
+    // rim
+    c.strokeStyle = `hsla(${col.h},100%,86%,0.85)`;
+    c.lineWidth = Math.max(1, R * 0.05);
+    pathPts(c, out); c.stroke();
+    // specular glint
+    c.fillStyle = 'rgba(255,255,255,0.55)';
+    c.beginPath();
+    c.moveTo(inn[5][0] + R * 0.06, inn[5][1] + R * 0.08);
+    c.lineTo(inn[0][0] - R * 0.02, inn[0][1] + R * 0.1);
+    c.lineTo(inn[0][0] - R * 0.12, inn[0][1] + R * 0.2);
+    c.lineTo(inn[5][0] + R * 0.12, inn[5][1] + R * 0.22);
+    c.closePath(); c.fill();
+    return cv;
+  }
+  function makeGlow(rgb, R) {
+    const size = Math.ceil(R * 4.4);
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const c = cv.getContext('2d');
+    const g = c.createRadialGradient(size / 2, size / 2, R * 0.4, size / 2, size / 2, size / 2);
+    g.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.42)`);
+    g.addColorStop(0.45, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.12)`);
+    g.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+    c.fillStyle = g;
+    c.fillRect(0, 0, size, size);
+    return cv;
+  }
+  function makeWhite(R) {
+    const size = Math.ceil(R * 2 + 6);
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const c = cv.getContext('2d');
+    const g = c.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, R);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.7, 'rgba(240,244,255,0.95)');
+    g.addColorStop(1, 'rgba(220,230,255,0.75)');
+    c.fillStyle = g;
+    pathPts(c, hexPts(size / 2, size / 2, R));
+    c.fill();
+    return cv;
+  }
+
+  // ================= sound =================
+  // The Auralux sound set from the Crunchy000/astroids Planet Wars game (planetwars/play/index.html):
+  // pentatonic tones and arpeggios plus the ambient pad-and-pluck music, all synthesised with Web Audio.
+  const sound = (() => {
+    const SCALE = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let audio = null, master = null, level = 'all'; // all | fx | off
+    try { level = localStorage.getItem('hexbal-sound') || 'all'; if (!['all', 'fx', 'off'].includes(level)) level = 'all'; } catch (e) { /* storage blocked */ }
+    const fxOn = () => level !== 'off', musicOn = () => level === 'all';
+    function init() {
+      if (audio || !AC) return;
+      audio = new AC();
+      master = audio.createGain();
+      master.gain.value = 0.8;
+      master.connect(audio.destination);
+    }
+    function unlock() { if (!fxOn()) return; init(); if (audio && audio.state === 'suspended') audio.resume(); }
+    const pan = x => Math.max(-1, Math.min(1, (x / Math.max(1, window.innerWidth)) * 1.2 - 0.6));
+    function tone(freq, type = 'sine', duration = 0.4, volume = 0.1, delay = 0, x) {
+      if (!fxOn() || !audio || audio.state !== 'running') return;
+      const t = audio.currentTime + delay, osc = audio.createOscillator(), gain = audio.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(volume, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+      osc.connect(gain);
+      if (x !== undefined && audio.createStereoPanner) { const p = audio.createStereoPanner(); p.pan.value = pan(x); gain.connect(p); p.connect(master); }
+      else gain.connect(master);
+      osc.start(t); osc.stop(t + duration);
+    }
+    function arpeggio(steps, gap, volume, duration = 0.25, type = 'sine') {
+      steps.forEach((k, i) => tone(SCALE[Math.max(0, Math.min(SCALE.length - 1, k))], type, duration, volume, i * gap));
+    }
+    const pickOf = (lo, n) => SCALE[lo + Math.floor(Math.random() * n)];
+
+    // ambient music: slow pad of chords (A minor, F, C, G) and a pentatonic melody of glassy plucks through an echo.
+    // The busier the board (chains running), the more notes.
+    let bus = null, echoIn = null, padFilter = null, musicNext = 0, beat = 0, mel = 3, busy = 0;
+    const BEAT = 0.75, BEATS_PER_CHORD = 8;
+    const CHORDS = [[110.0, 130.81, 164.81, 220.0], [87.31, 110.0, 130.81, 174.61], [130.81, 164.81, 196.0, 261.63], [98.0, 123.47, 146.83, 196.0]];
+    const MELODY = [440.0, 523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66];
+    const CHORD_TONES = [[0, 1, 3, 5, 6], [0, 1, 5, 6], [1, 3, 4, 6], [2, 4, 7]];
+    function setupMusic() {
+      bus = audio.createGain(); bus.gain.value = 0; bus.connect(master);
+      padFilter = audio.createBiquadFilter(); padFilter.type = 'lowpass'; padFilter.frequency.value = 900; padFilter.Q.value = 0.4;
+      padFilter.connect(bus);
+      const lfo = audio.createOscillator(), depth = audio.createGain();
+      lfo.frequency.value = 0.05; depth.gain.value = 350; lfo.connect(depth); depth.connect(padFilter.frequency); lfo.start();
+      echoIn = audio.createGain();
+      const delay = audio.createDelay(2), fb = audio.createGain(), tone_ = audio.createBiquadFilter(), wet = audio.createGain();
+      delay.delayTime.value = BEAT * 0.75; fb.gain.value = 0.38; tone_.type = 'lowpass'; tone_.frequency.value = 2400; wet.gain.value = 0.5;
+      echoIn.connect(delay); delay.connect(tone_); tone_.connect(fb); fb.connect(delay); tone_.connect(wet); wet.connect(bus);
+      musicLevel();
+    }
+    function musicLevel() {
+      if (!bus) return;
+      const t = audio.currentTime;
+      bus.gain.cancelScheduledValues(t);
+      bus.gain.setTargetAtTime(musicOn() ? 0.9 : 0, t, 0.4);
+    }
+    function padChord(notes, t, dur) {
+      for (const f of notes) {
+        for (const [type, cents, vol] of [['triangle', -7, 0.016], ['sine', 7, 0.02]]) {
+          const o = audio.createOscillator(), g = audio.createGain();
+          o.type = type; o.frequency.value = f; o.detune.value = cents;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(vol, t + 2.0);
+          g.gain.setValueAtTime(vol, t + dur);
+          g.gain.linearRampToValueAtTime(0, t + dur + 2.5);
+          o.connect(g); g.connect(padFilter);
+          o.start(t); o.stop(t + dur + 2.6);
+        }
+      }
+    }
+    function pluckNote(f, t, vol) {
+      const g = audio.createGain(), o1 = audio.createOscillator(), o2 = audio.createOscillator(), g2 = audio.createGain();
+      o1.type = 'sine'; o1.frequency.value = f; o2.type = 'sine'; o2.frequency.value = 2 * f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+      g2.gain.setValueAtTime(0.3, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      o1.connect(g); o2.connect(g2); g2.connect(g);
+      let out = g;
+      if (audio.createStereoPanner) { const p = audio.createStereoPanner(); p.pan.value = Math.random() * 0.8 - 0.4; g.connect(p); out = p; }
+      out.connect(bus); out.connect(echoIn);
+      o1.start(t); o2.start(t); o1.stop(t + 1.7); o2.stop(t + 1.7);
+    }
+    const nearest = (choices, k) => choices.reduce((a, c) => (Math.abs(c - k) < Math.abs(a - k) ? c : a), choices[0]);
+    function scheduleBeat(t, k) {
+      const c = Math.floor(k / BEATS_PER_CHORD) % CHORDS.length, inChord = k % BEATS_PER_CHORD;
+      if (inChord === 0) padChord(CHORDS[c], t, BEAT * BEATS_PER_CHORD);
+      if (inChord === 0) { mel = nearest(CHORD_TONES[c], mel); pluckNote(MELODY[mel], t, 0.04); return; }
+      if (Math.random() < 0.28 + 0.35 * busy) {
+        let step = [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)];
+        if (mel + step < 0 || mel + step >= MELODY.length) step = -step;
+        mel += step;
+        if (inChord % 4 === 0) mel = nearest(CHORD_TONES[c], mel);
+        pluckNote(MELODY[mel], t, 0.03);
+        if (Math.random() < 0.25 * busy) {
+          const m2 = Math.max(0, Math.min(MELODY.length - 1, mel + (Math.random() < 0.5 ? 1 : -1)));
+          pluckNote(MELODY[m2], t + BEAT / 2, 0.022);
+        }
+      }
+    }
+    setInterval(() => {
+      if (!audio || audio.state !== 'running') return;
+      if (!bus) setupMusic();
+      if (!musicOn()) { musicNext = 0; return; }
+      const now = audio.currentTime;
+      if (musicNext < now) { musicNext = now + 0.1; beat = 0; }
+      while (musicNext < now + 1.2) { scheduleBeat(musicNext, beat++); musicNext += BEAT; }
+    }, 200);
+
+    return {
+      unlock,
+      get level() { return level; },
+      cycle() {
+        level = level === 'all' ? 'fx' : level === 'fx' ? 'off' : 'all';
+        try { localStorage.setItem('hexbal-sound', level); } catch (e) { /* not remembered */ }
+        if (fxOn()) unlock();
+        musicLevel();
+      },
+      setBusy(b) { busy = b; },
+      place(x, col) { tone(SCALE[3 + col], 'sine', 0.22, 0.05, 0, x); },              // soft note, pitch by colour
+      remove(x) { tone(pickOf(0, 3), 'triangle', 0.45, 0.1, 0, x); },                 // low drone
+      slide(x) { tone(pickOf(3, 3), 'sine', 0.15, 0.03, 0, x); },                     // quiet launch blip
+      clear(x, n, wave) {                                                             // crisp chime, one step higher each wave
+        const k = Math.min(10, 4 + wave);
+        tone(SCALE[k], 'sine', 0.3, 0.12, 0, x);
+        if (n >= 6) tone(SCALE[Math.max(0, k - 2)], 'sine', 0.35, 0.06, 0.05, x);
+      },
+      big() { arpeggio([4, 6, 8, 10], 0.07, 0.08); },                                   // rising run for a big chain
+      win() { arpeggio([0, 2, 4, 5, 7, 9, 10], 0.1, 0.09, 0.5); },
+    };
+  })();
+  window.addEventListener('pointerdown', () => sound.unlock(), true);
+
+  // ================= game state =================
+  let board = new Map(), sockets = new Set(), seed = Date.now() % 100000;
+  let taps = 0, cleared = 0, bestChain = 0, chain = 0, total = 0, hintsUsed = 0;
+  let state = 'idle', nextAt = 0, stepCount = 0, drifting = false, wave = 0;
+  let undoStack = [];
+  let mode = 'clear', pick = 'auto', autoPlay = false, autoStall = 0, nextRand = Math.floor(Math.random() * 3), added = 0;
+  const spawn = new Map(); // id -> t0
+  let selected = null; // gem id selected in build mode
+  let par = null, parJob = null;
+  const anim = new Map(); // id -> {fx,fy,tx,ty,t0,t1}
+  let dying = [], parts = [], rings = [];
+  let preview = null, hint = null;
+  let toast = { text: '', t: 0 };
+
+  function newGame(s) {
+    if (autoPlay) setAutoPlay(false);
+    seed = s !== undefined ? s : Math.floor(Math.random() * 1e9);
+    const small = window.innerWidth < 520;
+    const g = generate(seed, small ? 46 : 56, 4);
+    board = g.board; sockets = g.sockets; snapView = true;
+    taps = 0; cleared = 0; bestChain = 0; chain = 0; total = board.size; hintsUsed = 0; added = 0;
+    state = 'idle'; undoStack = []; anim.clear(); dying = []; parts = []; rings = [];
+    preview = null; hint = null; selected = null;
+    hideWin();
+    layout();
+    snapView = false;
+    if (mode === 'clear') startPar(); else { par = null; if (parJob) clearTimeout(parJob); }
+    updateHud();
+  }
+
+  // par: best of two greedy strategies (most clears / thin out the rarest colour),
+  // each stopping once two colours or fewer remain. Computed in slices.
+  function tapScore(r, strat) {
+    const ended = coloursLeft(r.board) <= 2 ? 1 : 0;
+    const pops = r.popped.length, rare = rarest(r.board);
+    return strat === 'pops' ? [ended, pops, -rare] : [ended, -rare, pops];
+  }
+  function better(a, b) { for (let i = 0; i < a.length; i++) { if (a[i] !== b[i]) return a[i] > b[i]; } return false; }
+  function* parGen(b0) {
+    const res = [];
+    for (const strat of ['pops', 'rare']) {
+      let b = new Map(b0), n = 0;
+      while (coloursLeft(b) > 2 && n < 150) {
+        let best = null, bs = null;
+        for (const k of [...b.keys()].sort((x, y) => x - y)) {
+          const r = simulate(b, k);
+          const sc = tapScore(r, strat);
+          if (!bs || better(sc, bs)) { bs = sc; best = r.board; }
+        }
+        b = best; n++;
+        yield;
+      }
+      res.push(n);
+    }
+    return Math.min(...res);
+  }
+  function startPar() {
+    par = null;
+    if (parJob) clearTimeout(parJob);
+    const gen = parGen(board);
+    const tick = () => {
+      const r = gen.next();
+      if (r.done) { par = r.value; parJob = null; updateHud(); return; }
+      parJob = setTimeout(tick, 0);
+    };
+    parJob = setTimeout(tick, 30);
+  }
+
+  // ================= levels =================
+  // Ten fixed intro shapes, then endless generated ones that grow and tighten. Each level is checked
+  // solvable by a greedy solver, whose move count is the par. Matching par earns three stars.
+  const LV_VERSION = 2;
+  const ORIGIN = K(0, 0);
+  function cellsFromPred(pred, rad) {
+    const out = [];
+    for (let q = -rad; q <= rad; q++) for (let r = -rad; r <= rad; r++) {
+      if (Math.abs(q + r) > rad) continue;
+      const x = SQ3 * (q + r / 2), y = -1.5 * r;
+      if (pred(x, y, q, r)) out.push([q, r]);
+    }
+    return out;
+  }
+  const hexCells = R => cellsFromPred((x, y, q, r) => (Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2 <= R, R);
+  const ringCells = (R, th) => cellsFromPred((x, y, q, r) => { const d = (Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2; return d <= R && d > R - th; }, R);
+  const triCells = n => { const o = []; for (let q = 0; q < n; q++) for (let r = 0; r < n - q; r++) o.push([q, r]); return o; };
+  const rhombusCells = (a, b) => { const o = []; for (let q = 0; q < a; q++) for (let r = 0; r < b; r++) o.push([q, r]); return o; };
+  const lineCells = n => { const o = []; for (let i = 0; i < n; i++) o.push([i, 0]); return o; };
+  function starCells(core, arm, arms) {
+    const o = hexCells(core);
+    const step = 6 / arms;
+    for (let a = 0; a < arms; a++) { const d = DIRS[(a * step) % 6]; for (let i = core + 1; i <= core + arm; i++) o.push([d[0] * i, d[1] * i]); }
+    return o;
+  }
+  function flowerCells() {
+    const o = hexCells(1);
+    for (const d of DIRS) { const c = [d[0] * 2, d[1] * 2]; o.push(c); }
+    for (let i = 0; i < 6; i++) { const d = DIRS[i], e = DIRS[(i + 1) % 6]; o.push([d[0] * 2 + e[0], d[1] * 2 + e[1]]); }
+    return o;
+  }
+  const heartCells = sc => cellsFromPred((x, y) => { const a = x / sc, b = y / sc + 0.25; return Math.pow(a * a + b * b - 1, 3) - a * a * b * b * b <= 0; }, 7);
+  const crescentCells = R => cellsFromPred((x, y) => x * x + y * y <= R * R && (x - R * 0.55) * (x - R * 0.55) + y * y > (R * 0.8) * (R * 0.8), 7);
+  const arrowCells = () => cellsFromPred((x, y) => (y >= 0 && y <= 3.2 && Math.abs(x) <= 3.4 - y * 1.05) || (y < 0 && y >= -3.2 && Math.abs(x) <= 1.0), 6);
+  const snakeCells = (len, amp) => cellsFromPred((x, y) => Math.abs(x) <= len && Math.abs(y - amp * Math.sin(x / 1.7)) <= 1.0, 9);
+  const spiralCells = turns => cellsFromPred((x, y) => {
+    const rr = Math.hypot(x, y); if (rr < 1.2) return true;
+    let th = Math.atan2(y, x); const k = 0.62;
+    for (let n = 0; n <= turns + 1; n++) { const target = k * (th + 2 * Math.PI * n); if (Math.abs(rr - target * 1.6) <= 0.85 && target * 1.6 <= turns * 2 * Math.PI * k * 1.6 / 1.0 && rr <= 6.5) return true; }
+    return false;
+  }, 7);
+  function twinsCells(R, gap) {
+    const a = hexCells(R), o = [];
+    for (const [q, r] of a) { o.push([q - (R + gap), r]); o.push([q + (R + gap), r]); }
+    return o;
+  }
+  function symCells(R, n) {
+    const set = new Set([K(0, 0)]);
+    const rotate = (q, r, k) => { for (let i = 0; i < k; i++) [q, r] = [-r, q + r]; return [q, r]; };
+    let guard = 0;
+    while (set.size < n && guard++ < 4000) {
+      const arr = [...set]; const k = arr[Math.floor(R() * arr.length)];
+      const d = DIRS[Math.floor(R() * 6)];
+      const q = KQ(k) + d[0], r = KR(k) + d[1];
+      if ((Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2 > 5) continue;
+      for (const rot of [0, 2, 4]) { const [a, b] = rotate(q, r, rot); set.add(K(a, b)); }
+    }
+    return [...set].map(k => [KQ(k), KR(k)]);
+  }
+  function normalise(cells, rotK) {
+    const seen = new Set(), out = [];
+    for (let [q, r] of cells) {
+      for (let i = 0; i < (rotK || 0); i++) [q, r] = [-r, q + r];
+      const k = K(q, r); if (!seen.has(k)) { seen.add(k); out.push([q, r]); }
+    }
+    let sx = 0, sy = 0;
+    for (const [q, r] of out) { sx += q + r / 2; sy += r; }
+    const cy = Math.round(sy / out.length), dq = Math.round(sx / out.length - cy / 2);
+    return out.map(([q, r]) => K(q - dq, r - cy));
+  }
+  const INTRO = [
+    { name: 'Line', cells: () => lineCells(5), pat: 'random' },
+    { name: 'Triangle', cells: () => triCells(3), pat: 'rings' },
+    { name: 'Flower', cells: () => hexCells(1), pat: 'random' },
+    { name: 'Diamond', cells: () => rhombusCells(3, 3), pat: 'stripes' },
+    { name: 'Arrow', cells: () => arrowCells(), pat: 'duo' },
+    { name: 'Ring', cells: () => ringCells(2, 1), pat: 'random' },
+    { name: 'Propeller', cells: () => starCells(1, 2, 3), pat: 'rings' },
+    { name: 'Twins', cells: () => twinsCells(1, 2), pat: 'random' },
+    { name: 'Heart', cells: () => heartCells(3.2), pat: 'stripes' },
+    { name: 'Hive', cells: () => hexCells(2), pat: 'random' },
+  ];
+  const KINDS = ['Hexagon', 'Ring', 'Star', 'Rhombus', 'Twins', 'Heart', 'Crescent', 'Snake', 'Snowflake', 'Spiral', 'Pyramid', 'Bloom'];
+  function levelSpec(L, R) {
+    if (L <= INTRO.length) return INTRO[L - 1];
+    const t = L - INTRO.length - 1, kind = KINDS[t % KINDS.length], g = Math.floor(t / KINDS.length);
+    const pats = ['random', 'stripes', 'rings', 'duo', 'random', 'mono'];
+    const pat = pats[(t * 7 + g) % pats.length];
+    const cap = (v, m) => Math.min(v, m);
+    const cells = {
+      Hexagon: () => hexCells(cap(2 + g, 4)),
+      Ring: () => ringCells(cap(3 + g, 5), g >= 1 ? 2 : 1),
+      Star: () => starCells(1, cap(2 + g, 4), 6),
+      Rhombus: () => rhombusCells(cap(4 + g, 8), cap(3 + g, 7)),
+      Twins: () => twinsCells(cap(1 + g, 2), 2),
+      Heart: () => heartCells(cap(3.4 + 0.5 * g, 4.6)),
+      Crescent: () => crescentCells(cap(4.2 + 0.6 * g, 5.6)),
+      Snake: () => snakeCells(cap(6 + 1.5 * g, 8.5), 1.6),
+      Snowflake: () => symCells(R, cap(20 + 10 * g, 60)),
+      Spiral: () => spiralCells(cap(1.4 + 0.3 * g, 2.4)),
+      Pyramid: () => triCells(cap(5 + g, 10)),
+      Bloom: () => flowerCells(),
+    }[kind];
+    return { name: kind, cells, pat };
+  }
+  function slackFor(L) { return L <= 3 ? 3 : L <= 10 ? 2 : 1; }
+  // the difficulty ladder: each level aims for a par in a window that rises steadily
+  const targetPar = L => Math.min(16, Math.round(1.6 + 0.42 * L));
+  function paint(keys, pat, R) {
+    const b = new Map();
+    const base = Math.floor(R() * 3), other = (base + 1 + Math.floor(R() * 2)) % 3;
+    const dir = Math.floor(R() * 3);
+    for (const k of keys) {
+      const q = KQ(k), r = KR(k), d = hexDist(k, ORIGIN);
+      let col;
+      if (pat === 'stripes') col = ((([q, r, -q - r][dir]) % 3) + 3) % 3;
+      else if (pat === 'rings') col = (d + base) % 3;
+      else if (pat === 'mono') col = base;
+      else if (pat === 'duo') col = R() < 0.5 ? base : other;
+      else col = Math.floor(R() * 3);
+      b.set(k, { id: gemId++, col });
+    }
+    return b;
+  }
+  function stabilize(b, R) {
+    for (let it = 0; it < 3000; it++) {
+      const bad = [];
+      for (const k of b.keys()) if (isBalanced(b, k)) bad.push(k);
+      let pool = bad;
+      if (!bad.length) {
+        const m = bestMove(b);
+        if (!m) return true;
+        pool = [m[0]].concat(nbs(m[1]).filter(k => b.has(k)));
+      }
+      const k = pool[Math.floor(R() * pool.length)];
+      b.get(k).col = Math.floor(R() * 3);
+    }
+    return false;
+  }
+  function makeLevelBoard(L, attempt) {
+    const R = rng((L * 7919 + attempt * 104729 + 12345) >>> 0);
+    const spec = levelSpec(L, R);
+    const keys = normalise(spec.cells(), L > 3 ? Math.floor(R() * 6) : 0);
+    const pat = attempt === 0 ? spec.pat : ['random', 'duo', 'rings', 'stripes', 'mono'][attempt % 5];
+    const b = paint(keys, pat, R);
+    if (!stabilize(b, R)) return null;
+    return { board: b, sockets: new Set(keys), name: spec.name };
+  }
+  const solverOk = n => hexDist(n, ORIGIN) <= 9;
+  function* solveGen(b0, maxN) {
+    let b = new Map(b0), n = 0, stall = 0;
+    while (n < (maxN || 60)) {
+      const best = bestPlacementB(b, solverOk);
+      if (!best) return null;
+      n++;
+      if (best.n && best.board.size <= 2) return n;
+      stall = best.n ? 0 : stall + 1;
+      if (stall > 10) return null;
+      b = best.board;
+      yield;
+    }
+    return null;
+  }
+  // progress, kept in this browser only
+  let progress = { v: LV_VERSION, unlocked: 1, cur: 1, stars: {}, cache: {}, hints: 3, removes: 2, chains: 1 };
+  try { const p = JSON.parse(localStorage.getItem('hexbal-levels') || 'null'); if (p && p.v === LV_VERSION) progress = Object.assign(progress, p); } catch (e) { /* storage blocked */ }
+  function saveProgress() { try { localStorage.setItem('hexbal-levels', JSON.stringify(progress)); } catch (e) { /* not remembered */ } }
+  function* levelGen(L) {
+    const cached = progress.cache[L];
+    if (cached) { const m = makeLevelBoard(L, cached[0]); if (m) return { ...m, par: cached[1] }; }
+    const target = targetPar(L), lo = Math.max(1, target - 2), hi = target + 2;
+    let best = null;
+    for (let a = 0; a < 20; a++) {
+      const m = makeLevelBoard(L, a);
+      if (!m) continue;
+      const sg = solveGen(m.board, hi + 4);
+      let r;
+      while (!(r = sg.next()).done) yield m.sockets;
+      if (!r.value) continue;
+      if (!best || Math.abs(r.value - target) < Math.abs(best.par - target)) best = { a, m, par: r.value };
+      if (r.value >= lo && r.value <= hi) break;
+    }
+    if (best) { progress.cache[L] = [best.a, best.par]; saveProgress(); return { ...best.m, par: best.par }; }
+    // fallback: a random formation
+    const g = generate(L * 31 + 7, 30, 3);
+    return { board: g.board, sockets: g.sockets, name: 'Formation', par: 8 };
+  }
+  let level = null, moves = 0, levelJob = null, hintUsed = false, prefetchJob = null, armed = null, armKey = null;
+  // armed power-up: 'del' removes one gem, 'chain' removes a connected run of one colour; neither costs a move
+  function setArmed(kind) {
+    armed = kind && ((kind === 'del' && progress.removes > 0) || (kind === 'chain' && progress.chains > 0)) ? kind : null;
+    armKey = null; selected = null; preview = null;
+    updatePowerUps();
+  }
+  function sameColourRun(b, k) {
+    const col = b.get(k).col, seen = new Set([k]), st = [k];
+    while (st.length) { const x = st.pop(); for (const n of nbs(x)) { const g = b.get(n); if (g && g.col === col && !seen.has(n)) { seen.add(n); st.push(n); } } }
+    return [...seen];
+  }
+  function prefetch(L) {
+    if (prefetchJob) clearTimeout(prefetchJob);
+    if (progress.cache[L]) return;
+    const gen = levelGen(L);
+    const tick = () => {
+      if (mode !== 'levels') { prefetchJob = null; return; }
+      if (state !== 'idle' || press) { prefetchJob = setTimeout(tick, 400); return; }
+      const r = gen.next();
+      prefetchJob = r.done ? null : setTimeout(tick, 60);
+    };
+    prefetchJob = setTimeout(tick, 1500);
+  }
+  const BL = () => mode === 'build' || mode === 'levels';
+
+  // ================= layout =================
+  const topEl = document.querySelector('.top');
+  const dockEl = document.getElementById('dock');
+  function layout() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    W = Math.round(cw * dpr); H = Math.round(ch * dpr);
+    if (canvas.width !== W) canvas.width = W;
+    if (canvas.height !== H) canvas.height = H;
+    const topB = topEl.getBoundingClientRect().bottom + 8;
+    const dockVis = document.getElementById('dockPanel').hidden ? document.getElementById('dockOpen') : document.getElementById('dockPanel');
+    const dockT = dockVis.getBoundingClientRect().top - 8;
+    areaTop = topB; areaBottom = dockT;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const k of sockets) {
+      const x = SQ3 * (KQ(k) + KR(k) / 2), y = 1.5 * KR(k);
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    }
+    if (!isFinite(minX)) { minX = maxX = minY = maxY = 0; }
+    const pad = mode === 'clear' ? 0 : 1;
+    const bw = maxX - minX + SQ3 + 0.6 + pad * SQ3 * 2, bh = maxY - minY + 2 + 0.6 + pad * 3;
+    const availW = cw - 24, availH = Math.max(120, dockT - topB);
+    const s = Math.max(12, Math.min(availW / bw, availH / bh, 54));
+    S = s * dpr;
+    scx = cw / 2 * dpr; scy = (topB + dockT) / 2 * dpr;
+    if (snapView) { viewTarget(); if (!board.size) { tvx = (minX + maxX) / 2; tvy = (minY + maxY) / 2; } vcx = tvx; vcy = tvy; }
+    applyView();
+    const R = S * 0.93;
+    sprites = COLS.map((_, i) => makeGem(i, R));
+    glows = COLS.map(c => makeGlow(c.rgb, R));
+    whiteSprite = makeWhite(R);
+  }
+  let areaTop = 0, areaBottom = 0, scx = 0, scy = 0, vcx = 0, vcy = 0, tvx = 0, tvy = 0, snapView = true;
+  function applyView() { ox = scx - S * vcx; oy = scy - S * vcy; }
+  function viewTarget() {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const k of board.keys()) { const x = ux(k), y = uy(k); minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+    if (!isFinite(minX)) return;
+    tvx = (minX + maxX) / 2; tvy = (minY + maxY) / 2;
+  }
+  function cellXY(k) { return [ox + S * SQ3 * (KQ(k) + KR(k) / 2), oy + S * 1.5 * KR(k)]; }
+  function pixToKey(px, py) {
+    const x = (px * dpr - ox) / S, y = (py * dpr - oy) / S;
+    const q = (SQ3 / 3 * x - y / 3), r = (2 / 3) * y;
+    let rx = Math.round(q), rz = Math.round(r), ry = Math.round(-q - r);
+    const dx = Math.abs(rx - q), dz = Math.abs(rz - r), dy = Math.abs(ry + q + r);
+    if (dx > dy && dx > dz) rx = -ry - rz; else if (dz > dy) rz = -rx - ry;
+    return K(rx, rz);
+  }
+
+  // ================= actions =================
+  function snapshot() {
+    return { cells: [...board].map(([k, g]) => [k, g.id, g.col]), taps, cleared, bestChain, added, nextRand, moves };
+  }
+  function tapGem(k, now, powerUp) {
+    if (state !== 'idle' || !board.has(k)) return;
+    if (powerUp === 'chain' && mode === 'levels') {
+      if (progress.chains <= 0) return;
+      progress.chains--; saveProgress();
+      undoStack.push(snapshot());
+      undoStack[undoStack.length - 1].refund = 'chain';
+      const run = sameColourRun(board, k);
+      run.forEach((kk, i) => {
+        const g = board.get(kk), [x, y] = cellXY(kk);
+        dying.push({ k: kk, col: g.col, t0: now + i * 40 * MS, kind: 'tap' });
+        burst(x, y, COLS[g.col].rgb, 5, 0.5);
+        board.delete(kk);
+      });
+      sound.remove(cellXY(k)[0] / dpr);
+      taps++;
+      chain = 0; stepCount = 0; wave = 0;
+      preview = null; hint = null;
+      state = 'settling';
+      nextAt = now + (260 + run.length * 40) * MS;
+      updatePowerUps();
+      updateHud();
+      return;
+    }
+    if (powerUp && mode === 'levels') { if (progress.removes <= 0) return; progress.removes--; saveProgress(); }
+    undoStack.push(snapshot());
+    if (powerUp && mode === 'levels') undoStack[undoStack.length - 1].refund = 'del';
+    if (undoStack.length > 60) undoStack.shift();
+    const g = board.get(k);
+    const [x, y] = cellXY(k);
+    dying.push({ k, col: g.col, t0: now, kind: 'tap' });
+    burst(x, y, COLS[g.col].rgb, 7, 0.6);
+    sound.remove(x / dpr);
+    board.delete(k);
+    taps++;
+    if (mode === 'levels' && !powerUp) moves++;
+    if (mode === 'levels') updatePowerUps();
+    chain = 0; stepCount = 0; wave = 0;
+    preview = null; hint = null;
+    state = 'settling';
+    nextAt = now + 220 * MS;
+    updateHud();
+  }
+  const CNAME = ['red', 'green', 'blue'];
+  function balanceInfo(k) {
+    const g = board.get(k);
+    const c = counts(board, k);
+    const touching = c[0] + c[1] + c[2] - 1;
+    const empty = nbs(k).filter(n => !board.has(n)).length;
+    const ok = c[0] === c[1] && c[1] === c[2];
+    let best = null;
+    for (let t = 1; t <= 7; t++) {
+      let adds = 0, rems = 0;
+      const plan = [];
+      for (let i = 0; i < 3; i++) {
+        if (c[i] < t) { adds += t - c[i]; plan.push(['add', t - c[i], i]); }
+        if (c[i] > t) { rems += c[i] - t; plan.push(['remove', c[i] - t, i]); }
+      }
+      if (adds > empty) continue;
+      const cost = adds + rems;
+      if (!best || cost < best.cost || (cost === best.cost && rems < best.rems)) best = { cost, rems, plan };
+    }
+    let advice = '';
+    if (ok) advice = 'Balanced: it clears along with the gems touching it.';
+    else if (best) {
+      const list = items => items.map(([, n, i]) => `${n} ${CNAME[i]}`).join(' and ');
+      const adds = best.plan.filter(p => p[0] === 'add'), rems = best.plan.filter(p => p[0] === 'remove');
+      const parts = [];
+      if (adds.length) parts.push(`add ${list(adds)} beside it`);
+      if (rems.length) parts.push(`remove ${list(rems)} touching it`);
+      advice = 'To balance it: ' + parts.join(' and ') + '.';
+    }
+    return { col: g.col, c, touching, empty, ok, advice };
+  }
+  function instantColoursB(b, h) {
+    const out = [];
+    if (!b.size) return out;
+    for (let col = 0; col < 3; col++) {
+      b.set(h, { id: -2, col });
+      let hit = isBalanced(b, h);
+      if (!hit) for (const n of nbs(h)) if (b.has(n) && isBalanced(b, n)) { hit = true; break; }
+      b.delete(h);
+      if (hit) out.push(col);
+    }
+    return out;
+  }
+  const instantColours = h => instantColoursB(board, h);
+  // the colour Auto places in a space: the best suggested colour there, else whatever simulates best
+  function autoChoiceB(b, h, cols) {
+    const pool = cols && cols.length ? cols : [0, 1, 2];
+    let best = null;
+    for (const col of pool) {
+      const r = simulateAdd(b, h, col);
+      const sc = [r.board.size <= 2 && r.popped.length ? 1 : 0, r.popped.length, -totalImb(r.board)];
+      if (!best || better(sc, best.sc)) best = { col, sc, n: r.popped.length, board: r.board };
+    }
+    return best;
+  }
+  function autoColour(h) { const c = autoChoiceB(board, h, instantColours(h)); return c ? c.col : 0; }
+  function frontierB(b, ok) {
+    const fr = new Set();
+    for (const k of b.keys()) for (const n of nbs(k)) if (!b.has(n) && ok(n)) fr.add(n);
+    return [...fr].sort((x, y) => x - y);
+  }
+  // best placement anywhere: suggested spots first, full search only if there are none
+  function bestPlacementB(b, ok) {
+    const fr = frontierB(b, ok);
+    let best = null;
+    const consider = (h, cols) => {
+      const c = autoChoiceB(b, h, cols);
+      if (c && (!best || better(c.sc, best.sc))) best = { k: h, col: c.col, sc: c.sc, n: c.n, board: c.board };
+    };
+    for (const h of fr) { const ic = instantColoursB(b, h); if (ic.length) consider(h, ic); }
+    if (!best) for (const h of fr) consider(h, [0, 1, 2]);
+    return best;
+  }
+  const bestPlacement = () => bestPlacementB(board, canAdd);
+  function canAdd(k) {
+    if (board.has(k)) return false;
+    if (hexDist(k, K(0, 0)) > 12) return false;
+    const [x, y] = cellXY(k);
+    const cx = x / dpr, cy = y / dpr, r = S / dpr;
+    return cx > r && cx < canvas.clientWidth - r && cy > areaTop + r * 0.6 && cy < areaBottom - r * 0.6;
+  }
+  function addGem(k, now, colOverride) {
+    if (state !== 'idle' || !canAdd(k)) return;
+    const col = colOverride !== undefined ? colOverride : pick === 'auto' ? autoColour(k) : pick;
+    undoStack.push(snapshot());
+    if (undoStack.length > 60) undoStack.shift();
+    const g = { id: gemId++, col };
+    board.set(k, g);
+    sockets.add(k);
+    spawn.set(g.id, now);
+    const [x, y] = cellXY(k);
+    rings.push({ k, t0: now, col: COLS[col].rgb });
+    burst(x, y, COLS[col].rgb, 6, 0.5);
+    sound.place(x / dpr, col);
+    added++;
+    if (mode === 'levels') moves++;
+    chain = 0; stepCount = 0; wave = 0;
+    preview = null; hint = null;
+    state = 'settling';
+    nextAt = now + 300 * MS;
+    updateHud();
+  }
+  function setAutoPlay(on) {
+    autoPlay = on;
+    autoStall = 0;
+    const b = document.getElementById('play');
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = on ? 'Stop' : 'Play to end';
+  }
+  function autoMove(now) {
+    if (mode !== 'build') { setAutoPlay(false); return; }
+    if (added > 400) { setAutoPlay(false); showToast('Stopped after 400 gems', now); return; }
+    const b = bestPlacement();
+    if (!b) { setAutoPlay(false); showToast('No space left to place', now); return; }
+    autoStall = b.n ? 0 : autoStall + 1;
+    if (autoStall > 40) { setAutoPlay(false); showToast('No balance found', now); return; }
+    selected = null;
+    addGem(b.k, now, b.col);
+  }
+  function runStep(now) {
+    const s = stepCount > 900 ? null : nextStep(board);
+    if (!s) {
+      state = 'idle';
+      if (chain > bestChain) bestChain = chain;
+      if (chain >= 3) showToast(chain >= 12 ? `Chain of ${chain}!` : `Chain of ${chain}`, now);
+      updateHud();
+      if (mode === 'clear' && coloursLeft(board) <= 2) showWin('clear');
+      else if (mode === 'build' && chain > 0 && board.size <= 2) { setAutoPlay(false); showWin('build'); }
+      else if (mode === 'levels' && level && chain > 0 && board.size <= 2) levelWin();
+      return;
+    }
+    stepCount++;
+    const speed = MS * (stepCount > 50 ? 0.35 : stepCount > 25 ? 0.5 : stepCount > 10 ? 0.7 : 1);
+    if (s.type === 'pop') {
+      const centreOf = new Map();
+      for (const c of s.centers) centreOf.set(c, c);
+      for (const c of s.centers) for (const n of nbs(c)) if (board.has(n) && !centreOf.has(n)) centreOf.set(n, c);
+      for (const k of s.keys) {
+        const g = board.get(k);
+        const c = centreOf.has(k) ? centreOf.get(k) : k;
+        if (c === k) {
+          const [x, y] = cellXY(k);
+          dying.push({ k, col: g.col, t0: now, kind: 'pop' });
+          rings.push({ k, t0: now + 160 * MS });
+          burst(x, y, [255, 255, 255], 12, 1.1);
+        } else {
+          dying.push({ k, to: c, col: g.col, t0: now, kind: 'fuse' });
+        }
+      }
+      let sx = 0;
+      for (const k of s.keys) sx += cellXY(k)[0];
+      sx = sx / s.keys.length / dpr;
+      sound.clear(sx, s.keys.length, wave++);
+      if (chain < 12 && chain + s.keys.length >= 12) sound.big();
+      chain += s.keys.length;
+      cleared += s.keys.length;
+      applyStep(board, s);
+      nextAt = now + 560 * speed;
+    } else if (s.type === 'move') {
+      const g = board.get(s.from);
+      anim.set(g.id, { fk: s.from, tk: s.to, t0: now, t1: now + 300 * speed });
+      sound.slide(cellXY(s.to)[0] / dpr);
+      applyStep(board, s);
+      nextAt = now + 330 * speed;
+    } else {
+      const dur = 260 * speed;
+      for (const m of s.moves) m.from.forEach((k, i) => { const g = board.get(k); anim.set(g.id, { fk: k, tk: m.to[i], t0: now, t1: now + dur }); });
+      if (stepCount % 2 === 0) sound.slide(window.innerWidth / 2);
+      applyStep(board, s);
+      drifting = true;
+      nextAt = now + dur + 30 * speed;
+    }
+    updateHud();
+  }
+  function loadLevel(L) {
+    if (levelJob) clearTimeout(levelJob);
+    if (prefetchJob) { clearTimeout(prefetchJob); prefetchJob = null; }
+    if (autoPlay) setAutoPlay(false);
+    L = Math.max(1, Math.min(L, progress.unlocked));
+    progress.cur = L; saveProgress();
+    hideWin();
+    level = null; moves = 0; hintUsed = false; armed = null; armKey = null;
+    board = new Map(); state = 'loading';
+    anim.clear(); dying = []; parts = []; rings = []; preview = null; hint = null; selected = null;
+    updateLevelUI(L);
+    updateHud();
+    const gen = levelGen(L);
+    let first = true;
+    const tick = () => {
+      const r = gen.next();
+      if (!r.done) {
+        if (first && r.value) { first = false; sockets = r.value; snapView = true; layout(); snapView = false; }
+        levelJob = setTimeout(tick, 0);
+        return;
+      }
+      levelJob = null;
+      const res = r.value;
+      board = new Map([...res.board].map(([k, g]) => [k, { id: gemId++, col: g.col }]));
+      sockets = res.sockets;
+      level = { L, name: res.name, par: res.par, budget: Infinity };
+      taps = 0; cleared = 0; bestChain = 0; chain = 0; added = 0; total = board.size; undoStack = [];
+      state = 'idle';
+      snapView = true; layout(); snapView = false;
+      updateLevelUI(L);
+      updateHud();
+      showToast(`Level ${L} · ${res.name}`, performance.now());
+      prefetch(L + 1);
+    };
+    levelJob = setTimeout(tick, 20);
+  }
+  function levelWin() {
+    const stars = moves <= level.par ? 3 : moves <= level.par + 2 ? 2 : 1;
+    const L = level.L;
+    const prev = progress.stars[L] || 0;
+    const bonus = [];
+    if (stars === 3 && prev < 3) {
+      // three stars earn a power-up: whichever you have fewer of
+      const opts = [['chains', 'chain'], ['removes', 'delete'], ['hints', 'hint']];
+      let pickP = opts[0];
+      for (const o of opts) if (progress[o[0]] < progress[pickP[0]]) pickP = o;
+      progress[pickP[0]]++; bonus.push('+1 ' + pickP[1]);
+    }
+    progress.stars[L] = Math.max(prev, stars);
+    progress.unlocked = Math.max(progress.unlocked, L + 1);
+    saveProgress();
+    winKind = 'level';
+    sound.win();
+    $('winTitle').textContent = `Level ${L} complete`;
+    $('winTaps').textContent = moves;
+    $('winUnit').textContent = moves === 1 ? 'move' : 'moves';
+    $('winPar').innerHTML = `<span class="stars" aria-label="${stars} of 3 stars">${'★'.repeat(stars)}<span class="off">${'★'.repeat(3 - stars)}</span></span>`;
+    $('winCleared').textContent = (moves <= level.par ? `At or under par ${level.par}.` : `Par is ${level.par}; match it for three stars and a power-up.`) + (bonus.length ? ` Power-up earned: ${bonus.join(', ')}.` : '');
+    updatePowerUps();
+    $('winUndo').textContent = 'Replay';
+    $('winNew').textContent = 'Next level';
+    $('win').hidden = false;
+    updateLevelUI(L);
+  }
+  function levelFail() {
+    winKind = 'fail';
+    $('winTitle').textContent = 'Out of moves';
+    $('winTaps').textContent = board.size;
+    $('winUnit').textContent = board.size === 1 ? 'gem left' : 'gems left';
+    $('winPar').textContent = `Balance it down to 1 or 2 gems within ${level.budget} moves.`;
+    $('winCleared').textContent = 'Undo to try another move, or start the level again.';
+    $('winUndo').textContent = 'Undo last move';
+    $('winNew').textContent = 'Retry';
+    $('win').hidden = false;
+  }
+  function updatePowerUps() {
+    const h = document.getElementById('hint');
+    document.getElementById('hintN').textContent = progress.hints;
+    h.disabled = progress.hints <= 0;
+    h.setAttribute('aria-label', `Hint: show the best spot (${progress.hints} left)`);
+    h.title = 'Hint';
+    const d = document.getElementById('del');
+    document.getElementById('delN').textContent = progress.removes;
+    d.disabled = progress.removes <= 0 && armed !== 'del';
+    d.setAttribute('aria-pressed', String(armed === 'del'));
+    d.setAttribute('aria-label', armed === 'del' ? 'Cancel delete' : `Delete one gem (${progress.removes} left)`);
+    d.title = 'Delete a gem';
+    const c = document.getElementById('chainPu');
+    document.getElementById('chainN').textContent = progress.chains;
+    c.disabled = progress.chains <= 0 && armed !== 'chain';
+    c.setAttribute('aria-pressed', String(armed === 'chain'));
+    c.setAttribute('aria-label', armed === 'chain' ? 'Cancel chain' : `Remove a connected run of one colour (${progress.chains} left)`);
+    c.title = 'Remove a same-colour chain';
+    const inv = document.getElementById('lvInv');
+    const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+    if (inv) inv.textContent = armed === 'del' ? 'Delete: tap a gem to remove it. No move used.'
+      : armed === 'chain' ? 'Chain: tap a gem to remove it and every touching gem of its colour. No move used.'
+      : `Power-ups: ${pl(progress.hints, 'hint')}, ${pl(progress.removes, 'delete')}, ${pl(progress.chains, 'chain')}. Three stars earn one.`;
+  }
+  function updateLevelUI(L) {
+    updatePowerUps();
+    const el = document.getElementById('lvName');
+    if (!el) return;
+    const name = level && level.L === L ? level.name : '…';
+    el.textContent = `Level ${L} · ${name}`;
+    const st = progress.stars[L] || 0;
+    document.getElementById('lvStars').innerHTML = `${'★'.repeat(st)}<span class="off">${'★'.repeat(3 - st)}</span>`;
+    document.getElementById('lvStars').setAttribute('aria-label', `best ${st} of 3 stars`);
+    document.getElementById('lvPrev').disabled = L <= 1;
+    document.getElementById('lvNext').disabled = L >= progress.unlocked;
+    document.getElementById('nextLv').disabled = L >= progress.unlocked;
+    document.getElementById('lvGoal').textContent = level && level.L === L
+      ? `Balance it down to 1 or 2 gems. Each gem you place is a move; match par (${level.par}) for three stars and a power-up.`
+      : 'Preparing the level…';
+  }
+  function undo() {
+    if (autoPlay) setAutoPlay(false);
+    if (state === 'settling' || !undoStack.length) return;
+    const s = undoStack.pop();
+    board = new Map(s.cells.map(([k, id, col]) => [k, { id, col }]));
+    taps = s.taps; cleared = s.cleared; bestChain = s.bestChain; added = s.added; moves = s.moves || 0; updatePicker();
+    if (s.refund && mode === 'levels') { if (s.refund === 'chain') progress.chains++; else progress.removes++; saveProgress(); updatePowerUps(); }
+    state = 'idle'; anim.clear(); preview = null; hint = null; selected = null;
+    viewTarget(); drifting = true;
+    hideWin();
+    updateHud();
+  }
+  function showHint(now) {
+    if (state !== 'idle') return;
+    if (BL() && (pick === 'auto' || mode === 'levels')) {
+      if (mode === 'levels') {
+        if (progress.hints <= 0 || (hint && now - hint.t0 < 3200)) return;
+        progress.hints--; saveProgress(); hintUsed = true; updatePowerUps();
+      }
+      const b = bestPlacement();
+      if (b) { const r = simulateAdd(board, b.k, b.col); hint = { k: b.k, n: r.popped.length, ids: new Set(r.popped), add: b.col, t0: now }; }
+      return;
+    }
+    if (BL()) {
+      const col = pick;
+      const cand = new Set();
+      for (const k of board.keys()) for (const n of nbs(k)) if (canAdd(n)) cand.add(n);
+      let best = null, bp = -1, be = Infinity;
+      for (const k of [...cand].sort((x, y) => x - y)) {
+        const r = simulateAdd(board, k, col);
+        const e = totalImb(r.board);
+        if (r.popped.length > bp || (r.popped.length === bp && e < be)) { bp = r.popped.length; be = e; best = { k, n: r.popped.length, ids: new Set(r.popped), add: col }; }
+      }
+      hint = best ? { ...best, t0: now } : null;
+      return;
+    }
+    if (!board.size) return;
+    if (mode === 'build') {
+      let best = null, bp = -1;
+      for (const k of [...board.keys()].sort((x, y) => x - y)) {
+        const r = simulate(board, k);
+        if (r.popped.length > bp) { bp = r.popped.length; best = { k, n: bp, ids: new Set(r.popped) }; }
+      }
+      hint = best ? { ...best, t0: now } : null;
+      return;
+    }
+    let best = null, bs = null;
+    for (const k of [...board.keys()].sort((x, y) => x - y)) {
+      const r = simulate(board, k);
+      const sc = tapScore(r, 'pops');
+      if (!bs || better(sc, bs)) { bs = sc; best = { k, n: r.popped.length, ids: new Set(r.popped), ends: sc[0] === 1 }; }
+    }
+    hintsUsed++;
+    hint = best ? { ...best, t0: now } : null;
+  }
+  function makePreview(k) {
+    if (!board.has(k)) {
+      const col = pick === 'auto' ? autoColour(k) : pick;
+      const r = simulateAdd(board, k, col);
+      return { k, ids: new Set(r.popped), n: r.popped.length, add: col };
+    }
+    const r = simulate(board, k);
+    return { k, ids: new Set(r.popped), n: r.popped.length };
+  }
+
+  // ================= particles =================
+  function burst(x, y, rgb, n, sp) {
+    if (reduceMotion) n = Math.ceil(n / 3);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, v = (0.6 + Math.random()) * S * 2.2 * sp;
+      parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: 0.5 + Math.random() * 0.5, rgb, r: S * (0.05 + Math.random() * 0.06) });
+    }
+  }
+
+  // ================= draw =================
+  const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  let lastT = performance.now();
+  function draw(now) {
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+    if (state === 'settling' && now >= nextAt) runStep(now);
+    sound.setBusy(state === 'settling' ? 1 : 0);
+    if (autoPlay && state === 'idle' && now >= nextAt + 380 * MS && $('win').hidden) autoMove(now);
+    if (state === 'settling' || drifting) { viewTarget(); if (state === 'idle') drifting = false; }
+    const pk = reduceMotion ? 1 : Math.min(1, dt * 2.2);
+    if (Math.abs(tvx - vcx) + Math.abs(tvy - vcy) > 1e-4) { vcx += (tvx - vcx) * pk; vcy += (tvy - vcy) * pk; applyView(); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
+    // sockets
+    const sr = S * 0.93;
+    for (const k of sockets) {
+      const [x, y] = cellXY(k);
+      pathPts(ctx, hexPts(x, y, sr));
+      ctx.fillStyle = 'rgba(120,140,190,0.045)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(150,170,220,0.10)';
+      ctx.lineWidth = Math.max(1, dpr * 0.8);
+      ctx.stroke();
+    }
+    // build mode: every empty space touching the formation (outer edge and inner gaps) shows,
+    // as small gems, the colours that would balance a neighbouring gem straight away
+    if (BL() && state === 'idle') {
+      const fr = new Set();
+      for (const k of board.keys()) for (const n of nbs(k)) if (!board.has(n) && canAdd(n)) fr.add(n);
+      if (!board.size) for (const k of sockets) if (canAdd(k)) fr.add(k);
+      const mini = sprites[0].width * 0.4;
+      for (const h of fr) {
+        const [x, y] = cellXY(h);
+        const instant = instantColours(h);
+        pathPts(ctx, hexPts(x, y, sr * 0.9));
+        ctx.strokeStyle = instant.length ? 'rgba(235,240,255,0.42)' : 'rgba(200,215,255,0.18)';
+        ctx.setLineDash([S * 0.12, S * 0.1]);
+        ctx.lineWidth = Math.max(1, dpr);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (instant.length) {
+          const off = instant.length === 1 ? [[0, 0]] : instant.length === 2 ? [[-0.27, 0], [0.27, 0]] : [[0, -0.27], [-0.25, 0.17], [0.25, 0.17]];
+          instant.forEach((col, i) => {
+            const px = x + off[i][0] * S * 1.0, py = y + off[i][1] * S * 1.0;
+            ctx.drawImage(sprites[col], px - mini / 2, py - mini / 2, mini, mini);
+          });
+        }
+      }
+    }
+    // gem positions
+    const pos = [];
+    for (const [k, g] of board) {
+      let [x, y] = cellXY(k);
+      const a = anim.get(g.id);
+      if (a) {
+        const t = (now - a.t0) / (a.t1 - a.t0);
+        if (t >= 1) anim.delete(g.id);
+        else {
+          const e = ease(Math.max(0, t));
+          const [fx, fy] = cellXY(a.fk), [tx, ty] = cellXY(a.tk);
+          x = fx + (tx - fx) * e; y = fy + (ty - fy) * e;
+        }
+      }
+      pos.push([k, g, x, y]);
+    }
+    // glows
+    ctx.globalCompositeOperation = 'lighter';
+    const gs = glows[0].width;
+    const breathe = reduceMotion ? 1 : 0.85 + 0.15 * Math.sin(now / 900);
+    ctx.globalAlpha = breathe;
+    for (const [, g, x, y] of pos) ctx.drawImage(glows[g.col], x - gs / 2, y - gs / 2);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    // gems
+    const ss = sprites[0].width;
+    for (const [k, g, x, y] of pos) {
+      let sc = 1;
+      if (preview && preview.k === k) sc = 0.9;
+      const sp = spawn.get(g.id);
+      if (sp !== undefined) {
+        const t = (now - sp) / (320 * MS);
+        if (t >= 1) spawn.delete(g.id); else sc = 0.2 + 0.8 * (1 - Math.pow(1 - Math.max(0, t), 3));
+      }
+      if (sc !== 1) ctx.drawImage(sprites[g.col], x - ss * sc / 2, y - ss * sc / 2, ss * sc, ss * sc);
+      else ctx.drawImage(sprites[g.col], x - ss / 2, y - ss / 2);
+    }
+    // preview / hint rings
+    const mark = (set, k0, strong, t0) => {
+      const pulse = reduceMotion ? 1 : 0.6 + 0.4 * Math.sin((now - t0) / 140);
+      for (const [k, g, x, y] of pos) {
+        if (k === k0) {
+          pathPts(ctx, hexPts(x, y, S * 0.98));
+          ctx.strokeStyle = `rgba(255,255,255,${0.95 * (strong ? 1 : 0.8)})`;
+          ctx.lineWidth = Math.max(2, S * 0.09);
+          ctx.setLineDash([S * 0.22, S * 0.14]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else if (set.has(g.id)) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.35 * pulse;
+          ctx.drawImage(whiteSprite, x - ss / 2, y - ss / 2);
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+          pathPts(ctx, hexPts(x, y, S * 0.98));
+          ctx.strokeStyle = `rgba(255,255,255,${0.8 * pulse})`;
+          ctx.lineWidth = Math.max(1.5, S * 0.06);
+          ctx.stroke();
+        }
+      }
+    };
+    // armed power-up: outline what a tap would remove
+    if (armed && state === 'idle' && armKey != null && board.has(armKey)) {
+      const run = armed === 'chain' ? sameColourRun(board, armKey) : [armKey];
+      const pulse = reduceMotion ? 1 : 0.65 + 0.35 * Math.sin(now / 120);
+      for (const k of run) {
+        const [x, y] = cellXY(k);
+        pathPts(ctx, hexPts(x, y, S * 0.98));
+        ctx.strokeStyle = `rgba(255,120,120,${0.9 * pulse})`;
+        ctx.lineWidth = Math.max(2, S * 0.09);
+        ctx.setLineDash([S * 0.2, S * 0.12]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    // selected gem and its neighbourhood
+    if (BL() && selected != null) {
+      let sk = null;
+      for (const [k, g] of board) if (g.id === selected) { sk = k; break; }
+      if (sk != null) {
+        const pk = pos.find(p => p[0] === sk);
+        const [sx, sy] = pk ? [pk[2], pk[3]] : cellXY(sk);
+        for (const n of nbs(sk)) {
+          const [nx, ny] = cellXY(n);
+          pathPts(ctx, hexPts(nx, ny, S * 0.96));
+          if (board.has(n)) { ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = Math.max(1.5, S * 0.05); ctx.stroke(); }
+          else if (canAdd(n)) { ctx.setLineDash([S * 0.12, S * 0.1]); ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = Math.max(1, S * 0.04); ctx.stroke(); ctx.setLineDash([]); }
+        }
+        pathPts(ctx, hexPts(sx, sy, S * 1.0));
+        ctx.strokeStyle = 'rgba(255,255,255,0.98)';
+        ctx.lineWidth = Math.max(2.5, S * 0.1);
+        ctx.stroke();
+      }
+    }
+    const ghost = (k, col, a) => {
+      const [x, y] = cellXY(k);
+      ctx.globalAlpha = a;
+      ctx.drawImage(sprites[col], x - ss / 2, y - ss / 2);
+      ctx.globalAlpha = 1;
+      pathPts(ctx, hexPts(x, y, S * 0.98));
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = Math.max(2, S * 0.08);
+      ctx.setLineDash([S * 0.22, S * 0.14]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+    if (preview && state === 'idle' && preview.add !== undefined) ghost(preview.k, preview.add, 0.8);
+    if (hint && state === 'idle' && hint.add !== undefined && now - hint.t0 < 3200) ghost(hint.k, hint.add, 0.65 + 0.2 * Math.sin((now - hint.t0) / 140));
+    if (preview && state === 'idle') mark(preview.ids, preview.k, true, preview.t0 || now);
+    if (hint && state === 'idle') {
+      if (now - hint.t0 > 3200) hint = null;
+      else mark(hint.ids, hint.k, false, hint.t0);
+    }
+    // dying gems
+    ctx.globalCompositeOperation = 'source-over';
+    dying = dying.filter(d => {
+      const t = (now - d.t0) / ((d.kind === 'pop' ? 620 : d.kind === 'fuse' ? 460 : 300) * MS);
+      if (t >= 1) return false;
+      if (t < 0) return true;
+      [d.x, d.y] = cellXY(d.k);
+      if (d.kind === 'fuse') {
+        // pulled into the balanced gem, whitening as it goes
+        const [cx, cy] = cellXY(d.to);
+        const e = ease(t);
+        const x = d.x + (cx - d.x) * e, y = d.y + (cy - d.y) * e;
+        const sc = 1 - 0.55 * e;
+        ctx.globalAlpha = 1 - t * 0.6;
+        ctx.drawImage(sprites[d.col], x - ss * sc / 2, y - ss * sc / 2, ss * sc, ss * sc);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, t * 1.4) * (1 - t * 0.5);
+        ctx.drawImage(whiteSprite, x - ss * sc / 2, y - ss * sc / 2, ss * sc, ss * sc);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+        return true;
+      }
+      if (d.kind === 'pop') {
+        const sc = 1 + 0.5 * ease(t);
+        ctx.globalAlpha = 1 - t;
+        ctx.drawImage(sprites[d.col], d.x - ss * sc / 2, d.y - ss * sc / 2, ss * sc, ss * sc);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, 1.6 * (1 - t));
+        ctx.drawImage(whiteSprite, d.x - ss * sc / 2, d.y - ss * sc / 2, ss * sc, ss * sc);
+        const gw = glows[0].width * (1.2 + t);
+        ctx.globalAlpha = 0.9 * (1 - t);
+        ctx.drawImage(glows[d.col], d.x - gw / 2, d.y - gw / 2, gw, gw);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+      } else {
+        const sc = 1 - 0.8 * ease(t);
+        ctx.globalAlpha = 1 - t;
+        ctx.save();
+        ctx.translate(d.x, d.y);
+        ctx.rotate(t * 0.9);
+        ctx.drawImage(sprites[d.col], -ss * sc / 2, -ss * sc / 2, ss * sc, ss * sc);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+      return true;
+    });
+    // rings
+    ctx.globalCompositeOperation = 'lighter';
+    rings = rings.filter(r => {
+      const t = (now - r.t0) / (650 * MS);
+      if (t >= 1) return false;
+      [r.x, r.y] = cellXY(r.k);
+      pathPts(ctx, hexPts(r.x, r.y, S * (0.9 + 1.4 * ease(t))));
+      const rc = r.col || [255, 255, 255];
+      ctx.strokeStyle = `rgba(${rc[0]},${rc[1]},${rc[2]},${0.7 * (1 - t)})`;
+      ctx.lineWidth = Math.max(1, S * 0.07 * (1 - t));
+      ctx.stroke();
+      return true;
+    });
+    // particles
+    parts = parts.filter(p => {
+      p.life += dt;
+      if (p.life > p.max) return false;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= 1 - dt * 3; p.vy *= 1 - dt * 3;
+      const a = 1 - p.life / p.max;
+      ctx.fillStyle = `rgba(${p.rgb[0]},${p.rgb[1]},${p.rgb[2]},${a})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      return true;
+    });
+    ctx.globalCompositeOperation = 'source-over';
+    // preview label
+    const lab = (state === 'idle' && preview) ? preview : null;
+    if (lab && (board.has(lab.k) || lab.add !== undefined)) {
+      const [x, y] = cellXY(lab.k);
+      const txt = lab.n ? `Clears ${lab.n}` : 'No chain';
+      label(txt, x, y - S * 1.55, lab.n > 0);
+    }
+    if (hint && state === 'idle' && (board.has(hint.k) || hint.add !== undefined)) {
+      const [x, y] = cellXY(hint.k);
+      const what = hint.add !== undefined ? 'Best spot' : 'Best tap';
+      const txt = hint.ends ? (hint.n ? `${what}: clears ${hint.n} and wins` : `${what}: wins`) : hint.n ? `${what}: clears ${hint.n}` : `No chain yet: this ${hint.add !== undefined ? 'gem' : 'tap'} sets one up`;
+      label(txt, x, y - S * 1.55, hint.n > 0 || hint.ends);
+    }
+    updateCard();
+    requestAnimationFrame(draw);
+  }
+  const balCard = document.getElementById('balCard');
+  let cardKey = '';
+  function updateCard() {
+    let sk = null;
+    if (BL() && selected != null) for (const [k, g] of board) if (g.id === selected) { sk = k; break; }
+    if (sk == null) {
+      if (selected != null && state === 'idle') selected = null;
+      if (!balCard.hidden) balCard.hidden = true;
+      cardKey = '';
+      return;
+    }
+    const info = balanceInfo(sk);
+    const sig = sk + '|' + info.c.join(',') + '|' + info.empty;
+    if (sig !== cardKey) {
+      cardKey = sig;
+      const rgb = COLS[info.col].rgb;
+      document.getElementById('balSw').style.background = `rgb(${rgb})`;
+      document.getElementById('balTitle').textContent = CNAME[info.col].charAt(0).toUpperCase() + CNAME[info.col].slice(1) + ' gem';
+      const st = document.getElementById('balStatus');
+      st.textContent = info.ok ? 'In balance' : 'Off balance';
+      st.classList.toggle('ok', info.ok);
+      document.getElementById('balCounts').innerHTML = [0, 1, 2].map(i => {
+        const c = COLS[i].rgb;
+        return `<div class="c" aria-label="${CNAME[i]} ${info.c[i]}"><b style="color:rgb(${c})">${info.c[i]}</b><span class="pips">${`<i style="background:rgb(${c})"></i>`.repeat(info.c[i])}</span></div>`;
+      }).join('');
+      document.getElementById('balNote').textContent = `Counts this gem plus the ${info.touching} touching it. ${info.empty} open space${info.empty === 1 ? '' : 's'} beside it.`;
+      document.getElementById('balAdvice').textContent = info.advice;
+    }
+    const rb = document.getElementById('balRemove');
+    const rl = mode === 'levels' ? (progress.removes > 0 ? `Delete gem · ${progress.removes} left` : 'No deletes left') : 'Remove gem';
+    if (rb.textContent !== rl) rb.textContent = rl;
+    rb.disabled = mode === 'levels' && progress.removes <= 0;
+    if (balCard.hidden) balCard.hidden = false;
+    // position above the gem, or below if there is no room
+    const [x, y] = cellXY(sk);
+    const cx = x / dpr, cy = y / dpr, r = S / dpr;
+    const cw = balCard.offsetWidth, chh = balCard.offsetHeight;
+    let left = Math.max(10, Math.min(window.innerWidth - cw - 10, cx - cw / 2));
+    let top = cy - r * 1.3 - chh;
+    if (top < areaTop) top = cy + r * 1.3;
+    if (top + chh > window.innerHeight - 10) top = Math.max(10, window.innerHeight - chh - 10);
+    balCard.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+  }
+  document.getElementById('balClose').addEventListener('click', () => { selected = null; });
+  document.getElementById('balRemove').addEventListener('click', () => {
+    if (state !== 'idle' || selected == null) return;
+    if (mode === 'levels' && progress.removes <= 0) return;
+    for (const [k, g] of board) if (g.id === selected) { selected = null; tapGem(k, performance.now(), true); break; }
+  });
+  function label(txt, x, y, good) {
+    ctx.font = `600 ${Math.round(13 * dpr)}px 'IBM Plex Sans', system-ui, sans-serif`;
+    const w = ctx.measureText(txt).width + 18 * dpr, h = 26 * dpr;
+    let lx = Math.max(6 * dpr, Math.min(W - w - 6 * dpr, x - w / 2));
+    const ly = Math.max(6 * dpr, y - h / 2);
+    ctx.fillStyle = good ? 'rgba(244,246,255,0.95)' : 'rgba(18,22,34,0.92)';
+    ctx.strokeStyle = 'rgba(170,190,235,0.3)';
+    ctx.lineWidth = dpr;
+    roundRect(lx, ly, w, h, h / 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = good ? '#05070c' : '#e9edf7';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, lx + 9 * dpr, ly + h / 2 + dpr * 0.5);
+  }
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
+  }
+
+  // ================= input =================
+  let press = null, hoverTimer = null;
+  canvas.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const k = pixToKey(e.clientX, e.clientY);
+    if (state !== 'idle' || !(board.has(k) || (BL() && canAdd(k)))) { press = null; return; }
+    canvas.setPointerCapture(e.pointerId);
+    if (autoPlay) setAutoPlay(false);
+    if (armed) armKey = board.has(k) ? k : null;
+    press = { k, id: e.pointerId, timer: null };
+    hint = null;
+    if (e.pointerType !== 'mouse') {
+      press.timer = setTimeout(() => { if (press && press.k === k && state === 'idle' && !armed) { press.held = true; preview = makePreview(k); preview.t0 = performance.now(); } }, 230);
+    }
+  });
+  canvas.addEventListener('pointermove', e => {
+    const k = pixToKey(e.clientX, e.clientY);
+    if (armed) { armKey = board.has(k) ? k : null; if (e.pointerType === 'mouse' && !press) return; }
+    if (press && e.pointerId === press.id) {
+      if (k !== press.k) { clearTimeout(press.timer); press = null; preview = null; }
+      return;
+    }
+    if (e.pointerType === 'mouse' && state === 'idle') {
+      if (!board.has(k) && !(BL() && canAdd(k))) { preview = null; clearTimeout(hoverTimer); return; }
+      if (preview && preview.k === k) return;
+      clearTimeout(hoverTimer);
+      preview = null;
+      hoverTimer = setTimeout(() => { if (state === 'idle' && (board.has(k) || (BL() && canAdd(k)))) { preview = makePreview(k); preview.t0 = performance.now(); } }, 140);
+    }
+  });
+  const end = e => {
+    if (!press || e.pointerId !== press.id) return;
+    clearTimeout(press.timer);
+    const k = pixToKey(e.clientX, e.clientY);
+    const p = press; press = null;
+    if (e.type === 'pointerup' && k === p.k) {
+      if (board.has(k)) {
+        if (mode === 'levels' && armed) { const kind = armed; setArmed(null); tapGem(k, performance.now(), kind); }
+        else if (BL()) {
+          const id = board.get(k).id;
+          selected = selected === id && !p.held ? null : id;
+          preview = null;
+        } else tapGem(k, performance.now());
+      } else if (mode === 'levels' && armed) setArmed(null);
+      else if (BL()) addGem(k, performance.now());
+    }
+    if (e.pointerType !== 'mouse') preview = null;
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !press) { preview = null; clearTimeout(hoverTimer); } });
+
+  // ================= UI =================
+  const $ = id => document.getElementById(id);
+  const tapsEl = $('taps'), parEl = $('par'), leftEl = $('left'), chainEl = $('chain'), statusEl = $('status');
+  function updateHud() {
+    $('l3').textContent = 'Gems'; $('l4').textContent = 'Best';
+    if (mode === 'levels') {
+      $('l1').textContent = 'Level'; $('l2').textContent = 'Moves'; $('l4').textContent = 'Par';
+      tapsEl.textContent = progress.cur;
+      parEl.textContent = level ? moves : '…';
+    } else if (mode === 'build') {
+      $('l1').textContent = 'Added'; $('l2').textContent = 'Cleared';
+      tapsEl.textContent = added; parEl.textContent = cleared;
+    } else {
+      $('l1').textContent = 'Taps'; $('l2').textContent = 'Par';
+      tapsEl.textContent = taps;
+      parEl.textContent = par == null ? '…' : par;
+    }
+    const cc = colourCounts(board);
+    leftEl.innerHTML = cc.map((n, i) => `<span style="color:rgb(${COLS[i].rgb})">${n}</span>`).join('<span class="sep"> </span>');
+    leftEl.setAttribute('aria-label', `${cc[0]} red, ${cc[1]} green, ${cc[2]} blue`);
+    chainEl.textContent = mode === 'levels' ? (level ? level.par : '…') : bestChain;
+    $('undo').disabled = !undoStack.length || state !== 'idle';
+    statusEl.textContent = state === 'loading' ? 'Preparing…' : state === 'settling' ? (chain ? `Clearing… ${chain}` : 'Settling…') : (mode === 'clear' && coloursLeft(board) <= 2 ? 'Solved' : 'Your move');
+    statusEl.dataset.state = state;
+  }
+  function showToast(text, now) {
+    const el = $('toast');
+    el.textContent = text;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    toast = { text, t: now };
+  }
+  let winKind = 'clear';
+  function showWin(kind) {
+    winKind = kind;
+    sound.win();
+    const w = $('win');
+    const cc = colourCounts(board);
+    const names = ['red', 'green', 'blue'].filter((_, i) => cc[i] > 0);
+    if (kind === 'clear') {
+      $('winTitle').textContent = board.size ? 'Only two colours left' : 'Every gem cleared';
+      $('winTaps').textContent = taps;
+      $('winUnit').textContent = taps === 1 ? 'tap' : 'taps';
+      $('winPar').textContent = par == null ? '' : (taps < par ? `${par - taps} under par ${par}` : taps === par ? `Level with par ${par}` : `${taps - par} over par ${par}`);
+      $('winCleared').textContent = !board.size ? `${cleared} of ${total} gems cleared by balance.`
+        : `Nothing can balance now: only ${names.join(' and ')} ${board.size === 1 ? 'is' : 'are'} left (${board.size} gem${board.size === 1 ? '' : 's'}). ${cleared} cleared by balance.`;
+      $('winUndo').textContent = 'Undo last tap';
+      $('winNew').textContent = 'New formation';
+    } else {
+      $('winTitle').textContent = board.size ? `Cleared down to ${board.size} gem${board.size === 1 ? '' : 's'}` : 'Every gem cleared';
+      $('winTaps').textContent = added;
+      $('winUnit').textContent = added === 1 ? 'gem added' : 'gems added';
+      $('winPar').textContent = `${cleared} cleared by balance · best chain ${bestChain}`;
+      $('winCleared').textContent = 'You built it up and balanced it away.';
+      $('winUndo').textContent = 'Keep building';
+      $('winNew').textContent = 'New';
+    }
+    w.hidden = false;
+  }
+  function hideWin() { $('win').hidden = true; }
+
+  function updatePicker() {
+    document.querySelectorAll('[data-pick]').forEach(b => b.setAttribute('aria-checked', String(String(pick) === b.dataset.pick)));
+  }
+  document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => {
+    pick = b.dataset.pick === 'auto' ? 'auto' : +b.dataset.pick;
+    preview = null; hint = null;
+    updatePicker();
+  }));
+  function setMode(m) {
+    if (m === mode || state === 'settling') return;
+    if (autoPlay) setAutoPlay(false);
+    if (levelJob) { clearTimeout(levelJob); levelJob = null; }
+    const was = mode;
+    mode = m;
+    hideWin();
+    $('modeLevels').setAttribute('aria-pressed', String(m === 'levels'));
+    $('modeClear').setAttribute('aria-pressed', String(m === 'clear'));
+    $('modeBuild').setAttribute('aria-pressed', String(m === 'build'));
+    $('rules').hidden = m !== 'clear';
+    $('buildRow').hidden = m === 'clear';
+    $('buildHelp').hidden = m !== 'build';
+    $('levelRow').hidden = m !== 'levels';
+    $('del').hidden = m !== 'levels';
+    $('chainPu').hidden = m !== 'levels';
+    updatePicker();
+    $('empty').hidden = m !== 'build';
+    $('play').hidden = m !== 'build';
+    $('hint').hidden = m === 'build';
+    $('new').hidden = m === 'levels';
+    $('retry').hidden = m !== 'levels';
+    $('nextLv').hidden = m !== 'levels';
+    $('new').textContent = m === 'build' ? 'New' : 'New formation';
+    preview = null; hint = null; selected = null;
+    updatePowerUps();
+    if (m === 'levels') { if (parJob) { clearTimeout(parJob); parJob = null; } par = null; layout(); loadLevel(progress.cur); return; }
+    if (state === 'loading') { state = 'idle'; newGame(); }
+    if (m === 'clear') {
+      // solve whatever is on the board now
+      if (coloursLeft(board) < 3) { newGame(); }
+      else {
+        taps = 0; cleared = 0; bestChain = 0; total = board.size; undoStack = [];
+        sockets = new Set([...sockets].filter(k => board.has(k)).concat([...board.keys()]));
+        startPar();
+      }
+    } else {
+      par = null; if (parJob) clearTimeout(parJob);
+      added = 0; cleared = 0;
+    }
+    layout();
+    updateHud();
+  }
+  $('modeClear').addEventListener('click', () => setMode('clear'));
+  $('modeBuild').addEventListener('click', () => setMode('build'));
+  $('play').addEventListener('click', () => {
+    if (autoPlay) { setAutoPlay(false); return; }
+    if (state === 'settling') return;
+    hideWin();
+    setAutoPlay(true);
+    nextAt = performance.now() - 1000;
+  });
+  $('empty').addEventListener('click', () => {
+    if (autoPlay) setAutoPlay(false);
+    if (state === 'settling') return;
+    undoStack.push(snapshot());
+    for (const [k, g] of board) { dying.push({ k, col: g.col, t0: performance.now(), kind: 'tap' }); }
+    board = new Map();
+    sockets = new Set();
+    for (let q = -4; q <= 4; q++) for (let r = -4; r <= 4; r++) if (Math.abs(q + r) <= 4) sockets.add(K(q, r));
+    tvx = 0; tvy = 0;
+    hint = null; preview = null; selected = null;
+    updateHud();
+  });
+  updatePicker();
+
+  function updateSoundBtn() {
+    const b = $('soundBtn'), lv = sound.level;
+    b.setAttribute('aria-pressed', String(lv !== 'off'));
+    b.setAttribute('aria-label', lv === 'all' ? 'Music and sounds on (tap for sounds only)' : lv === 'fx' ? 'Sounds only (tap to mute)' : 'Muted (tap for music and sounds)');
+    b.title = lv === 'all' ? 'Music + sounds' : lv === 'fx' ? 'Sounds only' : 'Muted';
+    b.querySelector('.waves').style.display = lv === 'off' ? 'none' : '';
+    b.querySelector('.mute').style.display = lv === 'off' ? '' : 'none';
+    b.querySelector('.note').style.display = lv === 'all' ? '' : 'none';
+  }
+  $('soundBtn').addEventListener('click', () => { sound.cycle(); updateSoundBtn(); });
+  updateSoundBtn();
+  $('undo').addEventListener('click', undo);
+  $('hint').addEventListener('click', () => showHint(performance.now()));
+  $('new').addEventListener('click', () => newGame());
+  $('winNew').addEventListener('click', () => {
+    if (winKind === 'build') { hideWin(); $('empty').click(); }
+    else if (winKind === 'level') loadLevel(level.L + 1);
+    else if (winKind === 'fail') loadLevel(level.L);
+    else newGame();
+  });
+  $('winUndo').addEventListener('click', () => {
+    if (winKind === 'build') hideWin();
+    else if (winKind === 'level') loadLevel(level.L);
+    else { hideWin(); undo(); }
+  });
+  $('lvPrev').addEventListener('click', () => loadLevel(progress.cur - 1));
+  $('lvNext').addEventListener('click', () => loadLevel(progress.cur + 1));
+  $('nextLv').addEventListener('click', () => loadLevel(progress.cur + 1));
+  $('retry').addEventListener('click', () => loadLevel(progress.cur));
+  // testing: skip ahead or jump to any level (unlocks it, awards nothing)
+  function goToLevel(n) {
+    n = Math.max(1, Math.min(999, Math.floor(n) || 1));
+    progress.unlocked = Math.max(progress.unlocked, n);
+    saveProgress();
+    loadLevel(n);
+  }
+  $('skipLv').addEventListener('click', () => { if (state !== 'settling') goToLevel(progress.cur + 1); });
+  const gotoNow = () => { const v = parseInt($('gotoLv').value, 10); if (v && state !== 'settling') { $('gotoLv').blur(); goToLevel(v); $('gotoLv').value = ''; } };
+  $('gotoBtn').addEventListener('click', gotoNow);
+  $('gotoLv').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); gotoNow(); } });
+  $('del').addEventListener('click', () => { if (state === 'idle') setArmed(armed === 'del' ? null : 'del'); });
+  $('chainPu').addEventListener('click', () => { if (state === 'idle') setArmed(armed === 'chain' ? null : 'chain'); });
+  $('modeLevels').addEventListener('click', () => setMode('levels'));
+
+  const dockPanel = $('dockPanel'), dockOpen = $('dockOpen'), dockClose = $('dockClose');
+  function setDock(open, focus) {
+    dockPanel.hidden = !open;
+    dockOpen.hidden = open;
+    dockClose.setAttribute('aria-expanded', String(open));
+    dockOpen.setAttribute('aria-expanded', String(open));
+    try { localStorage.setItem('hexbal-dock', open ? 'open' : 'closed'); } catch (e) { /* storage unavailable */ }
+    layout();
+    if (focus) (open ? dockClose : dockOpen).focus();
+  }
+  dockClose.addEventListener('click', () => setDock(false, true));
+  dockOpen.addEventListener('click', () => setDock(true, true));
+  try { if (localStorage.getItem('hexbal-dock') === 'closed') { dockPanel.hidden = true; dockOpen.hidden = false; dockClose.setAttribute('aria-expanded', 'false'); dockOpen.setAttribute('aria-expanded', 'false'); } } catch (e) { /* storage unavailable */ }
+
+  window.addEventListener('resize', () => layout());
+
+  // test hooks
+  window.__hex = {
+    get board() { return board; }, clusters: () => components(board).length, get state() { return state; }, get taps() { return taps; }, get par() { return par; },
+    tapKey(k) { tapGem(k, performance.now()); },
+    get hint() { return hint; }, get selected() { return selected; },
+    addKey(k) { addGem(k, performance.now()); }, setMode, K, nbs,
+    setPick(v) { pick = v; updatePicker(); }, get added() { return added; }, get autoPlay() { return autoPlay; },
+    bestTap() { let best = null, bp = -1; for (const k of board.keys()) { const r = simulate(board, k); if (r.popped.length > bp) { bp = r.popped.length; best = k; } } return { k: best, n: bp }; },
+    cellXY: k => cellXY(k).map(v => v / dpr),
+    newGame, loadLevel, get level() { return level; }, get moves() { return moves; }, get progress() { return progress; },
+    bestPlacement, makeLevelBoard, solveGen, levelSpec, targetPar, get armed() { return armed; },
+  };
+
+  newGame(seed);
+  setMode('levels');
+  updatePicker();
+  requestAnimationFrame(draw);
+})();
+
+</script>
+</body>
+</html>
