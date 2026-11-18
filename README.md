@@ -9,8 +9,11 @@ A small arcade of browser games, made for touch screens. Each game is a single s
 | Vector Front | [`vector-front/`](vector-front/) | First-person wireframe tank battle with a TV-static camera look. |
 | Naughts and Crosses | [`naughts-and-crosses/`](naughts-and-crosses/) | The classic, against an easy or unbeatable computer, or two players. |
 | Hex Colour Balance | [`hex-colour-balance/`](hex-colour-balance/) | Place red, green and blue gems until each hexagon balances to white, across endless levels. |
+| Massive Armies | [`massive-armies/`](massive-armies/) | 3D battle simulation with thousands of soldiers: formations, a tech tree and a 25-battle campaign. Uses WebGPU where available. |
 
 The root `index.html` is a landing page linking to all of them.
+
+Massive Armies is built from its own repository, [Crunchy000/Battles](https://github.com/Crunchy000/Battles); `massive-armies/index.html` is a copy of that build. Its sounds include "Oculus Audio Pack 01" (CC BY 4.0), credited in the game's sound board, alongside CC0 recordings listed in the Battles README.
 
 ## Controls
 
