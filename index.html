@@ -54,7 +54,7 @@
       <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
         <defs><linearGradient id="p1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060a22"/><stop offset="1" stop-color="#3a1d5c"/></linearGradient></defs>
         <rect width="200" height="150" fill="url(#p1)"/>
-        <g id="cube"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#3b5bdb"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g>
+        <defs><g id="cube"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#3b5bdb"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g></defs>
         <g transform="translate(100 40)"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#ffd43b"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g>
         <use href="#cube" x="86" y="64"/><g transform="translate(114 64)"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#ffd43b"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g>
         <use href="#cube" x="72" y="88"/><use href="#cube" x="100" y="88"/><use href="#cube" x="128" y="88"/>
@@ -79,14 +79,22 @@
       <span class="meta"><h2>Vector Front</h2><p>A first-person wireframe tank battle, seen through a crackly remote camera feed.</p><span class="tag">Shooter</span></span>
     </a>
 
-    <a class="card" href="naughts-and-crosses/">
+    <a class="card" href="dots-and-boxes/">
       <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
-        <rect width="200" height="150" fill="#f6f3ee"/>
-        <g stroke="#2b2a28" stroke-width="4" stroke-linecap="round"><path d="M80 25 V125 M120 25 V125 M50 58 H150 M50 92 H150"/></g>
-        <g stroke="#c8452c" stroke-width="6" stroke-linecap="round"><path d="M57 32 L73 50 M73 32 L57 50 M127 66 L143 84 M143 66 L127 84 M57 100 L73 118 M73 100 L57 118"/></g>
-        <g fill="none" stroke="#1f6f8b" stroke-width="5"><circle cx="100" cy="41" r="10"/><circle cx="100" cy="75" r="10"/></g>
+        <defs><linearGradient id="d1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a1d45"/><stop offset="1" stop-color="#101a33"/></linearGradient></defs>
+        <rect width="200" height="150" fill="url(#d1)"/>
+        <rect x="44" y="19" width="32" height="32" rx="5" fill="#ff6b6b" opacity=".9"/><rect x="84" y="59" width="32" height="32" rx="5" fill="#4dabf7" opacity=".9"/><rect x="124" y="59" width="32" height="32" rx="5" fill="#4dabf7" opacity=".9"/>
+        <g stroke-width="6" stroke-linecap="round">
+          <g stroke="#ff6b6b"><path d="M40 15 H80 M40 55 H80 M40 15 V55 M80 15 V55 M120 95 H160 M40 95 V135"/></g>
+          <g stroke="#4dabf7"><path d="M80 55 H120 M80 95 H120 M80 55 V95 M120 55 V95 M120 55 H160 M160 55 V95 M80 135 H120"/></g>
+          <path d="M120 95 H160" stroke="#4dabf7"/>
+        </g>
+        <g fill="#f4f0ff"><circle cx="40" cy="15" r="4"/><circle cx="80" cy="15" r="4"/><circle cx="120" cy="15" r="4"/><circle cx="160" cy="15" r="4"/>
+          <circle cx="40" cy="55" r="4"/><circle cx="80" cy="55" r="4"/><circle cx="120" cy="55" r="4"/><circle cx="160" cy="55" r="4"/>
+          <circle cx="40" cy="95" r="4"/><circle cx="80" cy="95" r="4"/><circle cx="120" cy="95" r="4"/><circle cx="160" cy="95" r="4"/>
+          <circle cx="40" cy="135" r="4"/><circle cx="80" cy="135" r="4"/><circle cx="120" cy="135" r="4"/><circle cx="160" cy="135" r="4"/></g>
       </svg></span>
-      <span class="meta"><h2>Naughts and Crosses</h2><p>The classic, against an easy or unbeatable computer, or a friend.</p><span class="tag">Classic</span></span>
+      <span class="meta"><h2>Dots and Boxes</h2><p>Two players take turns joining dots. Close a box to claim it and go again.</p><span class="tag">2 players</span></span>
     </a>
 
     <a class="card" href="hex-colour-balance/">
