@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Naughts and Crosses</title>
+<style>
+  :root { --bg:#f6f3ee; --ink:#2b2a28; --line:#2b2a28; --x:#c8452c; --o:#1f6f8b; --card:#fffdf9; --mute:#7a756c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1d1c1a; --ink:#f1ede6; --line:#f1ede6; --x:#ff7a5c; --o:#5cc4e6; --card:#262522; --mute:#a39d92; }
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--bg); color:var(--ink); font-family:Georgia,'Times New Roman',serif; }
+  main { width:min(92vw,420px); padding:20px 0; text-align:center; }
+  h1 { font-size:1.6rem; margin:0 0 4px; letter-spacing:.02em; }
+  .modes { display:flex; gap:8px; justify-content:center; margin:12px 0; flex-wrap:wrap; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  .chip { border:1.5px solid var(--line); background:transparent; border-radius:999px; padding:6px 14px; font-size:.9rem; }
+  .chip[aria-pressed="true"] { background:var(--ink); color:var(--bg); }
+  .score { display:flex; justify-content:space-around; margin:10px 0; font-size:.95rem; color:var(--mute); }
+  .score b { display:block; font-size:1.5rem; color:var(--ink); }
+  #status { min-height:1.6em; font-size:1.15rem; margin:8px 0 12px; }
+  #board { display:grid; grid-template-columns:repeat(3,1fr); aspect-ratio:1; background:var(--card);
+           border-radius:14px; padding:10px; gap:0; position:relative; }
+  .cell { background:transparent; border:none; font-size:clamp(2.4rem,14vw,4.2rem); font-weight:700; aspect-ratio:1;
+          display:flex; align-items:center; justify-content:center; line-height:1; }
+  .cell:nth-child(3n+1), .cell:nth-child(3n+2) { border-right:3px solid var(--line); }
+  .cell:nth-child(-n+6) { border-bottom:3px solid var(--line); }
+  .cell.X { color:var(--x); } .cell.O { color:var(--o); }
+  .cell.win { animation:pop .5s ease infinite alternate; }
+  .cell:focus-visible, .chip:focus-visible, .reset:focus-visible { outline:3px solid var(--o); outline-offset:2px; }
+  @keyframes pop { to { transform:scale(1.15); } }
+  .reset { margin-top:16px; border:none; background:var(--ink); color:var(--bg); border-radius:10px; padding:10px 22px; font-size:1rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Naughts &amp; Crosses</h1>
+  <div class="modes" role="group" aria-label="Game mode">
+    <button class="chip" data-mode="easy" aria-pressed="false">Easy</button>
+    <button class="chip" data-mode="hard" aria-pressed="true">Unbeatable</button>
+    <button class="chip" data-mode="two" aria-pressed="false">Two players</button>
+  </div>
+  <div class="score">
+    <div>Crosses<b id="sx">0</b></div>
+    <div>Draws<b id="sd">0</b></div>
+    <div>Naughts<b id="so">0</b></div>
+  </div>
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="board" role="grid" aria-label="Game board"></div>
+  <button class="reset" id="reset">New game</button>
+</main>
+<script>
+(() => {
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const score = { X:0, O:0, D:0 };
+  let mode = 'hard', board, turn, over, startX = true, locked = false;
+
+  const cells = [...Array(9)].map((_, i) => {
+    const b = document.createElement('button');
+    b.className = 'cell'; b.setAttribute('aria-label', `Square ${i+1}, empty`);
+    b.addEventListener('click', () => play(i));
+    boardEl.appendChild(b); return b;
+  });
+
+  const winner = (b) => {
+    for (const l of LINES) if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) return { p:b[l[0]], line:l };
+    return null;
+  };
+
+  function newGame() {
+    board = Array(9).fill(''); over = false; locked = false;
+    // in one-player mode, the human is X and the computer is O; alternate who starts
+    turn = 'X';
+    cells.forEach((c, i) => { c.textContent = ''; c.className = 'cell'; c.setAttribute('aria-label', `Square ${i+1}, empty`); });
+    if (mode !== 'two' && !startX) { setStatus('Computer starts…'); locked = true; setTimeout(computerMove, 450); }
+    else setStatus(mode === 'two' ? 'Crosses to play' : 'Your turn (✕)');
+    startX = !startX;
+  }
+
+  function setStatus(t) { statusEl.textContent = t; }
+
+  function place(i) {
+    board[i] = turn;
+    const mark = turn === 'X' ? '✕' : '◯';
+    cells[i].textContent = mark; cells[i].classList.add(turn);
+    cells[i].setAttribute('aria-label', `Square ${i+1}, ${turn === 'X' ? 'cross' : 'naught'}`);
+    const w = winner(board);
+    if (w) {
+      over = true; score[w.p]++; w.line.forEach(k => cells[k].classList.add('win'));
+      if (mode === 'two') setStatus(`${w.p === 'X' ? 'Crosses' : 'Naughts'} win!`);
+      else setStatus(w.p === 'X' ? 'You win! 🎉' : 'Computer wins.');
+    } else if (board.every(Boolean)) {
+      over = true; score.D++; setStatus("It's a draw.");
+    } else {
+      turn = turn === 'X' ? 'O' : 'X';
+      setStatus(mode === 'two' ? `${turn === 'X' ? 'Crosses' : 'Naughts'} to play` : (turn === 'X' ? 'Your turn (✕)' : 'Computer thinking…'));
+    }
+    document.getElementById('sx').textContent = score.X;
+    document.getElementById('so').textContent = score.O;
+    document.getElementById('sd').textContent = score.D;
+  }
+
+  function play(i) {
+    if (over || locked || board[i]) return;
+    if (mode !== 'two' && turn !== 'X') return;
+    place(i);
+    if (!over && mode !== 'two') { locked = true; setTimeout(computerMove, 400); }
+  }
+
+  function computerMove() {
+    if (over) return;
+    const empty = board.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+    let move;
+    if (mode === 'easy') {
+      move = (Math.random() < 0.3 ? null : findWinOrBlock()) ?? empty[Math.floor(Math.random() * empty.length)];
+    } else move = best();
+    locked = false;
+    place(move);
+  }
+
+  function findWinOrBlock() {
+    for (const p of ['O', 'X'])
+      for (const l of LINES) {
+        const vals = l.map(k => board[k]);
+        if (vals.filter(v => v === p).length === 2 && vals.includes('')) return l[vals.indexOf('')];
+      }
+    return null;
+  }
+
+  function minimax(b, p, depth) {
+    const w = winner(b);
+    if (w) return w.p === 'O' ? 10 - depth : depth - 10;
+    if (b.every(Boolean)) return 0;
+    let bestScore = p === 'O' ? -Infinity : Infinity;
+    for (let i = 0; i < 9; i++) if (!b[i]) {
+      b[i] = p;
+      const s = minimax(b, p === 'O' ? 'X' : 'O', depth + 1);
+      b[i] = '';
+      bestScore = p === 'O' ? Math.max(bestScore, s) : Math.min(bestScore, s);
+    }
+    return bestScore;
+  }
+
+  function best() {
+    let bs = -Infinity, moves = [];
+    for (let i = 0; i < 9; i++) if (!board[i]) {
+      board[i] = 'O'; const s = minimax(board, 'X', 1); board[i] = '';
+      if (s > bs) { bs = s; moves = [i]; } else if (s === bs) moves.push(i);
+    }
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+
+  document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x === c));
+    mode = c.dataset.mode; startX = true; newGame();
+  }));
+  document.getElementById('reset').addEventListener('click', newGame);
+  newGame();
+})();
+</script>
+</body>
+</html>
