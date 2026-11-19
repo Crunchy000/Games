@@ -21,11 +21,11 @@ The Bear & Bean Games is a small arcade of browser games, made for touch screens
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
 | Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |
 | Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: swap gummies, make rockets, bombs and rainbow orbs, and beat level goals before your moves run out. |
-| Dots and Boxes | [`dots-and-boxes/`](dots-and-boxes/) | Two-player pass-and-play: join dots, close boxes, most boxes wins. |
+| Bear vs Bean (Dots and Boxes) | [`dots-and-boxes/`](dots-and-boxes/) | Two-player pass-and-play: Bear and Bean take turns joining dots; close a box to stamp it with a paw print or a bean and go again. Renamable players, win tally, undo. |
 
 Ideas for future games are in [`TODO.md`](TODO.md).
 
-The root `index.html` is a landing page with a featured carousel and a scrolling row of games for each category (Word & number, Puzzle, Action & Arcade, Two players). To add a game, add its folder, a `<template id="art-<folder>">` thumbnail and an entry in the `GAMES`/`CATS` lists in that file.
+The root `index.html` is a landing page with a featured carousel and a scrolling row of games for each category (Word & number, Puzzle, Action & Arcade, Bear vs Bean). To add a game, add its folder, a `<template id="art-<folder>">` thumbnail and an entry in the `GAMES`/`CATS` lists in that file.
 
 
 ## Controls

@@ -2,11 +2,13 @@
    - install: download every page and icon in one go (the install only succeeds if all of them were saved)
    - fetch: answer from the saved copy straight away, then quietly refresh it in the background
    - activate: delete the copies saved by older versions */
-const VERSION = 'games-c2ca3c227799';
+const VERSION = 'games-7f389b116fc6';
 const FILES = [
   './',
   './manifest.webmanifest',
   './icons/apple-touch-icon.png',
+  './icons/bean.png',
+  './icons/bear.png',
   './icons/favicon-32.png',
   './icons/icon-192.png',
   './icons/icon-512.png',

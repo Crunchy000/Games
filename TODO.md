@@ -10,4 +10,4 @@ non-violent.
 - [ ] **Inspired by Cut the Rope:** a physics puzzle; cut ropes to swing a treat into a hungry creature's mouth, collecting stars on the way.
 - [x] ~~**Inspired by Helix Jump:**~~ Covered by **Stack Drop** (hold to smash down a spinning ring tower).
   Original idea: a ball bounces down a spinning tower; drag to turn the tower so the ball drops through the gaps and avoids the coloured segments.
-- [ ] **Inspired by Hungry Hippos (2 players):** pass-and-play or same-screen for two; each player taps their side to make their creature gobble rolling marbles, and the most marbles wins.
+- [ ] **Bear vs Bean: inspired by Hungry Hippos (2 players):** same-screen for two; Bear and Bean sit at opposite ends of the table and tap to gobble rolling snacks, and the most snacks wins.

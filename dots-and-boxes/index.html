@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#120f1f">
+<meta name="theme-color" content="#1e1610">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
@@ -11,17 +11,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
-<title>Dots and Boxes</title>
+<title>Bear vs Bean · Dots &amp; Boxes</title>
 <style>
   :root {
-    --bg1:#1b1530; --bg2:#0d0b17; --card:rgba(255,255,255,.06); --card-b:rgba(255,255,255,.10);
+    --bg1:#2a1d14; --bg2:#120c08; --card:rgba(255,255,255,.06); --card-b:rgba(255,255,255,.10);
     --ink:#f4f0ff; --mute:#a59fc0; --guide:rgba(255,255,255,.09); --dot:#f4f0ff;
-    --p0:#ff6b6b; --p0-glow:rgba(255,107,107,.45); --p1:#4dabf7; --p1-glow:rgba(77,171,247,.45); --accent:#ffd43b;
+    --p0:#e8994a; --p0-glow:rgba(232,153,74,.45); --p1:#ff5fa2; --p1-glow:rgba(255,95,162,.45); --accent:#ffd43b;
   }
   @media (prefers-color-scheme: light) {
-    :root { --bg1:#fff7ef; --bg2:#eef3ff; --card:rgba(255,255,255,.78); --card-b:rgba(30,20,60,.10);
+    :root { --bg1:#fff5e6; --bg2:#fbe9f1; --card:rgba(255,255,255,.78); --card-b:rgba(30,20,60,.10);
             --ink:#1f1a33; --mute:#6c6585; --guide:rgba(30,20,60,.10); --dot:#2a2440;
-            --p0:#f03e3e; --p0-glow:rgba(240,62,62,.3); --p1:#1c7ed6; --p1-glow:rgba(28,126,214,.3); --accent:#f08c00; }
+            --p0:#b8661c; --p0-glow:rgba(184,102,28,.3); --p1:#e0337f; --p1-glow:rgba(224,51,127,.3); --accent:#f08c00; }
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { margin:0; min-height:100%; }
@@ -34,6 +34,11 @@
   header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   h1 { margin:0; font-size:1.55rem; font-weight:900; letter-spacing:-.02em; }
   h1 .a { color:var(--p0); } h1 .b { color:var(--p1); }
+  h1 .vs { font-size:.7em; color:var(--mute); font-weight:800; }
+  h1 .sub { display:block; font-size:.72rem; color:var(--mute); font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-top:1px; }
+  .sc .av { width:30px; height:30px; border-radius:50%; flex:none; border:2px solid var(--p0); background:#fff; }
+  .sc.p1 .av { border-color:var(--p1); }
+  .mark { pointer-events:none; }
   .head-btns { display:flex; gap:8px; }
   .icon-btn { width:40px; height:40px; border-radius:12px; border:1px solid var(--card-b); background:var(--card); color:var(--ink);
               display:grid; place-items:center; cursor:pointer; font-size:1.05rem; backdrop-filter:blur(8px); }
@@ -97,7 +102,7 @@
 <canvas id="confetti"></canvas>
 <main>
   <header>
-    <h1><span class="a">Dots</span> &amp; <span class="b">Boxes</span></h1>
+    <h1><span class="a">Bear</span> <small class="vs">vs</small> <span class="b">Bean</span><small class="sub">Dots &amp; Boxes</small></h1>
     <div class="head-btns">
       <a class="icon-btn" href="../" aria-label="All games" title="All games" style="text-decoration:none;display:grid;place-items:center">⌂</a>
       <button class="icon-btn" id="undo" aria-label="Undo last line" title="Undo">↶</button>
@@ -111,20 +116,20 @@
   </div>
 
   <div class="scores">
-    <div class="sc p0" id="card0"><div class="row"><span class="sw"></span><span class="name" id="name0" contenteditable="true" spellcheck="false" enterkeyhint="done" aria-label="Player 1 name">Player 1</span></div><div class="n" id="s0">0</div><div class="wins" id="w0"></div></div>
-    <div class="sc p1" id="card1"><div class="row"><span class="sw"></span><span class="name" id="name1" contenteditable="true" spellcheck="false" enterkeyhint="done" aria-label="Player 2 name">Player 2</span></div><div class="n" id="s1">0</div><div class="wins" id="w1"></div></div>
+    <div class="sc p0" id="card0"><div class="row"><img class="av" src="../icons/bear.png" alt=""><span class="name" id="name0" contenteditable="true" spellcheck="false" enterkeyhint="done" aria-label="Bear player name">Bear</span></div><div class="n" id="s0">0</div><div class="wins" id="w0"></div></div>
+    <div class="sc p1" id="card1"><div class="row"><img class="av" src="../icons/bean.png" alt=""><span class="name" id="name1" contenteditable="true" spellcheck="false" enterkeyhint="done" aria-label="Bean player name">Bean</span></div><div class="n" id="s1">0</div><div class="wins" id="w1"></div></div>
   </div>
 
   <div id="status" role="status" aria-live="polite"></div>
   <div id="left"></div>
 
-  <div class="board-wrap"><svg id="board" aria-label="Dots and boxes board"></svg></div>
+  <div class="board-wrap"><svg id="board" aria-label="Bear vs Bean dots and boxes board"></svg></div>
 
   <div class="actions">
     <button class="btn primary" id="newGame">New game</button>
     <button class="btn ghost-btn" id="resetWins">Reset wins</button>
   </div>
-  <p class="hint">Tap between two dots to draw a line. Close a box to claim it and go again.<br>Tap a name to rename · Who starts swaps every game</p>
+  <p class="hint">Bear and Bean take turns joining two dots. Close a box to claim it and go again.<br>Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -136,10 +141,11 @@
   const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
 
   let n = 4, Hz, Vt, Bx, turn = 0, starter = 0, score = [0, 0], hist = [], over = false, lastWinner = null, muted = false, extra = false;
-  let names = ['Player 1', 'Player 2'], wins = [0, 0];
+  const DEFAULT_NAMES = ['Bear', 'Bean'];
+  let names = DEFAULT_NAMES.slice(), wins = [0, 0];
   try {
     const s = JSON.parse(localStorage.getItem('dab-state') || '{}');
-    if (s.names) names = s.names; if (s.wins) wins = s.wins; if ([3, 4, 5, 6].includes(s.n)) n = s.n; muted = !!s.muted;
+    if (s.names) names = s.names.map((x, i) => x === `Player ${i + 1}` ? DEFAULT_NAMES[i] : x); if (s.wins) wins = s.wins; if ([3, 4, 5, 6].includes(s.n)) n = s.n; muted = !!s.muted;
   } catch (e) {}
   const save = () => { try { localStorage.setItem('dab-state', JSON.stringify({ names, wins, n, muted })); } catch (e) {} };
 
@@ -229,6 +235,15 @@
   function drawBox(r, c, p) {
     const g = el('g', { class: `box p${p}` }, gBox);
     el('rect', { x: X(c) + 9, y: Y(r) + 9, width: S - 18, height: S - 18, rx: 12 }, g);
+    const cx = X(c) + S / 2, cy = Y(r) + S / 2, k = (S - 18) / 60, m = el('g', { class: 'mark', transform: `translate(${cx} ${cy}) scale(${k})`, fill: 'rgba(255,255,255,.85)' }, g);
+    if (p === 0) {   // paw print
+      el('ellipse', { cx: 0, cy: 6, rx: 11, ry: 9 }, m);
+      [[-12, -6, 4.2], [-4.5, -12, 4.6], [4.5, -12, 4.6], [12, -6, 4.2]].forEach(([x, y, rr]) => el('ellipse', { cx: x, cy: y, rx: rr, ry: rr * 1.15 }, m));
+    } else {         // a little bean with a shine
+      el('path', { d: 'M-6 -15C6 -19 15 -9 12 3C10 12 2 17 -6 15C-14 13 -15 4 -10 -3C-7 -7 -14 -12 -6 -15Z' }, m);
+      el('ellipse', { cx: -2, cy: -8, rx: 4, ry: 2.2, fill: 'rgba(255,255,255,.9)', transform: 'rotate(-25 -2 -8)' }, m);
+      el('circle', { cx: -2, cy: 3, r: 1.6, fill: 'rgba(80,20,50,.75)' }, m); el('circle', { cx: 5, cy: 2, r: 1.6, fill: 'rgba(80,20,50,.75)' }, m);
+    }
     return g;
   }
 
@@ -289,7 +304,7 @@
     ne.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); ne.blur(); } else if (ne.textContent.length >= 14 && ev.key.length === 1) ev.preventDefault(); });
     ne.addEventListener('focus', () => { const r = document.createRange(); r.selectNodeContents(ne); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
     ne.addEventListener('blur', () => {
-      names[p] = ne.textContent.replace(/\s+/g, ' ').trim().slice(0, 14) || `Player ${p + 1}`; save();
+      names[p] = ne.textContent.replace(/\s+/g, ' ').trim().slice(0, 14) || DEFAULT_NAMES[p]; save();
       render();
     });
   }
