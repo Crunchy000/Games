@@ -59,6 +59,10 @@ const sSplash = () => { noise(.6, .3, 1400, .5); tone(600, .25, 'sine', .03, .05
 const sBonk = () => { tone(520, .1, 'square', .04, 0, -200); tone(780, .15, 'triangle', .04, .08, -300); };
 const sTwig = () => { tone(880, .07, 'triangle', .04); tone(1320, .1, 'triangle', .04, .06); };
 const sWin = () => [0, 4, 7, 12, 16, 19].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .22, 'triangle', .06, i * .08));
+const sClimb = () => [0, 3, 5, 7].forEach((s, i) => tone(392 * Math.pow(2, s / 12), .07, 'triangle', .035, i * .06));
+const sGiggle = () => [0, 1, 2, 3].forEach(i => tone(1200 + (i % 2) * 300, .06, 'sine', .035, i * .07));
+const sThrow = () => tone(700, .12, 'triangle', .025, 0, -300);
+const sSnack = () => { tone(660, .06, 'square', .025); tone(990, .09, 'triangle', .04, .05); };
 const sNap = () => [7, 4, 0].forEach((s, i) => tone(392 * Math.pow(2, s / 12), .35, 'triangle', .05, i * .2));
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
@@ -72,8 +76,8 @@ const TYPES = {
   pine: { bark: '#7a4a2a', barkD: '#5c3820', mark: '#40261a', leaf: ['#2f7a4a', '#25663c', '#3f9460'], hp: .65, shape: 'pine' },
 };
 let state = 'title', lvl = 1, score = 0, timeLeft = 40, tStart = 40, dam = 0, damNeed = 3, trees = [], parts = [], pops = [], twigs = [], time = 0, endT = 0, shake = 0, clearInfo = null;
-let bv;
-function makeBeaver() { return { x: 40, face: 1, vx: 0, walk: 0, chew: 0, cd: 0, dazed: 0, blink: 0 }; }
+let bv, squirrels = [], nuts = [], snacks = [], birds = [], sqT = 3, birdT = 6;
+function makeBeaver() { return { x: 40, face: 1, vx: 0, walk: 0, chew: 0, cd: 0, dazed: 0, blink: 0, climb: null }; }
 function setupLevel() {
   const n = Math.min(8, 3 + Math.floor(lvl / 2)), types = lvl < 2 ? ['birch'] : lvl < 4 ? ['birch', 'oak'] : ['birch', 'oak', 'pine'];
   trees = []; parts = []; pops = []; twigs = []; dam = 0; damNeed = Math.min(5, 2 + Math.floor(lvl / 2));
@@ -82,13 +86,14 @@ function setupLevel() {
     const type = pick(types), w = Math.round(rnd(14, 18) + Math.min(14, lvl * 1.4) * Math.random()), h = rnd(G * .42, G * .6);
     const x = left + span * (n === 1 ? .5 : i / (n - 1)) + rnd(-6, 6);
     const hp = Math.round(w * TYPES[type].hp + 2);
-    trees.push({ x, w, h, type, hp, max: hp, st: 'stand', ang: 0, av: 0, dir: 1, fade: 1, sway: rnd(0, 6), marks: Array.from({ length: 6 }, () => [rnd(.15, .95), rnd(-.4, .4), rnd(.2, .5)]) });
+    trees.push({ apple: Math.random() < .35, x, w, h, type, hp, max: hp, st: 'stand', ang: 0, av: 0, dir: 1, fade: 1, sway: rnd(0, 6), marks: Array.from({ length: 6 }, () => [rnd(.15, .95), rnd(-.4, .4), rnd(.2, .5)]) });
   }
-  bv = makeBeaver();
+  if (!trees.some(t => t.apple)) trees[Math.floor(Math.random() * trees.length)].apple = true;
+  bv = makeBeaver(); squirrels = []; nuts = []; snacks = []; birds = []; sqT = 2.5; birdT = 5;
   tStart = timeLeft = Math.round(18 + n * 7 - Math.min(14, lvl * 1.2));
   twigT = 4;
 }
-let twigT = 4;
+let twigT = 4, seenSquirrel = false;
 function startGame() { lvl = 1; score = 0; state = 'play'; setupLevel(); msg('Level 1', 1.4); tone(440, .12, 'triangle', .05, 0, 220); }
 let banner = null;
 const msg = (t, life = 1.2) => banner = { t, life };
@@ -106,10 +111,12 @@ cv.addEventListener('pointerdown', e => {
   if (state === 'clear' && endT > 1) { lvl++; setupLevel(); state = 'play'; msg('Level ' + lvl, 1.4); return; }
   if (state !== 'play') return;
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
-  drag = { id: e.pointerId, sx: e.clientX, x: e.clientX, t: performance.now(), moved: false, held: false };
+  drag = { id: e.pointerId, sx: e.clientX, x: e.clientX, sy: e.clientY, t: performance.now(), moved: false, held: false, climbed: false };
 });
 cv.addEventListener('pointermove', e => {
   if (!drag || drag.id !== e.pointerId) return; drag.x = e.clientX;
+  const r = cv.getBoundingClientRect(), up = (drag.sy - e.clientY) * H / r.height, side = Math.abs(drag.x - drag.sx) * W / r.width;
+  if (!drag.climbed && up > 28 && up > side * 1.2) { drag.climbed = true; drag.moved = true; drag.sx = drag.x; tryClimb(); return; }
   if (Math.abs(drag.x - drag.sx) > 12) drag.moved = true;
 });
 function endDrag(e) {
@@ -118,11 +125,12 @@ function endDrag(e) {
   drag = null;
 }
 ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, endDrag));
-const KM = { ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ' ': 'chew', ArrowDown: 'chew', ArrowUp: 'chew', Enter: 'chew' };
+const KM = { ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ' ': 'chew', ArrowDown: 'chew', Enter: 'chew', ArrowUp: 'climb', w: 'climb' };
 addEventListener('keydown', e => {
   const k = KM[e.key]; if (!k) return; e.preventDefault(); audio();
   if (canStart()) { startGame(); return; }
   if (state === 'clear' && endT > 1) { lvl++; setupLevel(); state = 'play'; msg('Level ' + lvl, 1.4); return; }
+  if (k === 'climb') { tryClimb(); return; }
   if (k === 'chew' && !keys.chew) chomp(true);
   keys[k] = 1;
 });
@@ -138,8 +146,21 @@ function target() {
   }
   return best;
 }
+function tryClimb() {
+  if (state !== 'play' || bv.dazed > 0 || bv.climb) return;
+  const t = target(); if (!t) { tone(300, .05, 'triangle', .02); return; }
+  bv.face = t.x >= bv.x ? 1 : -1; bv.x = t.x - bv.face * (t.w / 2 + 18);
+  bv.climb = { tree: t, y: 0, phase: 'up', hold: 0 }; sClimb();
+}
+function reachTop(t) {
+  let got = false;
+  if (t.apple) { t.apple = false; got = true; timeLeft += 5; score += 50; pops.push({ t: 'Apple! +5s', x: t.x, y: G - t.h - 4, life: 1.3, c: '#ff8a8a' }); sTwig(); for (let i = 0; i < 8; i++) parts.push({ x: t.x, y: G - t.h + 20, vx: rnd(-80, 80), vy: rnd(-160, -40), g: 500, life: .7, max: .7, s: rnd(2, 3), c: '#ff5a5a', k: 'drop' }); }
+  for (const q of squirrels) if (q.tree === t && q.st === 'sit') { tickle(q); got = true; }
+  if (!got) pops.push({ t: 'Nice view!', x: t.x, y: G - t.h, life: 1, c: '#fff' });
+}
+function tickle(q) { q.st = 'run'; q.vy = -160; q.vx = (q.x < W / 2 ? -1 : 1) * 130; score += 150; sGiggle(); pops.push({ t: 'Tickled! +150', x: q.x, y: q.y - 20, life: 1.3, c: '#ffe36b' }); }
 function chomp(tap) {
-  if (state !== 'play' || bv.dazed > 0 || bv.cd > 0) return;
+  if (state !== 'play' || bv.dazed > 0 || bv.cd > 0 || bv.climb) return;
   const t = target(); bv.chew = .14; bv.cd = tap ? .09 : .17;
   if (!t) { tone(300, .05, 'triangle', .02); return; }
   bv.face = t.x >= bv.x ? 1 : -1;
@@ -152,6 +173,7 @@ function chomp(tap) {
   if (t.hp <= 0) fell(t, bv.face);
 }
 function fell(t, dir) {
+  for (const q of squirrels) if (q.tree === t && q.st === 'sit') { q.st = 'run'; q.vy = -120; q.vx = -dir * 120; pops.push({ t: 'Wheee!', x: q.x, y: q.y - 18, life: 1, c: '#fff' }); sGiggle(); }
   t.st = 'fall'; t.dir = dir; t.av = .4; sTimber(); buzz(30);
   msg(pick(['Timber!', 'Tim-berrr!', 'Timber!']), 1);
   for (let i = 0; i < 8; i++) parts.push({ x: t.x, y: G - NOTCH, vx: rnd(-80, 80), vy: rnd(-200, -60), g: 700, life: rnd(.5, 1), max: 1, s: rnd(2, 4), c: '#f2d9a6', r: rnd(0, 6), vr: rnd(-10, 10), k: 'chip' });
@@ -168,6 +190,7 @@ function landed(t) {
     if (dam === damNeed) { score += 500; msg('Dam built! +500', 1.6); [0, 4, 7, 12].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .18, 'triangle', .05, i * .07)); }
   } else { t.st = 'down'; score += 100; pops.push({ t: '+100', x: lx, y: G - 40, life: 1.1, c: '#fff' }); }
   timeLeft += 3; pops.push({ t: '+3s', x: t.x, y: G - 70, life: 1.1, c: '#9dff8a' });
+  if (t.apple && !inRiver) { t.apple = false; snacks.push({ x: clamp(lx, 20, RX() - 20), kind: 'apple', life: 6 }); }
   // a tree landing on the beaver: a harmless bonk
   const a = Math.min(t.x, top), b = Math.max(t.x, top);
   if (bv.x > a + 8 && bv.x < b && Math.abs(bv.x - t.x) > t.w / 2 + 6 && bv.dazed <= 0) {
@@ -192,15 +215,45 @@ function update(dt) {
   let dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   if (drag && drag.moved) { const r = cv.getBoundingClientRect(), off = (drag.x - drag.sx) * W / r.width; dir = Math.abs(off) > 6 ? Math.sign(off) : 0; }
   if (bv.dazed > 0) { bv.dazed -= dt; dir = 0; }
+  if (bv.climb) {   // up the trunk, a peek at the top, then back down
+    const c = bv.climb, top = c.tree.h - 34; dir = 0; bv.walk += dt;
+    if (c.phase === 'up') { c.y += 230 * dt; if (c.y >= top) { c.y = top; c.phase = 'top'; reachTop(c.tree); } }
+    else if (c.phase === 'top') { c.hold += dt; if (c.hold > .35) c.phase = 'down'; }
+    else { c.y -= 320 * dt; if (c.y <= 0) bv.climb = null; }
+  }
   bv.vx = dir * 120; if (dir) { bv.face = dir; bv.walk += dt; }
   bv.x = clamp(bv.x + bv.vx * dt, 22, RX() - 16);
   bv.cd -= dt; bv.chew -= dt; bv.blink = (bv.blink + dt) % 3.6;
   const holding = (drag && !drag.moved && performance.now() - drag.t > 260) || keys.chew;
   if (holding && !dir) chomp(false);
+  // squirrels perch in the treetops and lob acorns; birds drop berries
+  const standing = trees.filter(t => t.st === 'stand');
+  if (lvl >= 2) { sqT -= dt; const maxSq = lvl >= 5 ? 2 : 1;
+    if (sqT <= 0) { sqT = rnd(4, 7); const free = standing.filter(t => !squirrels.some(q => q.tree === t && q.st === 'sit') && !(bv.climb && bv.climb.tree === t));
+      if (free.length && squirrels.filter(q => q.st === 'sit').length < maxSq) { const t = pick(free), side = Math.random() < .5 ? -1 : 1; squirrels.push({ tree: t, side, st: 'sit', x: t.x + side * 14, y: G - NOTCH - t.h + 26, throwT: 1.6, vx: 0, vy: 0, hop: 0 }); if (!seenSquirrel) { seenSquirrel = true; msg('Squirrel! Climb up to tickle it', 2); } } } }
+  for (const q of squirrels) {
+    if (q.st === 'sit') { q.hop += dt; q.throwT -= dt;
+      if (q.throwT <= 0 && !(bv.climb && bv.climb.tree === q.tree)) { q.throwT = Math.max(1.6, 3.2 - lvl * .15) + rnd(0, 1); const T = .95, tx = clamp(bv.x + bv.vx * .5, 10, RX() - 10); nuts.push({ x: q.x, y: q.y - 6, vx: (tx - q.x) / T, vy: (G - 18 - (q.y - 6) - .5 * 600 * T * T) / T, g: 600, kind: 'acorn', r: 0 }); sThrow(); q.throwAnim = .25; } }
+    else { q.vy += 600 * dt; q.x += q.vx * dt; q.y = Math.min(G - 4, q.y + q.vy * dt); if (q.y >= G - 4) q.vy = 0; if (q.x < -30 || q.x > W + 30) q.gone = true; }
+    if (q.throwAnim) q.throwAnim = Math.max(0, q.throwAnim - dt);
+  }
+  squirrels = squirrels.filter(q => !q.gone);
+  if (lvl >= 3) { birdT -= dt; if (birdT <= 0) { birdT = rnd(5, 8.5); const fromL = Math.random() < .5; birds.push({ x: fromL ? -20 : W + 20, y: G * .28 + rnd(-20, 30), vx: (fromL ? 1 : -1) * (85 + lvl * 4), dropped: false, ph: rnd(0, 6) }); } }
+  for (const b of birds) { b.x += b.vx * dt; b.ph += dt * 14;
+    if (!b.dropped && Math.abs(b.x - (bv.x + bv.vx * .55)) < 14 && b.x > 10 && b.x < RX()) { b.dropped = true; nuts.push({ x: b.x, y: b.y + 6, vx: b.vx * .25, vy: 20, g: 520, kind: 'berry', r: 0 }); tone(1500, .08, 'sine', .03, 0, 300); } }
+  birds = birds.filter(b => b.x > -40 && b.x < W + 40);
+  for (const n of nuts) {
+    n.vy += n.g * dt; n.x += n.vx * dt; n.y += n.vy * dt; n.r += dt * 8;
+    if (!bv.climb && bv.dazed <= 0 && Math.abs(n.x - bv.x) < 18 && n.y > G - 44 && n.y < G) { n.gone = true; bv.dazed = 1.1; sBonk(); buzz(25); pops.push({ t: n.kind === 'acorn' ? 'Bonk! Acorn!' : 'Splat! Berry!', x: bv.x, y: G - 60, life: 1, c: '#ffe36b' }); }
+    else if (n.y >= G - 3) { n.gone = true; if (n.x < RX() - 6) snacks.push({ x: clamp(n.x, 12, RX() - 12), kind: n.kind, life: 5 }); }
+  }
+  nuts = nuts.filter(n => !n.gone);
+  for (const k of snacks) { k.life -= dt; if (!bv.climb && bv.dazed <= 0 && Math.abs(k.x - bv.x) < 16) { k.gone = true; const add = k.kind === 'apple' ? 4 : 2; timeLeft += add; score += k.kind === 'apple' ? 40 : 20; sSnack(); pops.push({ t: 'Snack! +' + add + 's', x: k.x, y: G - 40, life: 1.1, c: '#9dff8a' }); } }
+  snacks = snacks.filter(k => !k.gone && k.life > 0);
   // twigs: walk over one for extra time
   twigT -= dt;
   if (twigT <= 0) { twigT = rnd(5, 8); if (twigs.length < 2) twigs.push({ x: rnd(30, RX() - 30), t: 0 }); }
-  for (const w of twigs) { w.t += dt; if (Math.abs(w.x - bv.x) < 16 && bv.dazed <= 0) { w.got = true; timeLeft += 4; sTwig(); pops.push({ t: 'Fresh twig! +4s', x: w.x, y: G - 46, life: 1.2, c: '#9dff8a' }); } }
+  for (const w of twigs) { w.t += dt; if (Math.abs(w.x - bv.x) < 16 && bv.dazed <= 0 && !bv.climb) { w.got = true; timeLeft += 4; sTwig(); pops.push({ t: 'Fresh twig! +4s', x: w.x, y: G - 46, life: 1.2, c: '#9dff8a' }); } }
   twigs = twigs.filter(w => !w.got && w.t < 9);
   // clock
   timeLeft -= dt;
@@ -270,12 +323,14 @@ function drawTree(t) {
     for (const [dx, dy, rr2, c] of [[-r * .7, 18, r * .75, 1], [r * .7, 18, r * .75, 1], [0, 0, r, 0], [-r * .35, -r * .45, r * .6, 2], [r * .4, -r * .2, r * .55, 0]]) ell(dx, top + 30 + dy, rr2, rr2 * .92, T.leaf[c]);
     if (t.type === 'oak') for (let k = 0; k < 4; k++) ell(-r * .5 + k * r * .35, top + 36 + (k % 2) * 12, 3, 3.5, '#b5652e');
   }
+  if (t.apple) { const ax = t.type === 'pine' ? 10 : 12, ay = top + 40; ell(ax, ay, 6.5, 6, '#e8343a'); ell(ax - 2, ay - 2, 2, 1.6, 'rgba(255,255,255,.6)'); ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(ax, ay - 5); ctx.lineTo(ax + 1, ay - 9); ctx.stroke(); ell(ax + 4, ay - 8, 3.5, 1.8, '#5cb24f', -.4); }
   ctx.restore(); ctx.globalAlpha = 1;
 }
 function drawBeaver() {
-  const b = bv, x = b.x, y = G, f = b.face, walk = b.vx ? Math.sin(b.walk * 16) : 0, chew = b.chew > 0 ? Math.sin(b.chew * 60) * 1.5 : 0;
-  ctx.save(); ctx.translate(x, y); ctx.scale(f * 1.35, 1.35);
-  ell(0, 2, 22, 4, 'rgba(0,0,0,.18)');
+  const b = bv, f = b.face, cl = b.climb, walk = b.vx || cl ? Math.sin(b.walk * 16) : 0, chew = b.chew > 0 ? Math.sin(b.chew * 60) * 1.5 : 0;
+  const x = cl ? cl.tree.x - f * (cl.tree.w / 2 + 2) : b.x, y = cl ? G - Math.max(0, cl.y) : G;
+  ctx.save(); ctx.translate(x, y); if (cl) ctx.rotate(-f * Math.PI / 2 * Math.min(1, (cl.y + 4) / 14)); ctx.scale(f * 1.35, 1.35);
+  if (!cl) ell(0, 2, 22, 4, 'rgba(0,0,0,.18)');
   // tail: a flat paddle with a criss-cross
   ctx.save(); ctx.translate(-18, -7); ctx.rotate(-.25 + walk * .06);
   ell(-10, 0, 13, 6, '#4a3328'); ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(-20 + k * 4, -5); ctx.lineTo(-12 + k * 4, 5); ctx.moveTo(-12 + k * 4, -5); ctx.lineTo(-20 + k * 4, 5); ctx.stroke(); }
@@ -301,6 +356,40 @@ function drawBeaver() {
   ctx.restore();
   if (b.dazed > 0) for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; txt('★', x + f * 19 + Math.cos(a) * 14, y - 58 + Math.sin(a) * 4, 9, '#ffe36b', 'center', null); }
 }
+function drawSquirrel(q) {
+  const f = q.st === 'sit' ? (bv.x < q.x ? -1 : 1) : Math.sign(q.vx) || 1, run = q.st === 'run' ? Math.sin(time * 30) : 0, bob = q.st === 'sit' ? Math.sin(q.hop * 3) * 1 : 0;
+  ctx.save(); ctx.translate(q.x, q.y + bob); ctx.scale(f, 1);
+  // big bushy tail
+  ctx.fillStyle = '#c0703a'; ctx.beginPath(); ctx.moveTo(-5, 0); ctx.bezierCurveTo(-22, -2, -20, -26, -8, -24); ctx.bezierCurveTo(-2, -23, -6, -14, -12, -14); ctx.bezierCurveTo(-10, -6, -6, -4, -5, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(255,220,180,.35)'; ctx.beginPath(); ctx.ellipse(-14, -17, 3, 6, -.4, 0, TAU); ctx.fill();
+  ell(0, -6, 7, 8, '#d0813f'); ell(2, -4, 4, 5, '#f4d2a6');
+  ell(5, -15, 6, 5.5, '#d0813f'); ell(2, -20, 2, 3, '#d0813f'); ell(9.5, -14, 1.6, 1.3, '#3a1a10'); ell(6.5, -16.5, 1.5, 1.7, '#1a1008');
+  if (q.st === 'sit' && q.throwAnim) { ctx.strokeStyle = '#d0813f'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(4, -9); ctx.lineTo(10, -20); ctx.stroke(); }
+  else { ell(6, -6 + run, 2.2, 2, '#b06a30'); }
+  ell(-2 + run * 2, 1, 2.6, 1.6, '#b06a30'); ell(3 - run * 2, 1, 2.6, 1.6, '#b06a30');
+  ctx.restore();
+}
+function drawNut(n) {
+  ctx.save(); ctx.translate(n.x, n.y); ctx.rotate(n.r);
+  if (n.kind === 'acorn') { ell(0, 1.5, 3.6, 4.4, '#b8763a'); ctx.fillStyle = '#6b4220'; ctx.beginPath(); ctx.ellipse(0, -1.5, 4.4, 2.6, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(-.6, -6, 1.2, 2.5); }
+  else { ell(0, 0, 4, 4, '#a3245a'); ell(-1.3, -1.3, 1.2, 1.2, 'rgba(255,255,255,.5)'); ell(2, -3.5, 2, 1, '#5cb24f'); }
+  ctx.restore();
+}
+function drawSnack(k) {
+  const a = k.life < 1.2 && Math.sin(time * 20) > 0 ? .4 : 1; ctx.globalAlpha = a;
+  if (k.kind === 'apple') { ell(k.x, G - 6, 6, 5.5, '#e8343a'); ell(k.x + 3, G - 12, 3, 1.5, '#5cb24f', -.4); }
+  else drawNut({ x: k.x, y: G - 5, r: 0, kind: k.kind });
+  ctx.globalAlpha = 1;
+}
+function drawBird(b) {
+  const f = Math.sign(b.vx), fl = Math.sin(b.ph);
+  ctx.save(); ctx.translate(b.x, b.y); ctx.scale(f, 1);
+  ell(0, 0, 8, 5.5, '#3f8ad6'); ell(2, 2, 5, 3, '#ffd1b0'); ell(7, -3, 4.5, 4, '#3f8ad6'); ell(8.5, -4, 1, 1, '#111');
+  ctx.fillStyle = '#ffb02e'; ctx.beginPath(); ctx.moveTo(11, -3); ctx.lineTo(15, -2); ctx.lineTo(11, -1); ctx.fill();
+  ctx.fillStyle = '#2f6fb8'; ctx.beginPath(); ctx.moveTo(-2, -2); ctx.quadraticCurveTo(-6, -12 * fl, -12, -9 * fl); ctx.quadraticCurveTo(-6, -2, 2, 0); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(-14, -3); ctx.lineTo(-13, 3); ctx.fill();
+  ctx.restore();
+}
 function homeIcon(cx, cy) {
   ell(cx, cy, 17, 17, 'rgba(40,30,15,.28)'); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(cx - 8.5, cy + .5); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx + 8.5, cy + .5); ctx.moveTo(cx - 6, cy - 1.5); ctx.lineTo(cx - 6, cy + 8); ctx.lineTo(cx + 6, cy + 8); ctx.lineTo(cx + 6, cy - 1.5); ctx.stroke();
@@ -317,12 +406,16 @@ function draw() {
   for (const w of twigs) { ctx.save(); ctx.translate(w.x, G - 3 - Math.abs(Math.sin(time * 3 + w.x)) * 2); ctx.strokeStyle = '#8a5a34'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(9, -3); ctx.moveTo(0, -1.5); ctx.lineTo(4, -8); ctx.stroke(); ell(5, -9, 4, 2.6, '#7cc95f', -.6); ell(-6, -3, 3.5, 2.2, '#9be07a', .5); ctx.restore(); }
   // standing trees behind the beaver, fallen ones in front
   for (const t of trees) if (t.st === 'stand') drawTree(t);
+  for (const k of snacks) drawSnack(k);
+  for (const q of squirrels) drawSquirrel(q);
   if (state === 'play' || state === 'clear') drawBeaver();
   else if (state === 'over' && bv) { // a well-earned nap
     ctx.save(); ctx.translate(bv.x, G); ctx.scale(1.35, 1.35); ell(0, 2, 22, 4, 'rgba(0,0,0,.18)'); ell(0, -10, 21, 11, '#8a5a34'); ell(14 * bv.face, -12, 11, 9, '#8a5a34'); ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(16 * bv.face, -14, 2.5, .2, Math.PI - .2); ctx.stroke(); ctx.restore();
     for (let i = 0; i < 3; i++) { const k = (time * .6 + i / 3) % 1; ctx.globalAlpha = Math.sin(k * Math.PI); txt('z', bv.x + k * 16, G - 30 - k * 34, 9 + k * 8, '#fff', 'center', 'rgba(40,30,15,.6)'); } ctx.globalAlpha = 1;
   }
   for (const t of trees) if (t.st !== 'stand' && t.fade > 0) drawTree(t);
+  for (const n of nuts) drawNut(n);
+  for (const b of birds) drawBird(b);
   for (const p of parts) {
     ctx.globalAlpha = clamp(p.life / p.max * 1.6, 0, 1); ctx.fillStyle = p.c;
     if (p.k === 'leaf') { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ell(0, 0, p.s, p.s * .55, p.c); ctx.restore(); }
@@ -330,7 +423,7 @@ function draw() {
     else { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); }
   }
   ctx.globalAlpha = 1;
-  for (const p of pops) { ctx.globalAlpha = clamp(p.life * 2, 0, 1); txt(p.t, p.x, p.y, 14, p.c); } ctx.globalAlpha = 1;
+  for (const p of pops) { ctx.globalAlpha = clamp(p.life * 2, 0, 1); txt(p.t, clamp(p.x, 60, W - 60), p.y, 14, p.c); } ctx.globalAlpha = 1;
   ctx.restore();
   // HUD
   homeIcon(26, 28); soundIcon(W - 26, 28);
@@ -346,11 +439,11 @@ function draw() {
     if (state === 'play') txt(`${left} tree${left === 1 ? '' : 's'} to go`, W / 2, 62, 12, '#fff');
   }
   if (banner && state === 'play') { ctx.globalAlpha = clamp(banner.life * 3, 0, 1); txt(banner.t, W / 2, H * .22, 30, '#fff'); ctx.globalAlpha = 1; }
-  if (state === 'play' && lvl === 1 && timeLeft > tStart - 9) txt(timeLeft > tStart - 4.5 ? 'Drag to walk · tap fast to chew' : 'Chew from the left to drop trees in the river', W / 2, H * .3, 13, '#fff');
+  if (state === 'play' && lvl === 1 && timeLeft > tStart - 13.5) txt(timeLeft > tStart - 4.5 ? 'Drag to walk · tap fast to chew' : timeLeft > tStart - 9 ? 'Chew from the left to drop trees in the river' : 'Swipe up by a tree to climb for apples', W / 2, H * .3, 13, '#fff');
   if (state === 'title') {
     ctx.fillStyle = 'rgba(30,50,20,.35)'; ctx.fillRect(0, 0, W, H);
     txt('Busy', W / 2, H * .15, 58, '#ffe0a3', 'center', '#4a2f1a'); txt('Beaver', W / 2, H * .15 + 56, 58, '#ffe0a3', 'center', '#4a2f1a');
-    const lines = ['Drag left or right to walk', 'Tap fast (or hold) to chew a tree', 'Trees fall away from you, so', 'chew from the left to build a dam!', 'Clear every tree before time runs out'];
+    const lines = ['Drag left or right to walk', 'Tap fast (or hold) to chew a tree', 'Chew from the left to build a dam!', 'Swipe up by a tree to climb for apples', 'Dodge acorns from cheeky squirrels', '(climb up and tickle them!)', 'Clear every tree before time runs out'];
     rr(30, H * .36, W - 60, lines.length * 22 + 20, 16); ctx.fillStyle = 'rgba(40,30,15,.55)'; ctx.fill();
     lines.forEach((l, i) => txt(l, W / 2, H * .36 + 22 + i * 22, 13, '#fff', 'center', null));
     if (Math.sin(time * 5) > -.3) txt('Tap to start', W / 2, H * .36 + lines.length * 22 + 56, 22, '#ffe36b', 'center', '#4a2f1a');
@@ -376,7 +469,7 @@ function draw() {
 let last = performance.now();
 function frame(now) { const dt = Math.min(.033, Math.max(0, (now - last) / 1000)); last = now; update(dt); draw(); requestAnimationFrame(frame); }
 addEventListener('resize', resize); resize(); setupLevel();
-if (/[?&]debug\b/.test(location.search)) window.__bb = { get state() { return state; }, get trees() { return trees.map(t => ({ x: t.x, w: t.w, h: t.h, st: t.st, hp: t.hp })); }, get bv() { return { x: bv.x, dazed: bv.dazed }; }, get dam() { return dam; }, get time() { return timeLeft; }, get score() { return score; }, startGame };
+if (/[?&]debug\b/.test(location.search)) window.__bb = { get state() { return state; }, get trees() { return trees.map(t => ({ x: t.x, w: t.w, h: t.h, st: t.st, hp: t.hp })); }, get bv() { return { x: bv.x, dazed: bv.dazed, climb: !!bv.climb }; }, get squirrels() { return squirrels.map(q => ({ st: q.st, x: q.x })); }, get nuts() { return nuts.length; }, get snacks() { return snacks.length; }, get birds() { return birds.length; }, tryClimb, setLevel(n) { lvl = n; setupLevel(); state = 'play'; }, get dam() { return dam; }, get time() { return timeLeft; }, get score() { return score; }, startGame };
 requestAnimationFrame(frame);
 })();
 </script>
