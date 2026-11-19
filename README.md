@@ -18,6 +18,7 @@ The Bear & Bean Games is a small arcade of browser games, made for touch screens
 | Ink Bounce | [`ink-bounce/`](ink-bounce/) | Blueprint brick breaker with no paddle: draw one line at a time with limited ink; neat lines refund ink, and falling ink drops and pots refill it. |
 | Busy Beaver | [`busy-beaver/`](busy-beaver/) | Timed tree-chewing: drag to walk, tap fast (or hold) to chew. Trees fall away from you, so chew from the left to drop them in the river and build a dam. Birch, oak and pine, sunny and sunset woods, and a nap when time runs out. |
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Help Bean hop around a mossy temple in the rainforest, changing every stone while dodging critters. Hop off and a toucan always swoops in to catch you. |
+| Honey Heights | [`honey-heights/`](honey-heights/) | Help Bear climb three trees for honey at different heights and carry it down to Bean. Grumpy bees make him dizzy and drop his load. |
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
 | Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |
 | Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: make rockets, bombs and rainbow orbs; bring honey pots down to Bear, break liquorice locks, clear sugar cubes and spreading chocolate. Lolly Pop and Free Swap boosters, +5 moves once per level. |

@@ -2,7 +2,7 @@
    - install: download every page and icon in one go (the install only succeeds if all of them were saved)
    - fetch: answer from the saved copy straight away, then quietly refresh it in the background
    - activate: delete the copies saved by older versions */
-const VERSION = 'games-858bcd92bde4';
+const VERSION = 'games-b96e09c36440';
 const FILES = [
   './',
   './manifest.webmanifest',
@@ -22,6 +22,7 @@ const FILES = [
   './guess-five/',
   './gummy-pop/',
   './hedge-hop/',
+  './honey-heights/',
   './ink-bounce/',
   './pyramid-hop/',
   './slither-slide/',
