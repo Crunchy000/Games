@@ -74,7 +74,7 @@ function setupLevel() {
   const m = lvl % 3; mode = m === 1 ? { steps: 1 } : m === 2 ? { steps: 2 } : { steps: 1, toggle: true };
   cubes = Array.from({ length: N }, (_, r) => Array(r + 1).fill(0));
   cfx = Array.from({ length: N }, (_, r) => Array(r + 1).fill(0));
-  rescues = 2;
+  rescues = 0;
   enemies = []; freezeT = 0; spawnT = 3; lvlTime = 0; toasts = []; parts = [];
   resetPlayer();
 }
@@ -145,14 +145,14 @@ function landPlayer() {
     if (cubes.every(row => row.every(s => s === target()))) { win(); return; }
     if (p.buf >= 0) { const d = p.buf; p.buf = -1; move(d); }
   } else {
-    const q = pos(p); p.fall = { x: q.x, y: q.y, vy: -60, t: 0, rescue: rescues > 0 }; p.buf = -1;
+    const q = pos(p); p.fall = { x: q.x, y: q.y, vy: -60, t: 0, rescue: true }; p.buf = -1;
     if (p.fall.rescue) { beep(500, .3, 'sawtooth', .04, -300); beep(1400, .12, 'square', .03, 300, .15); beep(1700, .12, 'square', .03, 300, .27); toast('WHOOPS!', q.x, q.y - 30, '#fff', 14); }
     else { beep(500, .7, 'sawtooth', .05, -420); toast('WHOOPS!', q.x, q.y - 30, '#fff', 14); }
   }
 }
 function win() {
   state = 'win'; stateT = 3; enemies.forEach(e => sparkle(pos(e).x, pos(e).y, '#fff', 6)); enemies = []; fwT = 0;
-  score += 500 + rescues * 100;
+  score += 500 + (rescues ? 0 : 300);
   [523, 659, 784, 1047, 1319].forEach((f, i) => beep(f, .22, 'triangle', .06, 0, i * .12));
 }
 function toast(t, x, y, col = '#ffd43b', size = 13) { toasts.push({ t, x, y, life: 1.2, col, size }); }
@@ -213,7 +213,7 @@ function update(rdt) {
   if (p.fall) {
     p.fall.t += dt; p.fall.vy += 900 * dt; p.fall.y += p.fall.vy * dt;
     if (p.fall.rescue && p.fall.t > .42) {   // the toucan swoops in and carries Bean back to the top
-      rescues--; p.ride = { x0: p.fall.x, y0: p.fall.y, t: 0 }; p.fall = null; beep(300, .9, 'sine', .05, 700); beep(1500, .1, 'square', .03, 200, .05);
+      rescues++; p.ride = { x0: p.fall.x, y0: p.fall.y, t: 0 }; p.fall = null; beep(300, .9, 'sine', .05, 700); beep(1500, .1, 'square', .03, 200, .05);
       toast('TOUCAN RESCUE!', pos(p).x, pos(p).y - 50, '#ffd43b', 14);
       enemies.forEach(e => { if (e.type === 's' && !e.fall) { const q = pos(e); e.fall = { x: q.x, y: q.y, vy: -160, spin: 0 }; score += 500; toast('SHOOED! +500', q.x, q.y - 20, '#ffd43b', 13); sparkle(q.x, q.y, '#ff6b6b', 10); } });
     } else if (p.fall.y > H + 30 && !p.dead) { p.dead = true; deadT = .7; }
@@ -486,8 +486,6 @@ function drawHUD() {
   const sw = [pal.top[0], mode.steps === 2 && !mode.toggle ? pal.top[1] : null, pal.top[2]].filter(Boolean);
   let sx = W - 92; sw.forEach((c, i) => { ctx.fillStyle = c; poly(ctx, [[sx + 6, by - 2], [sx + 12, by + 3], [sx + 6, by + 8], [sx, by + 3]]); ctx.fill(); if (i < sw.length - 1) text('›', sx + 16, by + 3, 10, '#dcefd2', 'center', null, 900); sx += 20; });
   if (mode.toggle) text('↺', sx + 2, by + 3, 11, '#ffd43b', 'center', null, 900);
-  ctx.fillStyle = 'rgba(10,30,18,.55)'; rr(W - 62, 54, 54, 24, 12); ctx.fill();
-  for (let i = 0; i < 2; i++) { ctx.globalAlpha = i < rescues ? 1 : .25; drawToucan(W - 46 + i * 22, 66, .42, 1); } ctx.globalAlpha = 1;
   if (freezeT > 0) {
     ctx.fillStyle = 'rgba(165,243,252,.15)'; rr(CX - 60, 56, 120, 20, 10); ctx.fill();
     ctx.fillStyle = 'rgba(165,243,252,.5)'; rr(CX - 60, 56, 120 * freezeT / 4.5, 20, 10); ctx.fill(); text('❄ FROZEN', CX, 66, 11, '#e3fafc', 'center', 'rgba(10,30,60,.8)', 900);
@@ -565,13 +563,13 @@ function draw() {
   if (state !== 'title') drawHUD();
   ctx.fillStyle = 'rgba(10,30,18,.55)'; rr(8, 8, 38, 40, 12); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke(); homeIcon(27, 28, '#dcefd2');
   if (state === 'play' && lvl === 1 && lvlTime < 6) { panel(H - 74, 50); text('Swipe diagonally (or tap) to hop', CX, H - 58, 12, '#fff', 'center', null, 800); text('Colour every cube · dodge the critters!', CX, H - 40, 11, '#dcefd2', 'center', null, 700); }
-  if (state === 'win') { logoText('LEVEL CLEAR!', H * .2); text('+' + (500 + rescues * 100) + ' bonus', CX, H * .2 + 34, 13, '#fff', 'center');
+  if (state === 'win') { logoText('LEVEL CLEAR!', H * .2); text('+' + (500 + (rescues ? 0 : 300)) + ' bonus' + (rescues ? '' : ' · no rescues needed!'), CX, H * .2 + 34, 13, '#fff', 'center');
     panel(H * .2 + 52, 52); avatar(IMG.bean, 58, H * .2 + 78, 18); text('Bean says:', 84, H * .2 + 68, 10, '#ffc0dc', 'left', null, 800); text(['Hop-tastic!', 'Every cube, done!', 'Bean-ready for more!', 'Sweet hopping!'][lvl % 4], 84, H * .2 + 86, 14, '#fff', 'left', null, 900); }
   if (state === 'title') {
     ctx.fillStyle = 'rgba(5,22,12,.35)'; ctx.fillRect(0, 0, W, H); text('THE BEAR & BEAN PRESENTS', CX, H * .13 - 42, 10, '#ffc0dc', 'center', null, 800); logo(H * .13);
     const y = H * .13 + 92; panel(y, 132);
     text('Help Bean hop on every cube to change its colour', CX, y + 20, 11.5, '#fff', 'center', null, 800);
-    const rows = [['r', 'Embers bounce down: dodge them'], ['p', 'Seeds hatch into chasing Urchins'], ['g', 'Grab Frost to freeze everything'], ['pad', 'Hop off? A toucan rescues you (2 a level)']];
+    const rows = [['r', 'Embers bounce down: dodge them'], ['p', 'Seeds hatch into chasing Urchins'], ['g', 'Grab Frost to freeze everything'], ['pad', 'Hop off? The toucan always catches you']];
     rows.forEach(([k, t], i) => {
       const ry = y + 46 + i * 22;
       if (k === 'pad') drawToucan(58, ry + 2, .55, 1);
