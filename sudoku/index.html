@@ -52,7 +52,6 @@
   .tool.on #notesBadge { background:var(--entered); }
   #pad { display:grid; grid-template-columns:repeat(9, 1fr); gap:5px; width:100%; max-width:500px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
   .num { border:0; background:var(--key); border-radius:12px; height:clamp(52px, 8.5dvh, 68px); font:inherit; font-size:1.7rem; font-weight:500; color:var(--entered); cursor:pointer; box-shadow:0 1px 0 var(--line), 0 2px 6px var(--shadow); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; padding:0; }
-  .num small { font-size:.62rem; color:var(--muted); font-weight:700; margin-top:3px; }
   .num:active { background:var(--peer); }
   .num.done { visibility:hidden; }
   .num.clash { opacity:.14; pointer-events:none; box-shadow:none; }
@@ -275,7 +274,7 @@ function checkWin() {
 const board = $('board'), cells = [];
 for (let i = 0; i < 81; i++) { const c = document.createElement('div'); c.className = `cell r${ROW(i)} c${COL(i)}`; c.dataset.i = i; board.appendChild(c); cells.push(c); }
 const pad = $('pad');
-for (let d = 1; d <= 9; d++) { const b = document.createElement('button'); b.className = 'num'; b.dataset.d = d; b.innerHTML = `${d}<small></small>`; pad.appendChild(b); }
+for (let d = 1; d <= 9; d++) { const b = document.createElement('button'); b.className = 'num'; b.dataset.d = d; b.textContent = d; pad.appendChild(b); }
 const fmt = t => { t = Math.floor(t); const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(s).padStart(2, '0'); };
 function render() {
   const sv = sel >= 0 ? G.cur[sel] : 0;
@@ -292,7 +291,7 @@ function render() {
   }
   const cnt = Array(10).fill(0); G.cur.forEach((v, i) => { if (v && v === G.sol[i]) cnt[v]++; });
   const filt = easyFilter();
-  [...pad.children].forEach((b, k) => { const left = 9 - cnt[k + 1]; b.classList.toggle('done', left === 0); b.classList.toggle('clash', filt && clashes(sel, k + 1) && G.cur[sel] !== k + 1); b.querySelector('small').textContent = left; });
+  [...pad.children].forEach((b, k) => { const left = 9 - cnt[k + 1]; b.classList.toggle('done', left === 0); b.classList.toggle('clash', filt && clashes(sel, k + 1) && G.cur[sel] !== k + 1); });
   $('iDiff').textContent = LEVELS[G.level].name; $('iMis').textContent = G.mistakes; $('iTime').textContent = fmt(G.time);
   $('tNotes').classList.toggle('on', notesMode); $('notesBadge').textContent = notesMode ? 'ON' : 'OFF';
   $('hintBadge').textContent = G.hints;
