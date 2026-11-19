@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#7cc4e8">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
+<title>Busy Beaver</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#3d6b3a; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  #app { position:relative; height:100dvh; width:100vw; display:flex; align-items:center; justify-content:center; touch-action:none; }
+  canvas { display:block; touch-action:none; }
+</style>
+</head>
+<body>
+<div id="app"><canvas id="c"></canvas></div>
+<script>
+(() => {
+'use strict';
+const W = 360;
+let H = 680, SC = 1, G = 560;            // G: ground line
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v, rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
+const TAU = Math.PI * 2;
+let best = 0, muted = false;
+try { const s = JSON.parse(localStorage.getItem('busybeaver') || '{}'); best = s.best || 0; muted = !!s.muted; } catch (e) {}
+const persist = () => { try { localStorage.setItem('busybeaver', JSON.stringify({ best, muted })); } catch (e) {} };
+function resize() {
+  H = Math.round(clamp(W * innerHeight / innerWidth, 560, 780)); G = H - 96;
+  const s = Math.min(innerWidth / W, innerHeight / H), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px'; cv.width = Math.round(W * s * dpr); cv.height = Math.round(H * s * dpr); SC = cv.width / W;
+}
+
+/* ---------- sound (synthesised) ---------- */
+let ac = null, nb = null;
+function audio() { if (ac) { if (ac.state === 'suspended') ac.resume(); return; } try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+function tone(f, d, type = 'sine', vol = .05, delay = 0, slide = 0) {
+  if (!ac || muted) return; const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + delay;
+  o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .005); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + .02);
+}
+function noise(d, vol, f = 2000, q = 1, delay = 0) {
+  if (!ac || muted) return; if (!nb) { nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const a = nb.getChannelData(0); for (let i = 0; i < a.length; i++) a[i] = Math.random() * 2 - 1; }
+  const t = ac.currentTime + delay, s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = nb; fl.type = 'bandpass'; fl.frequency.value = f; fl.Q.value = q;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + d); s.connect(fl); fl.connect(g); g.connect(ac.destination); s.start(t, Math.random() * .5); s.stop(t + d);
+}
+const sChomp = () => { noise(.06, .22, rnd(2600, 3600), 2); tone(rnd(180, 230), .04, 'square', .02); };
+const sCreak = () => tone(140, .35, 'sawtooth', .025, 0, -60);
+const sTimber = () => { noise(.9, .12, 800, .6); tone(500, .7, 'sine', .03, 0, -380); };
+const sThud = () => { noise(.35, .4, 160, .7); tone(70, .3, 'sine', .12, 0, -30); };
+const sSplash = () => { noise(.6, .3, 1400, .5); tone(600, .25, 'sine', .03, .05, -400); };
+const sBonk = () => { tone(520, .1, 'square', .04, 0, -200); tone(780, .15, 'triangle', .04, .08, -300); };
+const sTwig = () => { tone(880, .07, 'triangle', .04); tone(1320, .1, 'triangle', .04, .06); };
+const sWin = () => [0, 4, 7, 12, 16, 19].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .22, 'triangle', .06, i * .08));
+const sNap = () => [7, 4, 0].forEach((s, i) => tone(392 * Math.pow(2, s / 12), .35, 'triangle', .05, i * .2));
+const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+/* ---------- world ---------- */
+const RIVER = 78;                                 // river along the right edge
+const RX = () => W - RIVER;
+const NOTCH = 15;                                 // chew height above the ground
+const TYPES = {
+  birch: { bark: '#ece7dc', barkD: '#c9c2b2', mark: '#3a332b', leaf: ['#a8d86a', '#86c24e', '#c3e88a'], hp: .55, shape: 'round' },
+  oak: { bark: '#8a5a34', barkD: '#6b4226', mark: '#4e2f19', leaf: ['#4e9f45', '#3f8a38', '#6cbf5c'], hp: .75, shape: 'round' },
+  pine: { bark: '#7a4a2a', barkD: '#5c3820', mark: '#40261a', leaf: ['#2f7a4a', '#25663c', '#3f9460'], hp: .65, shape: 'pine' },
+};
+let state = 'title', lvl = 1, score = 0, timeLeft = 40, tStart = 40, dam = 0, damNeed = 3, trees = [], parts = [], pops = [], twigs = [], time = 0, endT = 0, shake = 0, clearInfo = null;
+let bv;
+function makeBeaver() { return { x: 40, face: 1, vx: 0, walk: 0, chew: 0, cd: 0, dazed: 0, blink: 0 }; }
+function setupLevel() {
+  const n = Math.min(8, 3 + Math.floor(lvl / 2)), types = lvl < 2 ? ['birch'] : lvl < 4 ? ['birch', 'oak'] : ['birch', 'oak', 'pine'];
+  trees = []; parts = []; pops = []; twigs = []; dam = 0; damNeed = Math.min(5, 2 + Math.floor(lvl / 2));
+  const left = 54, right = RX() - 26, span = right - left;
+  for (let i = 0; i < n; i++) {
+    const type = pick(types), w = Math.round(rnd(14, 18) + Math.min(14, lvl * 1.4) * Math.random()), h = rnd(G * .42, G * .6);
+    const x = left + span * (n === 1 ? .5 : i / (n - 1)) + rnd(-6, 6);
+    const hp = Math.round(w * TYPES[type].hp + 2);
+    trees.push({ x, w, h, type, hp, max: hp, st: 'stand', ang: 0, av: 0, dir: 1, fade: 1, sway: rnd(0, 6), marks: Array.from({ length: 6 }, () => [rnd(.15, .95), rnd(-.4, .4), rnd(.2, .5)]) });
+  }
+  bv = makeBeaver();
+  tStart = timeLeft = Math.round(18 + n * 7 - Math.min(14, lvl * 1.2));
+  twigT = 4;
+}
+let twigT = 4;
+function startGame() { lvl = 1; score = 0; state = 'play'; setupLevel(); msg('Level 1', 1.4); tone(440, .12, 'triangle', .05, 0, 220); }
+let banner = null;
+const msg = (t, life = 1.2) => banner = { t, life };
+
+/* ---------- input: drag to walk, tap to chomp, hold to chew ---------- */
+const keys = { left: 0, right: 0, chew: 0 };
+let drag = null;
+const canStart = () => state === 'title' || (state === 'over' && endT > 1.2);
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault(); audio();
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+  if (x < 50 && y < 56) { location.href = '../'; return; }
+  if (x > W - 50 && y < 56) { muted = !muted; persist(); return; }
+  if (canStart()) { startGame(); return; }
+  if (state === 'clear' && endT > 1) { lvl++; setupLevel(); state = 'play'; msg('Level ' + lvl, 1.4); return; }
+  if (state !== 'play') return;
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  drag = { id: e.pointerId, sx: e.clientX, x: e.clientX, t: performance.now(), moved: false, held: false };
+});
+cv.addEventListener('pointermove', e => {
+  if (!drag || drag.id !== e.pointerId) return; drag.x = e.clientX;
+  if (Math.abs(drag.x - drag.sx) > 12) drag.moved = true;
+});
+function endDrag(e) {
+  if (!drag || drag.id !== e.pointerId) return;
+  if (!drag.moved && performance.now() - drag.t < 260) chomp(true);
+  drag = null;
+}
+['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, endDrag));
+const KM = { ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ' ': 'chew', ArrowDown: 'chew', ArrowUp: 'chew', Enter: 'chew' };
+addEventListener('keydown', e => {
+  const k = KM[e.key]; if (!k) return; e.preventDefault(); audio();
+  if (canStart()) { startGame(); return; }
+  if (state === 'clear' && endT > 1) { lvl++; setupLevel(); state = 'play'; msg('Level ' + lvl, 1.4); return; }
+  if (k === 'chew' && !keys.chew) chomp(true);
+  keys[k] = 1;
+});
+addEventListener('keyup', e => { const k = KM[e.key]; if (k) keys[k] = 0; });
+addEventListener('blur', () => { keys.left = keys.right = keys.chew = 0; drag = null; });
+
+/* ---------- chewing ---------- */
+const MOUTH = 17;
+function target() {
+  let best = null, bd = 1e9;
+  for (const t of trees) if (t.st === 'stand') {
+    const d = Math.abs(t.x - bv.x); if (d < t.w / 2 + 34 && d < bd) { bd = d; best = t; }
+  }
+  return best;
+}
+function chomp(tap) {
+  if (state !== 'play' || bv.dazed > 0 || bv.cd > 0) return;
+  const t = target(); bv.chew = .14; bv.cd = tap ? .09 : .17;
+  if (!t) { tone(300, .05, 'triangle', .02); return; }
+  bv.face = t.x >= bv.x ? 1 : -1;
+  // stand just beside the trunk while chewing
+  bv.x += ((t.x - bv.face * (t.w / 2 + 18)) - bv.x) * .5;
+  t.hp--; sChomp(); t.shake = .12;
+  const cx = t.x - bv.face * t.w / 2, cy = G - NOTCH;
+  for (let i = 0; i < 4; i++) parts.push({ x: cx, y: cy + rnd(-4, 4), vx: -bv.face * rnd(30, 140), vy: rnd(-180, -60), g: 700, life: rnd(.5, .9), max: .9, s: rnd(2, 4), c: pick([TYPES[t.type].bark, '#f2d9a6', '#e6c487']), r: rnd(0, 6), vr: rnd(-10, 10), k: 'chip' });
+  if (t.hp === Math.ceil(t.max * .25)) sCreak();
+  if (t.hp <= 0) fell(t, bv.face);
+}
+function fell(t, dir) {
+  t.st = 'fall'; t.dir = dir; t.av = .4; sTimber(); buzz(30);
+  msg(pick(['Timber!', 'Tim-berrr!', 'Timber!']), 1);
+  for (let i = 0; i < 8; i++) parts.push({ x: t.x, y: G - NOTCH, vx: rnd(-80, 80), vy: rnd(-200, -60), g: 700, life: rnd(.5, 1), max: 1, s: rnd(2, 4), c: '#f2d9a6', r: rnd(0, 6), vr: rnd(-10, 10), k: 'chip' });
+}
+function landed(t) {
+  const top = t.x + t.dir * t.h, inRiver = t.dir > 0 && top > RX() + 10;
+  shake = 5; sThud(); buzz(50);
+  // leaves burst where the canopy hits
+  const lx = t.x + t.dir * (t.h - 30);
+  for (let i = 0; i < 16; i++) parts.push({ x: lx + rnd(-30, 30), y: G - 10, vx: rnd(-80, 80), vy: rnd(-200, -40), g: 260, life: rnd(.8, 1.5), max: 1.5, s: rnd(3, 5), c: pick(TYPES[t.type].leaf), r: rnd(0, 6), vr: rnd(-6, 6), k: 'leaf' });
+  if (inRiver) {
+    t.st = 'river'; dam++; sSplash(); score += 150; pops.push({ t: '+150 dam log!', x: RX() + RIVER / 2 - 10, y: G - 60, life: 1.3, c: '#bff4ff' });
+    for (let i = 0; i < 18; i++) parts.push({ x: rnd(RX(), W), y: G + 4, vx: rnd(-60, 60), vy: rnd(-260, -80), g: 700, life: rnd(.5, .9), max: .9, s: rnd(2, 4), c: pick(['#bfe9ff', '#ffffff', '#8fd3f4']), k: 'drop' });
+    if (dam === damNeed) { score += 500; msg('Dam built! +500', 1.6); [0, 4, 7, 12].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .18, 'triangle', .05, i * .07)); }
+  } else { t.st = 'down'; score += 100; pops.push({ t: '+100', x: lx, y: G - 40, life: 1.1, c: '#fff' }); }
+  timeLeft += 3; pops.push({ t: '+3s', x: t.x, y: G - 70, life: 1.1, c: '#9dff8a' });
+  // a tree landing on the beaver: a harmless bonk
+  const a = Math.min(t.x, top), b = Math.max(t.x, top);
+  if (bv.x > a + 8 && bv.x < b && Math.abs(bv.x - t.x) > t.w / 2 + 6 && bv.dazed <= 0) {
+    bv.dazed = 1.6; sBonk(); bv.x = clamp(bv.x - t.dir * 10, 16, RX() - 10); pops.push({ t: 'Bonk!', x: bv.x, y: G - 50, life: 1, c: '#ffe36b' });
+  }
+}
+
+/* ---------- update ---------- */
+function update(dt) {
+  time += dt; shake *= Math.pow(.01, dt);
+  if (banner) { banner.life -= dt; if (banner.life <= 0) banner = null; }
+  for (const p of parts) { p.life -= dt; p.vy += (p.g || 0) * dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.vr) p.r += p.vr * dt; if (p.k === 'leaf') p.vx *= Math.pow(.4, dt); if ((p.k === 'chip' || p.k === 'leaf') && p.y > G + 2 && p.x < RX()) { p.y = G + 2; p.vy = 0; p.vx *= .5; } }
+  parts = parts.filter(p => p.life > 0);
+  for (const p of pops) { p.life -= dt; p.y -= 30 * dt; } pops = pops.filter(p => p.life > 0);
+  for (const t of trees) {
+    if (t.shake > 0) t.shake -= dt;
+    if (t.st === 'fall') { t.av += (2.2 + Math.sin(t.ang) * 7) * dt; t.ang += t.av * dt; if (t.ang >= 1.5) { t.ang = 1.5; landed(t); } }
+    else if (t.st === 'down' || t.st === 'river') { t.fade -= dt * (t.st === 'river' ? .25 : .5); }
+  }
+  if (state !== 'play') { endT += dt; return; }
+  // walking
+  let dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  if (drag && drag.moved) { const r = cv.getBoundingClientRect(), off = (drag.x - drag.sx) * W / r.width; dir = Math.abs(off) > 6 ? Math.sign(off) : 0; }
+  if (bv.dazed > 0) { bv.dazed -= dt; dir = 0; }
+  bv.vx = dir * 120; if (dir) { bv.face = dir; bv.walk += dt; }
+  bv.x = clamp(bv.x + bv.vx * dt, 22, RX() - 16);
+  bv.cd -= dt; bv.chew -= dt; bv.blink = (bv.blink + dt) % 3.6;
+  const holding = (drag && !drag.moved && performance.now() - drag.t > 260) || keys.chew;
+  if (holding && !dir) chomp(false);
+  // twigs: walk over one for extra time
+  twigT -= dt;
+  if (twigT <= 0) { twigT = rnd(5, 8); if (twigs.length < 2) twigs.push({ x: rnd(30, RX() - 30), t: 0 }); }
+  for (const w of twigs) { w.t += dt; if (Math.abs(w.x - bv.x) < 16 && bv.dazed <= 0) { w.got = true; timeLeft += 4; sTwig(); pops.push({ t: 'Fresh twig! +4s', x: w.x, y: G - 46, life: 1.2, c: '#9dff8a' }); } }
+  twigs = twigs.filter(w => !w.got && w.t < 9);
+  // clock
+  timeLeft -= dt;
+  if (trees.every(t => t.st !== 'stand' && t.st !== 'fall')) {
+    const bonus = Math.round(timeLeft) * 10 + (dam >= damNeed ? 0 : 0);
+    score += bonus; clearInfo = { bonus, dam }; state = 'clear'; endT = 0; sWin(); buzz(40);
+    if (score > best) { best = score; persist(); }
+    return;
+  }
+  if (timeLeft <= 0) { timeLeft = 0; state = 'over'; endT = 0; sNap(); if (score > best) { best = score; persist(); } }
+}
+
+/* ---------- drawing ---------- */
+const SKIES = [['#7cc4e8', '#d8f0ff'], ['#ffb38a', '#ffe6c2'], ['#8fa9e8', '#e8e0ff'], ['#9be0c8', '#eafff4']];
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function ell(x, y, rx, ry, c, rot = 0) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), rot, 0, TAU); ctx.fill(); }
+function txt(t, x, y, size, col, align = 'center', stroke = 'rgba(40,30,15,.6)') {
+  ctx.font = `900 ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if (stroke) { ctx.lineJoin = 'round'; ctx.lineWidth = size / 5; ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); } ctx.fillStyle = col; ctx.fillText(t, x, y);
+}
+function drawBackground() {
+  const sky = SKIES[(lvl - 1) % SKIES.length], g = ctx.createLinearGradient(0, 0, 0, G); g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ell(290, 110, 26, 26, 'rgba(255,250,220,.9)');
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; for (const [x, y, s] of [[60, 80, 1], [200, 140, .8], [320, 60, .7]]) { const cx = (x + time * 6 * s) % (W + 80) - 40; ell(cx, y, 28 * s, 10 * s, 'rgba(255,255,255,.8)'); ell(cx + 16 * s, y - 6 * s, 18 * s, 10 * s, 'rgba(255,255,255,.8)'); }
+  // far hills and forest
+  ctx.fillStyle = '#9fcf8f'; ctx.beginPath(); ctx.moveTo(0, G - 120); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, G - 120 - Math.sin(x * .02 + 1) * 24 - Math.sin(x * .05) * 8); ctx.lineTo(W, G); ctx.lineTo(0, G); ctx.fill();
+  ctx.fillStyle = '#6fae6a'; for (let x = -10; x < W + 20; x += 22) { const h = 40 + ((x * 37) % 30); ctx.beginPath(); ctx.moveTo(x, G - 40); ctx.lineTo(x + 11, G - 40 - h); ctx.lineTo(x + 22, G - 40); ctx.fill(); }
+  ctx.fillStyle = '#5c9a57'; ctx.fillRect(0, G - 42, W, 44);
+  // ground and bank
+  ctx.fillStyle = '#7cc95f'; ctx.fillRect(0, G - 4, RX() + 6, 8);
+  const soil = ctx.createLinearGradient(0, G, 0, H); soil.addColorStop(0, '#8a5a34'); soil.addColorStop(1, '#5c3820'); ctx.fillStyle = soil; ctx.fillRect(0, G + 4, RX() + 6, H - G);
+  ctx.fillStyle = 'rgba(0,0,0,.08)'; for (let i = 0; i < 26; i++) ell((i * 53) % (RX() - 10) + 8, G + 20 + ((i * 29) % (H - G - 30)), 5, 3, 'rgba(60,35,15,.25)');
+  ctx.fillStyle = '#6dbb52'; for (let x = 2; x < RX(); x += 7) { ctx.beginPath(); ctx.moveTo(x, G - 3); ctx.lineTo(x + 2, G - 9 - (x * 13 % 5)); ctx.lineTo(x + 4, G - 3); ctx.fill(); }
+  // river
+  const wg = ctx.createLinearGradient(0, G, 0, H); wg.addColorStop(0, '#4fb4e6'); wg.addColorStop(1, '#2a7ab8'); ctx.fillStyle = wg; ctx.fillRect(RX(), G + 2, RIVER, H - G);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  for (let i = 0; i < 7; i++) { const y = G + 16 + i * 14, x = RX() + ((time * 18 + i * 23) % RIVER); ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 5, y - 3, x + 10, y); ctx.stroke(); }
+  ctx.fillStyle = '#6b4226'; ctx.beginPath(); ctx.moveTo(RX() - 2, G - 4); ctx.lineTo(RX() + 6, G + 2); ctx.lineTo(RX() + 6, H); ctx.lineTo(RX() - 2, H); ctx.fill();
+  // the dam: logs stacked across the river
+  for (let i = 0; i < dam; i++) {
+    const y = G + 4 - i * 9, x = RX() + 8 + (i % 2) * 6;
+    ctx.fillStyle = '#7a4a2a'; rr(x, y - 8, RIVER - 18, 9, 4.5); ctx.fill(); ctx.fillStyle = '#c99a62'; ell(x + 3, y - 3.5, 3, 4.5, '#c99a62'); ell(x + RIVER - 21, y - 3.5, 3, 4.5, '#c99a62');
+  }
+}
+function drawTree(t) {
+  const T = TYPES[t.type], sw = t.st === 'stand' ? Math.sin(time * 1.6 + t.sway) * .012 + (t.shake > 0 ? Math.sin(time * 90) * .02 : 0) : 0;
+  const px = t.x, py = G - NOTCH, w = t.w, p = 1 - t.hp / t.max;
+  // stump (always there once it starts falling)
+  ctx.fillStyle = T.bark; ctx.beginPath(); ctx.moveTo(px - w / 2, G + 2); ctx.lineTo(px - w / 2, py + 4); ctx.lineTo(px - w / 4, py - 1); ctx.lineTo(px, py + 3); ctx.lineTo(px + w / 4, py - 1); ctx.lineTo(px + w / 2, py + 4); ctx.lineTo(px + w / 2, G + 2); ctx.fill();
+  ctx.fillStyle = T.barkD; ctx.fillRect(px - w / 2, G - 4, w, 6);
+  ctx.globalAlpha = clamp(t.fade, 0, 1);
+  ctx.save(); ctx.translate(px, py); ctx.rotate(t.dir * t.ang + sw);
+  // trunk above the notch, pinched where it has been chewed
+  const pinch = t.st === 'stand' ? (w / 2) * (1 - p * .85) : 1;
+  ctx.fillStyle = T.bark; ctx.beginPath();
+  ctx.moveTo(-w / 2, -8); ctx.quadraticCurveTo(-pinch, 2, -w / 2, 6); ctx.lineTo(w / 2, 6); ctx.quadraticCurveTo(pinch, 2, w / 2, -8);
+  ctx.lineTo(w / 2 * .82, -t.h + 30); ctx.lineTo(-w / 2 * .82, -t.h + 30); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(w / 2 * .2, -t.h + 30, w / 2 * .62, t.h - 38);
+  if (t.st === 'stand' && p > 0) { ctx.fillStyle = '#f2d9a6'; ctx.beginPath(); ctx.ellipse(0, 0, w / 2 - pinch + 1.5, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = T.bark; ctx.fillRect(-pinch, -3, pinch * 2, 6); }
+  ctx.fillStyle = T.mark; for (const [f, o, l] of t.marks) { if (t.type === 'birch') { ctx.fillRect(-w / 2 * .82 + (o + .4) * w * .5, -f * (t.h - 40) - 6, w * l, 2.5); } else { ctx.globalAlpha *= .5; ctx.fillRect(o * w * .6 - 1, -f * (t.h - 40) - 10, 2, 12); ctx.globalAlpha = clamp(t.fade, 0, 1); } }
+  // canopy
+  const top = -t.h;
+  if (T.shape === 'pine') {
+    for (let k = 0; k < 4; k++) { const y = top + 18 + k * 26, hw = 20 + k * 9; ctx.fillStyle = T.leaf[k % 2]; ctx.beginPath(); ctx.moveTo(0, y - 30); ctx.lineTo(hw, y + 8); ctx.lineTo(-hw, y + 8); ctx.closePath(); ctx.fill(); }
+  } else {
+    const r = 26 + w * .6;
+    for (const [dx, dy, rr2, c] of [[-r * .7, 18, r * .75, 1], [r * .7, 18, r * .75, 1], [0, 0, r, 0], [-r * .35, -r * .45, r * .6, 2], [r * .4, -r * .2, r * .55, 0]]) ell(dx, top + 30 + dy, rr2, rr2 * .92, T.leaf[c]);
+    if (t.type === 'oak') for (let k = 0; k < 4; k++) ell(-r * .5 + k * r * .35, top + 36 + (k % 2) * 12, 3, 3.5, '#b5652e');
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+function drawBeaver() {
+  const b = bv, x = b.x, y = G, f = b.face, walk = b.vx ? Math.sin(b.walk * 16) : 0, chew = b.chew > 0 ? Math.sin(b.chew * 60) * 1.5 : 0;
+  ctx.save(); ctx.translate(x, y); ctx.scale(f * 1.35, 1.35);
+  ell(0, 2, 22, 4, 'rgba(0,0,0,.18)');
+  // tail: a flat paddle with a criss-cross
+  ctx.save(); ctx.translate(-18, -7); ctx.rotate(-.25 + walk * .06);
+  ell(-10, 0, 13, 6, '#4a3328'); ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(-20 + k * 4, -5); ctx.lineTo(-12 + k * 4, 5); ctx.moveTo(-12 + k * 4, -5); ctx.lineTo(-20 + k * 4, 5); ctx.stroke(); }
+  ctx.restore();
+  // feet
+  ell(-8 + walk * 3, -2, 5, 3, '#3d2618'); ell(8 - walk * 3, -2, 5, 3, '#3d2618');
+  // body
+  const bodyG = ctx.createRadialGradient(-4, -20, 2, 0, -14, 22); bodyG.addColorStop(0, '#b07a48'); bodyG.addColorStop(1, '#7a4e2c');
+  ell(0, -14 + Math.abs(walk), 19, 14, bodyG); ell(4, -10, 10, 8, '#c99a6a');
+  // head
+  const hx = 15, hy = -26 + chew * .4 + Math.abs(walk) * .5;
+  ell(hx - 6, hy - 9, 4, 4, '#6b4226'); ell(hx - 6, hy - 9, 2, 2, '#c98a6a');
+  ell(hx, hy, 12, 10.5, '#8a5a34'); ell(hx + 7, hy + 3, 7, 5.5, '#c99a6a');
+  ell(hx + 12, hy, 3, 2.4, '#2a1a10');
+  if (b.dazed > 0) { ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(hx + 2, hy - 3, 2.5, 0, TAU * .8); ctx.stroke(); }
+  else if (b.blink > 3.45) { ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(hx, hy - 3); ctx.lineTo(hx + 4, hy - 3); ctx.stroke(); }
+  else { ell(hx + 2, hy - 3, 2.8, 3, '#fff'); ell(hx + 2.8, hy - 3, 1.6, 1.9, '#1a1008'); ell(hx + 3.3, hy - 3.8, .6, .6, '#fff'); }
+  // the famous front teeth
+  ctx.fillStyle = '#fffbe8'; ctx.strokeStyle = '#a07a40'; ctx.lineWidth = .8; rr(hx + 7, hy + 6 + chew, 5, 6, 1.4); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(hx + 9.5, hy + 6 + chew); ctx.lineTo(hx + 9.5, hy + 12 + chew); ctx.stroke();
+  ell(hx - 1, hy + 4, 2.4, 1.5, 'rgba(255,120,120,.45)');
+  // little arms
+  ell(10, -12 + chew * .5, 3.5, 5, '#6b4226');
+  ctx.restore();
+  if (b.dazed > 0) for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; txt('★', x + f * 19 + Math.cos(a) * 14, y - 58 + Math.sin(a) * 4, 9, '#ffe36b', 'center', null); }
+}
+function homeIcon(cx, cy) {
+  ell(cx, cy, 17, 17, 'rgba(40,30,15,.28)'); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - 8.5, cy + .5); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx + 8.5, cy + .5); ctx.moveTo(cx - 6, cy - 1.5); ctx.lineTo(cx - 6, cy + 8); ctx.lineTo(cx + 6, cy + 8); ctx.lineTo(cx + 6, cy - 1.5); ctx.stroke();
+}
+function soundIcon(cx, cy) {
+  ell(cx, cy, 17, 17, 'rgba(40,30,15,.28)'); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - 8, cy - 3); ctx.lineTo(cx - 4, cy - 3); ctx.lineTo(cx + 1, cy - 8); ctx.lineTo(cx + 1, cy + 8); ctx.lineTo(cx - 4, cy + 3); ctx.lineTo(cx - 8, cy + 3); ctx.closePath(); ctx.fill();
+  if (muted) { ctx.beginPath(); ctx.moveTo(cx + 4, cy - 5); ctx.lineTo(cx + 10, cy + 5); ctx.moveTo(cx + 10, cy - 5); ctx.lineTo(cx + 4, cy + 5); ctx.stroke(); } else { ctx.beginPath(); ctx.arc(cx + 2, cy, 5, -.9, .9); ctx.stroke(); }
+}
+function draw() {
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  ctx.save(); if (shake > .3) ctx.translate(rnd(-shake, shake), rnd(-shake, shake) * .5);
+  drawBackground();
+  for (const w of twigs) { ctx.save(); ctx.translate(w.x, G - 3 - Math.abs(Math.sin(time * 3 + w.x)) * 2); ctx.strokeStyle = '#8a5a34'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(9, -3); ctx.moveTo(0, -1.5); ctx.lineTo(4, -8); ctx.stroke(); ell(5, -9, 4, 2.6, '#7cc95f', -.6); ell(-6, -3, 3.5, 2.2, '#9be07a', .5); ctx.restore(); }
+  // standing trees behind the beaver, fallen ones in front
+  for (const t of trees) if (t.st === 'stand') drawTree(t);
+  if (state === 'play' || state === 'clear') drawBeaver();
+  else if (state === 'over' && bv) { // a well-earned nap
+    ctx.save(); ctx.translate(bv.x, G); ctx.scale(1.35, 1.35); ell(0, 2, 22, 4, 'rgba(0,0,0,.18)'); ell(0, -10, 21, 11, '#8a5a34'); ell(14 * bv.face, -12, 11, 9, '#8a5a34'); ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(16 * bv.face, -14, 2.5, .2, Math.PI - .2); ctx.stroke(); ctx.restore();
+    for (let i = 0; i < 3; i++) { const k = (time * .6 + i / 3) % 1; ctx.globalAlpha = Math.sin(k * Math.PI); txt('z', bv.x + k * 16, G - 30 - k * 34, 9 + k * 8, '#fff', 'center', 'rgba(40,30,15,.6)'); } ctx.globalAlpha = 1;
+  }
+  for (const t of trees) if (t.st !== 'stand' && t.fade > 0) drawTree(t);
+  for (const p of parts) {
+    ctx.globalAlpha = clamp(p.life / p.max * 1.6, 0, 1); ctx.fillStyle = p.c;
+    if (p.k === 'leaf') { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ell(0, 0, p.s, p.s * .55, p.c); ctx.restore(); }
+    else if (p.k === 'drop') { ell(p.x, p.y, p.s * .7, p.s, p.c); }
+    else { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); }
+  }
+  ctx.globalAlpha = 1;
+  for (const p of pops) { ctx.globalAlpha = clamp(p.life * 2, 0, 1); txt(p.t, p.x, p.y, 14, p.c); } ctx.globalAlpha = 1;
+  ctx.restore();
+  // HUD
+  homeIcon(26, 28); soundIcon(W - 26, 28);
+  if (state !== 'title') {
+    rr(52, 12, W - 104, 34, 12); ctx.fillStyle = 'rgba(40,30,15,.35)'; ctx.fill();
+    const f = clamp(timeLeft / Math.max(tStart, 1), 0, 1), bx = 64, bw = 104;
+    txt('TIME', bx, 22, 8, '#fff', 'left', null);
+    rr(bx, 28, bw, 9, 4.5); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fill();
+    rr(bx, 28, Math.max(9, bw * f), 9, 4.5); ctx.fillStyle = f > .5 ? '#9dff8a' : f > .25 ? '#ffe36b' : '#ff9d6b'; ctx.fill();
+    txt(Math.ceil(timeLeft) + 's', bx + bw + 6, 32, 10, timeLeft < 8 && Math.sin(time * 10) > 0 ? '#ffb35a' : '#fff', 'left', null);
+    txt(String(score), W - 62, 23, 15, '#ffe36b', 'right', null); txt(`LEVEL ${lvl} · DAM ${Math.min(dam, damNeed)}/${damNeed}`, W - 62, 38, 8, '#fff', 'right', null);
+    const left = trees.filter(t => t.st === 'stand').length;
+    if (state === 'play') txt(`${left} tree${left === 1 ? '' : 's'} to go`, W / 2, 62, 12, '#fff');
+  }
+  if (banner && state === 'play') { ctx.globalAlpha = clamp(banner.life * 3, 0, 1); txt(banner.t, W / 2, H * .22, 30, '#fff'); ctx.globalAlpha = 1; }
+  if (state === 'play' && lvl === 1 && timeLeft > tStart - 9) txt(timeLeft > tStart - 4.5 ? 'Drag to walk · tap fast to chew' : 'Chew from the left to drop trees in the river', W / 2, H * .3, 13, '#fff');
+  if (state === 'title') {
+    ctx.fillStyle = 'rgba(30,50,20,.35)'; ctx.fillRect(0, 0, W, H);
+    txt('Busy', W / 2, H * .15, 58, '#ffe0a3', 'center', '#4a2f1a'); txt('Beaver', W / 2, H * .15 + 56, 58, '#ffe0a3', 'center', '#4a2f1a');
+    const lines = ['Drag left or right to walk', 'Tap fast (or hold) to chew a tree', 'Trees fall away from you, so', 'chew from the left to build a dam!', 'Clear every tree before time runs out'];
+    rr(30, H * .36, W - 60, lines.length * 22 + 20, 16); ctx.fillStyle = 'rgba(40,30,15,.55)'; ctx.fill();
+    lines.forEach((l, i) => txt(l, W / 2, H * .36 + 22 + i * 22, 13, '#fff', 'center', null));
+    if (Math.sin(time * 5) > -.3) txt('Tap to start', W / 2, H * .36 + lines.length * 22 + 56, 22, '#ffe36b', 'center', '#4a2f1a');
+    if (best) txt('Best ' + best, W / 2, H * .36 + lines.length * 22 + 86, 13, '#fff');
+  }
+  if (state === 'clear' && endT > .3) {
+    rr(40, H * .22, W - 80, 190, 22); ctx.fillStyle = 'rgba(255,248,230,.95)'; ctx.fill();
+    txt('All chewed!', W / 2, H * .22 + 40, 32, '#8a5a34', 'center', null);
+    txt(`Time bonus +${clearInfo.bonus}`, W / 2, H * .22 + 82, 15, '#4a2f1a', 'center', null);
+    txt(clearInfo.dam >= damNeed ? `Dam built with ${clearInfo.dam} logs!` : `Dam logs: ${clearInfo.dam}/${damNeed}`, W / 2, H * .22 + 106, 15, '#2a7ab8', 'center', null);
+    txt('Score ' + score, W / 2, H * .22 + 134, 17, '#4a2f1a', 'center', null);
+    if (endT > 1 && Math.sin(time * 5) > -.3) txt('Tap for the next wood', W / 2, H * .22 + 166, 16, '#3f8a38', 'center', null);
+  }
+  if (state === 'over' && endT > .5) {
+    rr(40, H * .22, W - 80, 170, 22); ctx.fillStyle = 'rgba(255,248,230,.95)'; ctx.fill();
+    txt("Time's up!", W / 2, H * .22 + 40, 32, '#8a5a34', 'center', null);
+    txt('Busy Beaver is having a nap.', W / 2, H * .22 + 76, 14, '#4a2f1a', 'center', null);
+    txt(`Score ${score} · reached level ${lvl}`, W / 2, H * .22 + 102, 15, '#4a2f1a', 'center', null); txt('Best ' + Math.max(best, score), W / 2, H * .22 + 124, 13, '#8a5a34', 'center', null);
+    if (endT > 1.2 && Math.sin(time * 5) > -.3) txt('Tap to chew again', W / 2, H * .22 + 152, 16, '#3f8a38', 'center', null);
+  }
+}
+
+let last = performance.now();
+function frame(now) { const dt = Math.min(.033, Math.max(0, (now - last) / 1000)); last = now; update(dt); draw(); requestAnimationFrame(frame); }
+addEventListener('resize', resize); resize(); setupLevel();
+if (/[?&]debug\b/.test(location.search)) window.__bb = { get state() { return state; }, get trees() { return trees.map(t => ({ x: t.x, w: t.w, h: t.h, st: t.st, hp: t.hp })); }, get bv() { return { x: bv.x, dazed: bv.dazed }; }, get dam() { return dam; }, get time() { return timeLeft; }, get score() { return score; }, startGame };
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

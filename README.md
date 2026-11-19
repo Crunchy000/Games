@@ -16,7 +16,7 @@ The Bear & Bean Games is a small arcade of browser games, made for touch screens
 | Hedge Hop | [`hedge-hop/`](hedge-hop/) | Endless crossing game: hop a hedgehog over roads, log-filled rivers and railway lines, collecting berries. |
 | Bumble Dash | [`bumble-dash/`](bumble-dash/) | One-tap flyer: keep a bee aloft through gaps between honeycomb towers; grab pollen for bonus points. |
 | Ink Bounce | [`ink-bounce/`](ink-bounce/) | Brick breaker with no paddle: draw lines with limited ink to bounce the ball; short, neat lines score a precision bonus. |
-| Smash City | [`smash-city/`](smash-city/) | Timed demolition as a friendly giant monster: climb and flatten empty buildings, grab snacks for extra time, and fill up Rage for bigger smashes. |
+| Busy Beaver | [`busy-beaver/`](busy-beaver/) | Timed tree-chewing: drag to walk, tap fast (or hold) to chew. Trees fall away from you, so chew from the left to drop them in the river and build a dam. Birch, oak and pine, sunny and sunset woods, and a nap when time runs out. |
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Hop around a cube pyramid to change every colour while dodging critters. |
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
 | Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |

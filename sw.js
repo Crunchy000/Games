@@ -2,7 +2,7 @@
    - install: download every page and icon in one go (the install only succeeds if all of them were saved)
    - fetch: answer from the saved copy straight away, then quietly refresh it in the background
    - activate: delete the copies saved by older versions */
-const VERSION = 'games-b287ab983026';
+const VERSION = 'games-c2ca3c227799';
 const FILES = [
   './',
   './manifest.webmanifest',
@@ -14,6 +14,7 @@ const FILES = [
   './icons/maskable-512.png',
   './bean-merge/',
   './bumble-dash/',
+  './busy-beaver/',
   './dot-loop/',
   './dots-and-boxes/',
   './guess-five/',
@@ -22,7 +23,6 @@ const FILES = [
   './ink-bounce/',
   './pyramid-hop/',
   './slither-slide/',
-  './smash-city/',
   './stack-drop/',
   './sudoku/',
   './tangle-tails/',
