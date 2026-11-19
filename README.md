@@ -4,6 +4,7 @@ A small arcade of browser games, made for touch screens. Each game lives in its 
 
 | Game | Folder | What it is |
 | --- | --- | --- |
+| Tangle Tails | [`tangle-tails/`](tangle-tails/) | Untangling puzzle: tap snakes to slither them off the board in the direction they face. Blocked snakes bonk and cost a heart, so free them in the right order. Endless solvable levels, hints and star ratings. |
 | Slither Slide | [`slither-slide/`](slither-slide/) | Maze-painting puzzle: swipe a cartoon snake that slides until it hits a wall, painting every tile it crosses. Endless solvable levels, star ratings and six unlockable snakes. |
 | Hedge Hop | [`hedge-hop/`](hedge-hop/) | Endless crossing game: hop a hedgehog over roads, log-filled rivers and railway lines, collecting berries. |
 | Bumble Dash | [`bumble-dash/`](bumble-dash/) | One-tap flyer: keep a bee aloft through gaps between honeycomb towers; grab pollen for bonus points. |
