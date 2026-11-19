@@ -124,7 +124,7 @@ function toast(t, c = '#fff', size = 18) { toasts.push({ t, c, size, life: 1.2, 
 function splashAt(x, y, n = 18, c = '#e9f8ff') { for (let i = 0; i < n; i++) { const a = rnd(Math.PI * 1.05, Math.PI * 1.95); parts.push({ x, y, vx: Math.cos(a) * rnd(40, 160), vy: Math.sin(a) * rnd(120, 300), g: 700, life: rnd(.4, .8), max: .8, s: rnd(2, 4), c }); } }
 function hit(o) {
   if (P.safe > 0) return;
-  lives--; P.hurt = .9; P.safe = 2.2; shake = 9; splashSound(); beep(200, .4, 'sine', .07, -120); if (navigator.vibrate) try { navigator.vibrate(60); } catch (e) {}
+  lives--; P.hurt = .9; P.safe = 2.2; shake = 3.5; splashSound(); beep(200, .4, 'sine', .07, -120); if (navigator.vibrate) try { navigator.vibrate(60); } catch (e) {}
   const q = proj(P.x, 0, PZ); splashAt(q.x, q.y, 28);
   toast(lives > 0 ? pick(['Splash!', 'Oops-a-daisy!', 'Wobbly!']) : 'Soggy bottoms!', '#fff', 26);
   o.hitDone = true;
@@ -182,20 +182,22 @@ function sky() {
 function drawWater() {
   // grass banks
   const gr = ctx.createLinearGradient(0, HY, 0, H); gr.addColorStop(0, '#6fb05a'); gr.addColorStop(1, '#3f8a3a'); ctx.fillStyle = gr; ctx.fillRect(0, HY, W, H - HY);
-  // the river, banded so speed reads clearly
-  const n = 26;
-  for (let i = n; i >= 1; i--) {
-    const z1 = 1 + Math.pow(i / n, 1.7) * FAR, z0 = 1 + Math.pow((i - 1) / n, 1.7) * FAR;
-    const a = proj(-RIVER, 0, z1), b = proj(RIVER, 0, z1), c = proj(RIVER, 0, z0), d = proj(-RIVER, 0, z0);
-    const band = Math.floor((z0 + scroll) / 1.6) % 2;
-    ctx.fillStyle = band ? '#3fa3d6' : '#4bb2e2'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x + 1, c.y + 1); ctx.lineTo(d.x - 1, d.y + 1); ctx.fill();
+  // the river: one smooth gradient, deeper and darker nearer the camera
+  { const a = proj(-RIVER, 0, FAR), b = proj(RIVER, 0, FAR), c = proj(RIVER, 0, 1), d = proj(-RIVER, 0, 1);
+    const wg = ctx.createLinearGradient(0, a.y, 0, H); wg.addColorStop(0, '#8fd6f2'); wg.addColorStop(.35, '#55b9e4'); wg.addColorStop(1, '#2f8fc4');
+    ctx.fillStyle = wg; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.fill(); }
+  // soft ripples: faint, gently curved and fading in and out, drifting past at a calm pace
+  ctx.lineCap = 'round';
+  for (let k = 0; k < 34; k++) {
+    const span = FAR - 3, lx = (((k * 0.618) % 1) * 2 - 1) * (RIVER - .35), z = (((k * 1.37 - scroll * .55) % span) + span) % span + 3;
+    const p = proj(lx + Math.sin(time * .8 + k) * .08, 0, z), w = .32 * p.s, fade = Math.min(1, (z - 3) / 3) * Math.min(1, (FAR - z) / 8);
+    ctx.strokeStyle = `rgba(255,255,255,${.22 * fade})`; ctx.lineWidth = Math.max(.6, p.s * .018);
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, w, w * .16, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
   }
-  // foam streaks and the sandy edges
-  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineCap = 'round';
-  for (let k = 0; k < 18; k++) {
-    const lx = ((k * 0.73) % 1) * RIVER * 2 - RIVER, z = ((k * 3.1 - scroll) % (FAR - 4) + (FAR - 4)) % (FAR - 4) + 4.5, p = proj(lx, 0, z), q = proj(lx, 0, z + .7);
-    ctx.lineWidth = Math.max(.6, p.s * .025); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
-  }
+  // a slow sheen across the surface
+  ctx.globalAlpha = .07; ctx.fillStyle = '#ffffff';
+  for (let k = 0; k < 3; k++) { const z = 6 + k * 9 + Math.sin(time * .4 + k * 2) * 1.5, p = proj(0, 0, z); ctx.beginPath(); ctx.ellipse(p.x + Math.sin(time * .3 + k) * p.s * .4, p.y, RIVER * p.s * .6, p.s * .05, 0, 0, 6.3); ctx.fill(); }
+  ctx.globalAlpha = 1;
   for (const side of [-1, 1]) {
     const a = proj(side * RIVER, 0, FAR), b = proj(side * RIVER, 0, 1), c = proj(side * (RIVER + .35), 0, 1), d = proj(side * (RIVER + .35), 0, FAR);
     ctx.fillStyle = '#d8c48c'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.fill();
@@ -244,12 +246,12 @@ function drawObj(o) {
   ctx.globalAlpha = 1;
 }
 function drawRaft() {
-  const p = proj(P.x, P.jy, PZ), s = p.s * .68, duck = P.duck > 0 ? 1 : 0, sq = duck ? .6 : 1, flash = P.safe > 0 && Math.sin(time * 30) > 0;
+  const p = proj(P.x, P.jy, PZ), s = p.s * .68, duck = P.duck > 0 ? 1 : 0, sq = duck ? .6 : 1, flash = P.safe > 0;
   const g = proj(P.x, 0, PZ);
   ell(g.x, g.y + .02 * s, .75 * s * (1 - P.jy * .2), .12 * s, 'rgba(0,30,60,.25)');
   if (P.jy < .05) for (const d of [-1, 1]) { ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = .03 * s; ctx.beginPath(); ctx.moveTo(g.x + d * .6 * s, g.y); ctx.quadraticCurveTo(g.x + d * .85 * s, g.y + .1 * s, g.x + d * (1 + Math.sin(time * 9) * .05) * s, g.y + .25 * s); ctx.stroke(); }
-  if (flash) ctx.globalAlpha = .45;
-  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(P.tilt * .4 + (P.hurt > 0 ? Math.sin(time * 30) * .15 : 0));
+  if (flash) ctx.globalAlpha = .55 + .2 * Math.sin(time * 6);
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(P.tilt * .4 + (P.hurt > 0 ? Math.sin(time * 9) * .12 : 0));
   // the log, seen end-on from behind
   ctx.fillStyle = '#8a5a2b'; rr(-.62 * s, -.2 * s, 1.24 * s, .3 * s, .15 * s); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(-.55 * s, -.17 * s, 1.1 * s, .06 * s);
