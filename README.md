@@ -13,7 +13,6 @@ A small arcade of browser games, made for touch screens. Each game lives in its 
 | Dots and Boxes | [`dots-and-boxes/`](dots-and-boxes/) | Two-player pass-and-play: join dots, close boxes, most boxes wins. |
 | Hex Colour Balance | [`hex-colour-balance/`](hex-colour-balance/) | Place red, green and blue gems until each hexagon balances to white, across endless levels. |
 | Massive Armies | [`massive-armies/`](massive-armies/) | 3D battle simulation with thousands of soldiers: formations, a tech tree and a 25-battle campaign. Uses WebGPU where available. |
-| Hollowmarch | [`hollowmarch/`](hollowmarch/) | Tower defense: build and upgrade towers, lead two heroes and cast spells to hold the road across three stages. |
 
 The root `index.html` is a landing page with a featured carousel and a scrolling row of games for each category (Puzzle, Action & Arcade, Strategy, Two players). To add a game, add its folder, a `<template id="art-<folder>">` thumbnail and an entry in the `GAMES`/`CATS` lists in that file.
 
@@ -37,6 +36,3 @@ Open any `index.html` in a browser, or serve the folder:
 python3 -m http.server 8000
 ```
 
-## Credits
-
-Hollowmarch's artwork (towers, characters, effects and maps) and sound effects are original and generated in code; it uses no image or audio files.
