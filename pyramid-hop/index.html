@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Pyramid Hop</title>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -78,7 +85,7 @@ function startGame() { lvl = 1; score = 0; lives = 3; setupLevel(); state = 'pla
 const surf = document.getElementById('app'), ptrs = new Map(), SW = 26;
 const dirOf = (dx, dy) => dy < 0 ? (dx < 0 ? 0 : 1) : (dx < 0 ? 2 : 3);
 function onDir(d) { if (state === 'title' || (state === 'over' && overT > .8)) { startGame(); return; } move(d); }
-surf.addEventListener('pointerdown', e => { e.preventDefault(); try { surf.setPointerCapture(e.pointerId); } catch (_) {} ptrs.set(e.pointerId, { ax: e.clientX, ay: e.clientY, t: performance.now(), moved: false }); });
+surf.addEventListener('pointerdown', e => { e.preventDefault(); { const r = cv.getBoundingClientRect(), lx = (e.clientX - r.left) * W / r.width, ly = (e.clientY - r.top) * H / r.height; if (lx < 48 && ly < 52 && lx > -20) { location.href = '../'; return; } } try { surf.setPointerCapture(e.pointerId); } catch (_) {} ptrs.set(e.pointerId, { ax: e.clientX, ay: e.clientY, t: performance.now(), moved: false }); });
 surf.addEventListener('pointermove', e => {
   const q = ptrs.get(e.pointerId); if (!q) return;
   const dx = e.clientX - q.ax, dy = e.clientY - q.ay;
@@ -386,13 +393,20 @@ function drawEnemy(e) {
 }
 
 /* ---------- HUD & overlays ---------- */
+function homeIcon(cx, cy, col, bg) {   // drawn top-left; tapping it goes back to the arcade
+  ctx.save();
+  if (bg) { ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - 8.5, cy + .5); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx + 8.5, cy + .5); ctx.moveTo(cx - 6, cy - 1.5); ctx.lineTo(cx - 6, cy + 8); ctx.lineTo(cx + 6, cy + 8); ctx.lineTo(cx + 6, cy - 1.5); ctx.stroke();
+  ctx.restore();
+}
 function drawHUD() {
-  ctx.fillStyle = 'rgba(10,6,30,.55)'; rr(8, 8, W - 16, 40, 12); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke();
-  text('LEVEL ' + lvl, 20, 22, 11, '#cfd8ff', 'left', null, 800);
-  text(String(score).padStart(6, '0'), CX, 22, 17, '#fff', 'center', 'rgba(10,6,30,.9)', 900);
+  ctx.fillStyle = 'rgba(10,6,30,.55)'; rr(50, 8, W - 58, 40, 12); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke();
+  text('LEVEL ' + lvl, 62, 22, 11, '#cfd8ff', 'left', null, 800);
+  text(String(score).padStart(6, '0'), (50 + W - 8) / 2, 22, 17, '#fff', 'center', 'rgba(10,6,30,.9)', 900);
   for (let i = 0; i < lives; i++) { const lx = W - 22 - i * 20; const g = ctx.createRadialGradient(lx - 2, 18, 1, lx, 20, 7); g.addColorStop(0, '#8ff5e1'); g.addColorStop(1, '#14917a'); ell(lx, 20, 7, 7, g); ell(lx - 2.2, 19, 1.6, 1.9, '#fff'); ell(lx + 2.2, 19, 1.6, 1.9, '#fff'); }
   // progress bar & target swatches
-  const done = doneCount(), tot = 28, bx = 20, by = 34, bwid = W - 120;
+  const done = doneCount(), tot = 28, bx = 62, by = 34, bwid = W - 162;
   ctx.fillStyle = 'rgba(255,255,255,.1)'; rr(bx, by, bwid, 6, 3); ctx.fill();
   const g = ctx.createLinearGradient(bx, 0, bx + bwid, 0); g.addColorStop(0, pal.top[mode.steps === 2 && !mode.toggle ? 1 : 0]); g.addColorStop(1, pal.top[2]);
   ctx.fillStyle = g; rr(bx, by, Math.max(6, bwid * done / tot), 6, 3); ctx.fill();
@@ -461,6 +475,7 @@ function draw() {
   if (freezeT > 0) { const g = ctx.createRadialGradient(CX, H / 2, H * .3, CX, H / 2, H * .75); g.addColorStop(0, 'rgba(150,230,255,0)'); g.addColorStop(1, `rgba(150,230,255,${.18 + .05 * Math.sin(time * 6)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
   const vg = ctx.createRadialGradient(CX, H * .5, H * .3, CX, H * .5, H * .8); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   if (state !== 'title') drawHUD();
+  ctx.fillStyle = 'rgba(10,6,30,.55)'; rr(8, 8, 38, 40, 12); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke(); homeIcon(27, 28, '#cfd8ff');
   if (state === 'play' && lvl === 1 && lvlTime < 6) { panel(H - 74, 50); text('Swipe diagonally (or tap) to hop', CX, H - 58, 12, '#fff', 'center', null, 800); text('Colour every cube · dodge the critters!', CX, H - 40, 11, '#cfd8ff', 'center', null, 700); }
   if (state === 'win') { logoText('LEVEL CLEAR!', H * .2); text('+' + (500 + pads.filter(d => !d.used).length * 100) + ' bonus', CX, H * .2 + 34, 13, '#fff', 'center'); }
   if (state === 'title') {

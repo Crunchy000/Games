@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#120f1f">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Dots and Boxes</title>
 <style>
   :root {
@@ -92,6 +99,7 @@
   <header>
     <h1><span class="a">Dots</span> &amp; <span class="b">Boxes</span></h1>
     <div class="head-btns">
+      <a class="icon-btn" href="../" aria-label="All games" title="All games" style="text-decoration:none;display:grid;place-items:center">⌂</a>
       <button class="icon-btn" id="undo" aria-label="Undo last line" title="Undo">↶</button>
       <button class="icon-btn" id="sound" aria-label="Sound on" title="Sound">🔊</button>
     </div>

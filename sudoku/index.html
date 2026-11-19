@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#f3f6fb">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Sudoku</title>
 <style>
   :root { --bg:#f3f6fb; --ink:#1e2a3b; --muted:#7a879b; --line:#c9d3e2; --thick:#34445c; --sel:#bcd6ff; --peer:#e3ecf9; --same:#cfe0fb; --given:#1e2a3b; --entered:#2563d9; --bad:#e0434b; --badBg:#fde4e5; --card:#fff; --cellBg:#fff; --key:#fff; --noteInk:#56637a; --wave:#ffe58a; --shadow:rgba(30,42,59,.06); }

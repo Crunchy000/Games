@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#1b1f4b">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Tile Burst</title>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -39,13 +46,13 @@
       <li>Clear lines on back-to-back turns for a <b>combo</b>.</li>
       <li>The game ends when none of your blocks fit.</li>
     </ul>
-    <button class="btn" id="btnStart">Play</button>
+    <button class="btn" id="btnStart">Play</button><br><a href="../" style="display:inline-block;margin-top:12px;font-weight:800;color:inherit;opacity:.7">← All games</a>
   </div></div>
   <div class="ov" id="ovOver"><div class="panel">
     <h2>No space left!</h2>
     <p>Score</p><div class="big" id="ovScore">0</div>
     <p id="ovBest"></p>
-    <button class="btn" id="btnAgain">Play again</button>
+    <button class="btn" id="btnAgain">Play again</button><br><a href="../" style="display:inline-block;margin-top:12px;font-weight:800;color:inherit;opacity:.7">← All games</a>
   </div></div>
 </div>
 <script>
@@ -186,6 +193,7 @@ const BTN = { restart: [W - 50, 24, 36], sound: [W - 94, 24, 36] };
 const hitBtn = (p, b) => p.x > b[0] && p.x < b[0] + b[2] && p.y > b[1] && p.y < b[1] + b[2];
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); const p = local(e);
+  if (p.x < 48 && p.y < 64) { location.href = '../'; return; }
   if (hitBtn(p, BTN.sound)) { muted = !muted; persist(state !== 'play'); tone(660, .08, 'triangle', .05); return; }
   if (hitBtn(p, BTN.restart)) { if (state === 'play') { newGame(); tone(400, .1, 'triangle', .05, 0, 200); } return; }
   if (state !== 'play') return;
@@ -222,6 +230,13 @@ function computeSnap() {
 }
 
 /* ---------- draw ---------- */
+function homeIcon(cx, cy, col, bg) {   // drawn top-left; tapping it goes back to the arcade
+  ctx.save();
+  if (bg) { ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - 8.5, cy + .5); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx + 8.5, cy + .5); ctx.moveTo(cx - 6, cy - 1.5); ctx.lineTo(cx - 6, cy + 8); ctx.lineTo(cx + 6, cy + 8); ctx.lineTo(cx + 6, cy - 1.5); ctx.stroke();
+  ctx.restore();
+}
 function text(t, x, y, size, col, align = 'center', stroke = null, w = 900) {
   ctx.font = `${w} ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle';
   if (stroke) { ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, size / 5); ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); }
@@ -241,7 +256,8 @@ function draw(dt) {
   if (!board) return;
   // HUD
   shown += (score - shown) * Math.min(1, dt * 10); if (Math.abs(score - shown) < .5) shown = score;
-  text('🏆 ' + best.toLocaleString('en-GB'), 22, 42, 15, '#ffd43b', 'left', null, 800);
+  homeIcon(24, 40, '#fff', 'rgba(255,255,255,.12)');
+  text('🏆 ' + best.toLocaleString('en-GB'), 50, 42, 15, '#ffd43b', 'left', null, 800);
   text(Math.round(shown).toLocaleString('en-GB'), W / 2, 82, 40, '#fff', 'center', 'rgba(20,10,60,.6)');
   icon('restart', BTN.restart); icon('sound', BTN.sound);
   if (streak > 1 && state === 'play') { rr(ctx, 18, 60, 74, 24, 12); ctx.fillStyle = 'rgba(255,212,59,.18)'; ctx.fill(); text(`Combo ×${streak}`, 55, 72, 11, '#ffd43b', 'center', null, 900); }

@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Smash City</title>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -46,7 +53,9 @@ function applyStick() {
 const surf = document.getElementById('app');
 const canStart = () => state === 'title' || (state === 'over' && overT > 1.2);
 surf.addEventListener('pointerdown', e => {
-  e.preventDefault(); try { surf.setPointerCapture(e.pointerId); } catch (_) {}
+  e.preventDefault();
+  { const r = cv.getBoundingClientRect(), lx = (e.clientX - r.left) * W / r.width, ly = (e.clientY - r.top) * H / r.height; if (lx < 48 && ly < 54 && lx > -20) { location.href = '../'; return; } }
+  try { surf.setPointerCapture(e.pointerId); } catch (_) {}
   audioInit(); ptrs.set(e.pointerId, { sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false });
 });
 surf.addEventListener('pointermove', e => {
@@ -127,7 +136,7 @@ const MRAGE = { b1: '#ff6f8f', b2: '#a8214c', dk: '#62102e', belly: '#ffd3dc', h
 const MHURT = { b1: '#ffffff', b2: '#e8dcff', dk: '#b9a6e8', belly: '#ffffff', horn: '#ffffff', claw: '#fff' };
 
 /* ======================= state ======================= */
-let state = 'title', lvl = 1, score = 0, hp = 100, rage = 0, rageT = 0, combo = 0, comboT = 0, comboPop = 0, maxCombo = 0;
+let state = 'title', lvl = 1, score = 0, hp = 100, tl = 70, tStart = 70, rage = 0, rageT = 0, combo = 0, comboT = 0, comboPop = 0, maxCombo = 0;
 let buildings = [], enemies = [], bullets = [], civs = [], parts = [], popups = [], occs = [], cars = [], clouds = [], theme = THEMES[0];
 let p, time = 0, lvlTime = 0, shake = 0, hitStop = 0, flashT = 0, clearT = 0, koT = 0, overT = 0, solT = 0, heliT = 0, tankT = 0, occT = 0, tally = null;
 let bgSky = null, bgFar = null, bgNear = null;
@@ -160,7 +169,7 @@ function setupLevel() {
   p = makeMonster(clamp(keepX, 20, W - 20));
   if (state !== 'title') { p.y = -60; p.mode = 'air'; p.pound = true; p.vy = 200; }
   clouds = Array.from({ length: 6 }, () => ({ x: rnd(-40, W), y: rnd(70, G * .45), s: rnd(.6, 1.3), v: rnd(4, 10) }));
-  solT = 2.5; heliT = lvl >= 2 ? 8 : 1e9; tankT = lvl >= 3 ? 12 : 1e9; occT = 1.5; lvlTime = 0; maxCombo = 0; combo = 0;
+  occT = 1.5; lvlTime = 0; maxCombo = 0; combo = 0; tStart = tl = Math.max(30, 74 - lvl * 4);
   buildBG(); built = true;
 }
 function makeBuilding(x, cols, rows, f) {
@@ -240,7 +249,6 @@ function hitCell(b, r, c, dmg) {
     chunks(x, y, b.f.wall, 6); chunks(x, y, b.f.lo, 3); glass(x, y, 5); dust(x, y, 3, 6);
     noise(.25, .14, 1100); beep(rnd(1600, 2300), .05, 'triangle', .02);
     if (Math.random() < .22) cell.burn = rnd(3, 8);
-    if (Math.random() < .07 && r > 0) civs.push({ x, y, vy: -60, vx: rnd(-30, 30), fall: true, t: 0, col: pick(SHOPS) });
     hitStop = Math.max(hitStop, .035);
     if (b.destroyed >= Math.ceil(b.total * .4) || b.cells[r].every(q => q.hp === 0)) collapse(b);
   } else { addScore(2, x, y, false); addRage(1.5); chunks(x, y, b.f.wall, 3); dust(x, y, 1, 4); noise(.12, .1, 1600); }
@@ -253,17 +261,20 @@ function collapse(b) {
   addRage(15); hitStop = .12; shake = 9; buzz(200);
   noise(1.8, .4, 600); beep(55, 1.4, 'sawtooth', .07, -20);
   occs = occs.filter(o => o.b !== b);
-  for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) civs.push({ x: b.x + rnd(4, bw(b) - 4), y: G, vy: 0, vx: 0, fall: false, t: 0, col: pick(SHOPS) });
+  if (state === 'play') { tl += 4; pop('+4s', cx, Math.max(124, topY(b) + 8), '#7dff8a', 14); }
   if (p.on === b || p.climb === b) { p.mode = 'air'; p.on = null; p.climb = null; p.vy = -120; p.vx = 0; pop('WHOA!', p.x, p.y - 60, '#fff'); }
 }
 function resolveOcc(o) {
   const { x, y } = cellCenter(o.b, o.r, o.c);
   occs = occs.filter(q => q !== o);
-  if (o.type === 'civ') { hp = Math.min(100, hp + 12); addScore(50, x, y - 10, false); pop('+12 HP', x, y - 12, '#7dff8a'); chomp(); }
-  else if (o.type === 'food') { hp = Math.min(100, hp + 25); addScore(100, x, y, false); pop('YUM! +25', x, y - 12, '#7dff8a', 15); chomp(); }
-  else if (o.type === 'cash') { addScore(500, x, y - 10, false); pop('$$ +' + 500 * mult(), x, y - 12, '#9dff6b', 15); beep(990, .08, 'square', .04); beep(1320, .15, 'square', .04, 0, .08); }
-  else if (o.type === 'zap') { sparks(x, y, 18, '#bff4ff'); pop('ZAP!', x, y - 12, '#bff4ff', 16); hurt(10, true); beep(1200, .3, 'sawtooth', .05, -900); }
-  else if (o.type === 'sol') { addScore(100, x, y - 10); addRage(6); sparks(x, y, 6); beep(300, .1, 'triangle', .05, 200); }
+  if (o.type === 'food') { tl += 5; addScore(100, x, y, false); pop('SNACK! +5s', x, y - 12, '#7dff8a', 15); chomp(); }
+  else { addScore(500, x, y - 10, false); pop('★ +' + 500 * mult(), x, y - 12, '#ffe36b', 15); beep(990, .08, 'square', .04); beep(1320, .15, 'square', .04, 0, .08); }
+}
+function timeUp() {
+  tl = 0; state = 'ko'; koT = 2.4; combo = 0;
+  if (p.mode !== 'ground') { p.mode = 'ground'; p.climb = null; p.on = null; p.y = G; p.vx = p.vy = 0; p.pound = false; }
+  p.x = clamp(p.x, 34, W - 34);
+  pop("TIME'S UP!", p.x, Math.max(130, p.y - 80), '#ffe36b', 20); beep(392, .25, 'triangle', .06); beep(330, .25, 'triangle', .06, 0, .22); beep(262, .5, 'triangle', .06, 0, .44); buzz(80);
 }
 function chomp() { p.eatT = .45; beep(420, .07, 'square', .05, -200); beep(380, .07, 'square', .05, -200, .12); }
 function hurt(n, force = false) {
@@ -345,7 +356,6 @@ function land(b) {
   const fall = p.vy; p.mode = 'ground'; p.on = b; p.vy = 0; p.vx = 0; p.sq = Math.min(1, fall / 500);
   if (p.pound) { p.pound = false; groundPound(b); return; }
   if (fall > 250) { dust(p.x, p.y, 3, 10); noise(.15, .1, 400); }
-  for (const e of enemies) if (e.type === 'sol' && !b && Math.abs(e.x - p.x) < 18) { damageEnemy(e, 9); pop('SQUISH!', e.x, e.y - 24, '#fff'); }
 }
 function groundPound(b) {
   shake = 8; hitStop = .06; buzz(80); ring(p.x, p.y, 70, '#fff'); dust(p.x, p.y, 10, 26);
@@ -355,7 +365,6 @@ function groundPound(b) {
     const c0 = Math.floor((p.x - b.x) / CW);
     for (let c = c0 - 1; c <= c0 + 1; c++) for (let r = b.rows - 1; r >= b.rows - (rageT > 0 ? 3 : 2); r--) hitCell(b, r, clamp(c, 0, b.cols - 1), dmg);
   } else {
-    for (const e of enemies) if (!e.dying && e.type !== 'heli' && Math.abs(e.x - p.x) < 80) damageEnemy(e, e.type === 'tank' ? 2 : 9);
     for (const car of cars) if (!car.crushed && Math.abs(car.x - p.x) < 34) crushCar(car);
     for (const bb of buildings) {
       if (!bb.alive || bb.collapsing) continue;
@@ -396,15 +405,8 @@ function doPunch() {
       if (n < want && r >= 0 && r < b.rows && c >= 0 && c < b.cols && b.cells[r][c].hp > 0) { if (hitCell(b, r, c, dmg)) { n++; hit = true; } }
     }
   }
-  // enemies, cars
-  for (const e of enemies) {
-    if (e.dying || e.dead) continue;
-    const ey = e.type === 'heli' ? e.y : e.y - (e.type === 'tank' ? 12 : 10), rad = e.type === 'heli' ? 34 : e.type === 'tank' ? 30 : 22;
-    if (Math.hypot(e.x - fx, ey - fy) < rad + (rg ? 10 : 0) || (e.type !== 'heli' && Math.abs(e.x - fx) < 20 && Math.abs(p.y - e.y) < 30)) { damageEnemy(e, rg ? 3 : 1); hit = true; }
-  }
+  // parked (empty) cars
   if (Math.abs(p.y - G) < 2) for (const car of cars) if (!car.crushed && Math.abs(car.x - fx) < 22) { car.hit++; sparks(car.x, G - 10, 4); noise(.12, .12, 1800); hit = true; if (car.hit >= (rg ? 1 : 2)) crushCar(car); }
-  // shells can be swatted
-  for (const q of bullets) if (q.kind === 'shell' && Math.hypot(q.x - fx, q.y - fy) < 26) { q.vx = -q.vx * 1.2; q.vy = -200; q.mine = true; pop('SWAT!', q.x, q.y - 10, '#fff'); hit = true; }
   if (hit) { shake = Math.max(shake, rg ? 3 : 1.8); sparks(fx, fy, 4, '#fff'); beep(rg ? 70 : 100, .1, 'square', .05, -40); }
 }
 
@@ -440,19 +442,12 @@ function updateOccupants(dt) {
     if (occs.length < max && live.length) {
       const b = pick(live), r = 1 + Math.floor(Math.random() * (b.rows - 1)), c = Math.floor(Math.random() * b.cols);
       if (b.cells[r][c].hp === 2 && !occs.some(o => o.b === b && o.r === r && o.c === c)) {
-        const roll = Math.random() * 100, solW = 16 + lvl * 6;
-        const type = roll < solW ? 'sol' : roll < solW + 34 ? 'civ' : roll < solW + 45 ? 'food' : roll < solW + 56 ? 'zap' : 'cash';
+        const type = Math.random() < .6 ? 'food' : 'cash';
         occs.push({ b, r, c, type, t: rnd(3.5, 6), shoot: rnd(1.2, 1.8), anim: rnd(0, 6), flash: 0, pop: 0 });
       }
     }
   }
-  for (const o of occs) {
-    o.t -= dt; o.anim += dt; o.flash -= dt; o.pop = Math.min(1, o.pop + dt * 6);
-    if (o.type === 'sol') {
-      const c = cellCenter(o.b, o.r, o.c), dx = p.x - c.x, dy = p.y - 30 - c.y;
-      if (Math.hypot(dx, dy) < 200 && state === 'play') { o.shoot -= dt; if (o.shoot <= 0) { shoot(c.x + Math.sign(dx) * 5, c.y, p.x, p.y - 28, 150); o.shoot = rnd(2, 2.8) - Math.min(.6, lvl * .07); o.flash = .08; } }
-    }
-  }
+  for (const o of occs) { o.t -= dt; o.anim += dt; o.flash -= dt; o.pop = Math.min(1, o.pop + dt * 6); }
   occs = occs.filter(o => o.t > 0 && o.b.alive && !o.b.collapsing && o.b.cells[o.r][o.c].hp > 0);
 }
 
@@ -563,14 +558,15 @@ function update(dt) {
   updateFX(dt);
   if (state === 'title' || state === 'over') { if (state === 'over') overT += dt; return; }
   if (state === 'ko') { koT -= dt; updateBuildings(dt); if (koT <= 0) { state = 'over'; overT = 0; if (score > hi) { hi = score; try { localStorage.setItem('smashcity-hi', hi); } catch (e) {} } } return; }
-  if (state === 'clear') { clearT -= dt; if (clearT <= 0) { lvl++; hp = Math.min(100, hp + 30); setupLevel(); state = 'play'; } return; }
+  if (state === 'clear') { clearT -= dt; if (clearT <= 0) { lvl++; setupLevel(); state = 'play'; } return; }
   lvlTime += dt; comboT -= dt; if (comboT <= 0) combo = 0;
   if (rageT > 0) { rageT -= dt; rage = 100 * Math.max(0, rageT) / RAGE_DUR; }
-  updatePlayer(dt); updateBuildings(dt); updateOccupants(dt); spawnEnemies(dt); updateEnemies(dt); updateBullets(dt); updateCivs(dt);
+  updatePlayer(dt); updateBuildings(dt); updateOccupants(dt);
+  tl -= dt; if (tl <= 0 && buildings.some(b => b.alive && !b.collapsing)) { timeUp(); return; } tl = Math.max(0, tl);
   if (state === 'play' && buildings.every(b => !b.alive)) {
-    const tb = Math.max(0, Math.round(90 - lvlTime)) * 20;
+    const tb = Math.max(0, Math.round(tl)) * 20;
     tally = { time: tb, combo: maxCombo }; score += 500 + tb; state = 'clear'; clearT = 3.4; bullets = [];
-    enemies.forEach(e => { if (e.type === 'heli') boom(e.x, e.y, .7); else dust(e.x, e.y - 8, 5, 6); }); enemies = []; occs = [];
+    occs = [];
     [523, 659, 784, 1047, 1319].forEach((f, i) => beep(f, .22, 'triangle', .06, 0, i * .11)); buzz(80);
   }
 }
@@ -702,28 +698,14 @@ function drawBuilding(b) {
 }
 function drawOcc(o) {
   const b = o.b, wx = b.x + o.c * CW + 4 + b.wob, wy = G - (o.r + 1) * CH + 4 + b.sink, ww = CW - 8, wh = CH - 10, cx = wx + ww / 2, s = o.pop;
-  ctx.fillStyle = o.type === 'zap' ? '#141024' : '#ffe9a8'; ctx.fillRect(wx, wy, ww, wh);
+  ctx.fillStyle = '#ffe9a8'; ctx.fillRect(wx, wy, ww, wh);
   ctx.save(); ctx.translate(cx, wy + wh); ctx.scale(s * 1.25, s * 1.25);
-  if (o.type === 'civ') {
-    ctx.fillStyle = '#4a7bd8'; ctx.fillRect(-3, -6, 6, 6); ell(0, -8.5, 2.6, 2.6, '#f2c29a'); ctx.fillStyle = '#3a2418'; ctx.fillRect(-2.6, -11.4, 5.2, 1.6);
-    ctx.strokeStyle = '#f2c29a'; ctx.lineWidth = 1.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(2.5, -5); ctx.lineTo(5 + Math.sin(o.anim * 14) * 1.5, -10); ctx.stroke();
-    if (Math.sin(o.anim * 3) > .3) text('HELP!', 0, -16, 6, '#fff', 'center', '#000', 800);
-  } else if (o.type === 'sol') {
-    const dx = p.x - cx, dir = Math.sign(dx) || 1;
-    ctx.fillStyle = '#4f6b3a'; ctx.fillRect(-3, -6, 6, 6); ell(0, -8.5, 2.5, 2.5, '#e2b48d'); ctx.fillStyle = '#35502a'; ctx.beginPath(); ctx.arc(0, -9, 3.2, Math.PI, 0); ctx.fill(); ctx.fillRect(-3.8, -9.4, 7.6, 1.2);
-    ctx.fillStyle = '#222'; ctx.fillRect(dir > 0 ? 1 : -9, -5.5, 8, 1.6);
-    if (o.shoot < .4 && Math.sin(time * 40) > 0) ell(dir * 9, -4.7, 1.4, 1.4, '#ff3030');
-    if (o.flash > 0) ell(dir * 10, -4.7, 3, 2, '#ffe36b');
-  } else if (o.type === 'food') {
+  if (o.type === 'food') {
     ell(-1, -5, 4, 3.2, '#b8642c', -.4); ell(-2, -6, 2, 1.2, '#e08a4a', -.4); ctx.fillStyle = '#fff4e0'; ctx.fillRect(2, -4.5, 4, 1.4); ell(6, -4.6, 1.2, 1.2, '#fff4e0'); ell(6, -3.2, 1.1, 1.1, '#fff4e0');
-  } else if (o.type === 'zap') {
-    ctx.strokeStyle = Math.sin(time * 30) > 0 ? '#bff4ff' : '#ffe94a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(1, -11); ctx.lineTo(-2, -5); ctx.lineTo(1.5, -5); ctx.lineTo(-1.5, 0); ctx.stroke();
-  } else if (o.type === 'cash') {
-    ctx.fillStyle = '#3d8f3a'; ctx.beginPath(); ctx.ellipse(0, -4, 4.4, 4, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#2a6a28'; ctx.fillRect(-1.6, -9.5, 3.2, 2);
-    text('$', 0, -4, 6, '#d8ffb0', 'center', null, 900);
+  } else {
+    ctx.fillStyle = '#ffd23f'; ctx.beginPath(); for (let i = 0; i < 10; i++) { const an = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? 2.2 : 5; ctx.lineTo(Math.cos(an) * rad, -5 + Math.sin(an) * rad); } ctx.closePath(); ctx.fill();
   }
   ctx.restore();
-  if (o.type === 'sol' && o.shoot < .4) { ctx.strokeStyle = 'rgba(255,40,40,.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, wy + 6); ctx.lineTo(p.x, p.y - 28); ctx.stroke(); }
 }
 function drawMonster(x, y, o) {
   const P = o.pal; ctx.save(); ctx.translate(x, y);
@@ -772,7 +754,7 @@ function drawMonster(x, y, o) {
   }
   ell(19, hy - 1.5, 1.2, .9, P.dk);
   ell(8, hy - 4, 4.6, 5, '#fff');
-  if (o.ko) { ctx.strokeStyle = '#222'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(5.5, hy - 6.5); ctx.lineTo(10.5, hy - 1.5); ctx.moveTo(10.5, hy - 6.5); ctx.lineTo(5.5, hy - 1.5); ctx.stroke(); }
+  if (o.ko) { ctx.strokeStyle = '#222'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(8, hy - 4, 3, .2, Math.PI - .2); ctx.stroke(); }
   else { ell(9.6, hy - 3.6, 2.3, 2.9, o.rage ? '#c8102e' : '#111'); ell(10.3, hy - 4.8, .8, .8, '#fff'); }
   ctx.strokeStyle = P.dk; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(3, hy - 10); ctx.lineTo(12.5, hy - 7.5); ctx.stroke();
   // front arm
@@ -898,14 +880,20 @@ function monsterOpts(extra = {}) {
   const pal = p.hurtT > 0 && Math.floor(p.hurtT * 30) % 2 ? MHURT : rageT > 0 ? MRAGE : MPAL;
   return { pal, face: p.face, walk: p.mode === 'ground' && (keys.left || keys.right || tk.left || tk.right) && state === 'play' ? p.walkT : 0, climb: p.mode === 'climb', climbT: p.climbT, air: p.mode === 'air', pound: p.pound, punch: p.punchT, eat: p.eatT, sq: p.sq, rage: rageT > 0, ...extra };
 }
+function homeBtn() {
+  ctx.fillStyle = 'rgba(12,6,22,.62)'; rr(ctx, 8, 8, 38, 42, 12); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(18, 30); ctx.lineTo(27, 21); ctx.lineTo(36, 30); ctx.moveTo(20.5, 28); ctx.lineTo(20.5, 38); ctx.lineTo(33.5, 38); ctx.lineTo(33.5, 28); ctx.stroke();
+}
 function drawHUD() {
-  ctx.fillStyle = 'rgba(12,6,22,.62)'; rr(ctx, 8, 8, W - 16, 42, 12); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke();
-  text('HP', 26, 21, 10, '#fff', 'center', null, 900); text('RAGE', 26, 38, 8, rageT > 0 ? '#ff7a9a' : '#d9c8ff', 'center', null, 900);
-  ctx.fillStyle = '#2a1a32'; rr(ctx, 42, 15, 120, 11, 5.5); ctx.fill();
-  const hc = hp > 60 ? ['#7dff8a', '#2fbf55'] : hp > 30 ? ['#ffe36b', '#e09a2a'] : ['#ff7a6b', '#c8302a'];
-  if (hp > 0) { const g = ctx.createLinearGradient(0, 15, 0, 26); g.addColorStop(0, hc[0]); g.addColorStop(1, hc[1]); ctx.fillStyle = g; rr(ctx, 42, 15, Math.max(11, 120 * hp / 100), 11, 5.5); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(46, 16.5, Math.max(4, 120 * hp / 100 - 8), 2); }
-  ctx.fillStyle = '#2a1a32'; rr(ctx, 42, 33, 120, 9, 4.5); ctx.fill();
-  if (rage > 0) { const g = ctx.createLinearGradient(42, 0, 162, 0); g.addColorStop(0, '#a35cff'); g.addColorStop(1, '#ff3a6a'); ctx.fillStyle = g; if (rageT > 0) ctx.globalAlpha = .7 + .3 * Math.sin(time * 20); rr(ctx, 42, 33, Math.max(9, 120 * rage / 100), 9, 4.5); ctx.fill(); ctx.globalAlpha = 1; }
+  ctx.fillStyle = 'rgba(12,6,22,.62)'; rr(ctx, 50, 8, W - 58, 42, 12); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke();
+  text('TIME', 70, 21, 9, '#fff', 'center', null, 900); text('RAGE', 70, 38, 8, rageT > 0 ? '#ff7a9a' : '#d9c8ff', 'center', null, 900);
+  const f = clamp(tl / Math.max(tStart, 1), 0, 1), bwid = 104, bx = 88;
+  ctx.fillStyle = '#2a1a32'; rr(ctx, bx, 15, bwid, 11, 5.5); ctx.fill();
+  const hc = f > .5 ? ['#7dff8a', '#2fbf55'] : f > .25 ? ['#ffe36b', '#e09a2a'] : ['#ff9d6b', '#e0602a'];
+  if (tl > 0) { const g = ctx.createLinearGradient(0, 15, 0, 26); g.addColorStop(0, hc[0]); g.addColorStop(1, hc[1]); ctx.fillStyle = g; rr(ctx, bx, 15, Math.max(11, bwid * f), 11, 5.5); ctx.fill(); }
+  text(Math.ceil(tl) + 's', bx + bwid + 6, 21, 10, tl < 10 && Math.sin(time * 10) > 0 ? '#ffb35a' : '#fff', 'left', null, 900);
+  ctx.fillStyle = '#2a1a32'; rr(ctx, bx, 33, bwid, 9, 4.5); ctx.fill();
+  if (rage > 0) { const g = ctx.createLinearGradient(bx, 0, bx + bwid, 0); g.addColorStop(0, '#a35cff'); g.addColorStop(1, '#ff3a6a'); ctx.fillStyle = g; if (rageT > 0) ctx.globalAlpha = .7 + .3 * Math.sin(time * 20); rr(ctx, bx, 33, Math.max(9, bwid * rage / 100), 9, 4.5); ctx.fill(); ctx.globalAlpha = 1; }
   text(String(score), W - 18, 22, 17, '#ffe36b', 'right', '#1a0b26', 900);
   text(`BLOCK ${lvl} · BEST ${Math.max(hi, score)}`, W - 18, 39, 9, '#d9c8ff', 'right', null, 800);
   if (combo >= 3 && state === 'play') {
@@ -913,7 +901,7 @@ function drawHUD() {
     text(`${combo} HITS`, 0, 0, 15, '#7df9ff', 'center'); if (mult() > 1) text('x' + mult(), 0, 16, 12, '#ff9df0', 'center'); ctx.restore();
   }
   if (state === 'play' && lvl === 1 && lvlTime < 16) {
-    const hints = ['Drag ▲ at a wall to climb', 'Tap to SMASH', 'Wreck 40% — or a whole floor — to topple it', 'Punch people in windows for health', 'Drag ▼ mid-air to GROUND POUND'];
+    const hints = ['Drag ▲ at a wall to climb', 'Tap to SMASH', 'Wreck 40% — or a whole floor — to topple it', 'Grab snacks in windows for extra time', 'Drag ▼ mid-air to GROUND POUND'];
     const h = hints[Math.min(hints.length - 1, Math.floor(lvlTime / 3.2))];
     ctx.font = '800 11px system-ui,sans-serif'; const tw = ctx.measureText(h).width + 22;
     ctx.fillStyle = 'rgba(12,6,22,.7)'; rr(ctx, W / 2 - tw / 2, 94, tw, 22, 11); ctx.fill(); text(h, W / 2, 105, 11, '#fff', 'center', null, 800);
@@ -938,7 +926,7 @@ function draw() {
     if (state === 'ko' || state === 'over') {
       const t = state === 'ko' ? clamp((2.4 - koT) * 2, 0, 1) : 1;
       drawMonster(p.x, p.y, monsterOpts({ lying: t, ko: true, walk: 0, punch: 0, eat: 0, rage: false, pal: MPAL }));
-      for (let i = 0; i < 3; i++) { const a = time * 4 + i * 2.1; text('★', p.x + Math.cos(a) * 16 - p.face * 26, p.y - 22 + Math.sin(a) * 5, 10, '#ffe36b', 'center', null); }
+      for (let i = 0; i < 3; i++) { const k = (time * .6 + i / 3) % 1; ctx.globalAlpha = Math.sin(k * Math.PI); text('z', p.x - p.face * 18 + k * 14, p.y - 30 - k * 34, 9 + k * 8, '#e9dcff', 'center', '#1a0b26'); } ctx.globalAlpha = 1;
     } else drawMonster(p.x, p.y, monsterOpts());
   }
   for (const e of enemies) if (e.type === 'heli') drawHeli(e);
@@ -951,15 +939,16 @@ function draw() {
   ctx.restore();
   if (flashT > 0) { ctx.fillStyle = 'rgba(255,240,200,.35)'; ctx.fillRect(0, 0, W, H); }
   if (rageT > 0) { const g = ctx.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * .75); g.addColorStop(0, 'rgba(255,0,60,0)'); g.addColorStop(1, `rgba(255,0,60,${.22 + .08 * Math.sin(time * 10)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
-  if (hp < 30 && state === 'play') { const g = ctx.createRadialGradient(W / 2, H / 2, H * .4, W / 2, H / 2, H * .8); g.addColorStop(0, 'rgba(255,0,0,0)'); g.addColorStop(1, `rgba(255,0,0,${.18 + .12 * Math.sin(time * 6)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+  if (tl < 10 && state === 'play') { const g = ctx.createRadialGradient(W / 2, H / 2, H * .4, W / 2, H / 2, H * .8); g.addColorStop(0, 'rgba(255,0,0,0)'); g.addColorStop(1, `rgba(255,0,0,${.18 + .12 * Math.sin(time * 6)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
   // vignette
   const vg = ctx.createRadialGradient(W / 2, H * .45, H * .3, W / 2, H * .45, H * .85); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   if (state !== 'title') drawHUD();
+  homeBtn();
   if (stick) { ctx.setTransform(1, 0, 0, 1, 0, 0); const r = cv.getBoundingClientRect(), k = cv.width / r.width; ctx.globalAlpha = .22; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * k; ctx.beginPath(); ctx.arc((stick.ax - r.left) * k, (stick.ay - r.top) * k, LEASH * k, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc((stick.x - r.left) * k, (stick.y - r.top) * k, 14 * k, 0, 7); ctx.fill(); ctx.globalAlpha = 1; ctx.setTransform(SC, 0, 0, SC, 0, 0); }
   if (state === 'title') {
     overlayDim(.55); bigTitle('SMASH', H * .2, 64); bigTitle('CITY', H * .2 + 62, 64, '#ffb35a', '#ff3a6a');
-    text('A monster-sized rampage', W / 2, H * .2 + 112, 13, '#e9dcff', 'center', null, 700);
-    const lines = [['◀ ▶', 'Drag to stomp around'], ['▲', 'Drag up at a wall to climb, elsewhere to jump'], ['▼', 'Drag down mid-air to ground pound'], ['TAP', 'Smash! Eat people, dodge the army']];
+    text('A monster-sized demolition job', W / 2, H * .2 + 112, 13, '#e9dcff', 'center', null, 700);
+    const lines = [['◀ ▶', 'Drag to stomp around'], ['▲', 'Drag up at a wall to climb, elsewhere to jump'], ['▼', 'Drag down mid-air to ground pound'], ['TAP', 'Smash! Flatten every building in time']];
     const by = H * .2 + 140; ctx.fillStyle = 'rgba(12,6,22,.72)'; rr(ctx, 22, by, W - 44, lines.length * 24 + 16, 14); ctx.fill();
     lines.forEach(([k, t], i) => { text(k, 54, by + 20 + i * 24, 11, '#ffe36b', 'center', null, 900); text(t, 82, by + 20 + i * 24, 11, '#fff', 'left', null, 700); });
     if (Math.sin(time * 5) > -.3) text('TAP TO START', W / 2, by + lines.length * 24 + 48, 18, '#7df9ff', 'center');
@@ -970,12 +959,12 @@ function draw() {
     text('Clear bonus  +500', W / 2, H * .3 + 96, 13, '#fff', 'center', null, 800);
     text('Time bonus  +' + (tally ? tally.time : 0), W / 2, H * .3 + 118, 13, '#fff', 'center', null, 800);
     text('Best combo  ' + (tally ? tally.combo : 0) + ' hits', W / 2, H * .3 + 140, 13, '#fff', 'center', null, 800);
-    text('Next: ' + THEMES[lvl % THEMES.length].name + ' · +30 HP', W / 2, H * .3 + 172, 12, '#ffe36b', 'center', null, 800);
+    text('Next: ' + THEMES[lvl % THEMES.length].name, W / 2, H * .3 + 172, 12, '#ffe36b', 'center', null, 800);
   }
   if (state === 'over') {
-    overlayDim(.6); bigTitle('KNOCKED', H * .28, 46, '#ff9d8f', '#ff3a3a'); bigTitle('OUT!', H * .28 + 48, 46, '#ff9d8f', '#ff3a3a');
+    overlayDim(.6); bigTitle("TIME'S", H * .28, 46, '#ffe36b', '#ff9a3d'); bigTitle('UP!', H * .28 + 48, 46, '#ffe36b', '#ff9a3d');
     text('Score ' + score, W / 2, H * .28 + 104, 18, '#ffe36b', 'center'); text('Reached block ' + lvl + ' · Best ' + Math.max(hi, score), W / 2, H * .28 + 130, 12, '#e9dcff', 'center', null, 800);
-    if (overT > 1.2 && Math.sin(time * 5) > -.3) text('TAP TO RAMPAGE AGAIN', W / 2, H * .28 + 172, 16, '#7df9ff', 'center');
+    if (overT > 1.2 && Math.sin(time * 5) > -.3) text('TAP TO SMASH AGAIN', W / 2, H * .28 + 172, 16, '#7df9ff', 'center');
   }
 }
 

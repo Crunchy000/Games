@@ -12,24 +12,34 @@ A small arcade of browser games, made for touch screens. Each game lives in its 
 | Hedge Hop | [`hedge-hop/`](hedge-hop/) | Endless crossing game: hop a hedgehog over roads, log-filled rivers and railway lines, collecting berries. |
 | Bumble Dash | [`bumble-dash/`](bumble-dash/) | One-tap flyer: keep a bee aloft through gaps between honeycomb towers; grab pollen for bonus points. |
 | Ink Bounce | [`ink-bounce/`](ink-bounce/) | Brick breaker with no paddle: draw lines with limited ink to bounce the ball; short, neat lines score a precision bonus. |
-| Smash City | [`smash-city/`](smash-city/) | Climb and smash buildings as a giant monster while the army fights back. |
+| Smash City | [`smash-city/`](smash-city/) | Timed demolition as a friendly giant monster: climb and flatten empty buildings, grab snacks for extra time, and fill up Rage for bigger smashes. |
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Hop around a cube pyramid to change every colour while dodging critters. |
-| Vector Front | [`vector-front/`](vector-front/) | First-person wireframe tank battle with a TV-static camera look. |
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
 | Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |
 | Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: swap gummies, make rockets, bombs and rainbow orbs, and beat level goals before your moves run out. |
 | Dots and Boxes | [`dots-and-boxes/`](dots-and-boxes/) | Two-player pass-and-play: join dots, close boxes, most boxes wins. |
-| Hex Colour Balance | [`hex-colour-balance/`](hex-colour-balance/) | Place red, green and blue gems until each hexagon balances to white, across endless levels. |
-| Massive Armies | [`massive-armies/`](massive-armies/) | 3D battle simulation with thousands of soldiers: formations, a tech tree and a 25-battle campaign. Uses WebGPU where available. |
 
-The root `index.html` is a landing page with a featured carousel and a scrolling row of games for each category (Puzzle, Action & Arcade, Strategy, Two players). To add a game, add its folder, a `<template id="art-<folder>">` thumbnail and an entry in the `GAMES`/`CATS` lists in that file.
+Ideas for future games are in [`TODO.md`](TODO.md).
 
-Massive Armies is built from its own repository, [Crunchy000/Battles](https://github.com/Crunchy000/Battles); `massive-armies/index.html` is a copy of that build. Its sounds include "Oculus Audio Pack 01" (CC BY 4.0), credited in the game's sound board, alongside CC0 recordings listed in the Battles README.
+The root `index.html` is a landing page with a featured carousel and a scrolling row of games for each category (Word & number, Puzzle, Action & Arcade, Two players). To add a game, add its folder, a `<template id="art-<folder>">` thumbnail and an entry in the `GAMES`/`CATS` lists in that file.
+
 
 ## Controls
 
 - **Touch:** drag to move, tap to act. Each game shows its controls on the title screen.
 - **Keyboard:** arrow keys or WASD, plus space.
+
+## Play offline (install as an app)
+
+The arcade is a Progressive Web App. Open it once in a browser and every game is downloaded in the background, so the whole arcade then works with no connection.
+- **Android (Chrome):** tap **Install app** on the home page, or use the browser menu → *Install app*.
+- **iPhone/iPad (Safari):** tap **Share → Add to Home Screen**.
+
+Each game has a home button that returns to the arcade, since an installed app has no browser back button.
+
+How it works: `sw.js` (the service worker) saves the home page, every game and the icons when the app is first opened. Pages are served from that saved copy straight away and refreshed in the background when online. `manifest.webmanifest` and `icons/` provide the app name and icons.
+
+**After adding or changing a game**, run `python3 tools/update-sw.py`. It rebuilds `sw.js` with the full list of games and a new version stamp, so installed copies download the update in one go. Edit `tools/sw-template.js` rather than `sw.js` itself.
 
 ## Hosting on GitHub Pages
 

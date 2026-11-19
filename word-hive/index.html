@@ -15,6 +15,13 @@ notice and this notice appear in supporting documentation.  Kevin Atkinson
 makes no representations about the suitability of this database for any
 purpose.  It is provided "as is" without express or implied warranty.
 -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Word Hive</title>
 <style>
   :root { --bg:#fff8e6; --ink:#2b2416; --muted:#8a7f68; --gold:#f7c31d; --goldD:#d9a200; --cell:#ece4cf; --cellD:#d9cfb5; --line:#e7dcc0; }

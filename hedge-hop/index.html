@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#7ccf6a">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Hedge Hop</title>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -107,6 +114,7 @@ let down = null;
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); audio(); const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
   if (x > W - 50 && y < 50) { muted = !muted; persist(); return; }
+  if (x < 50 && y < 50) { location.href = '../'; return; }
   down = { x: e.clientX, y: e.clientY, t: performance.now() };
 });
 cv.addEventListener('pointerup', e => {
@@ -139,7 +147,7 @@ function move(dc, dr) {
 function die(kind) {
   if (state !== 'play') return; state = 'over'; deathKind = kind; deadT = 0; shake = kind === 'train' ? 10 : 5; buzz(90);
   if (kind === 'water') { sSplash(); for (let i = 0; i < 16; i++) parts.push({ x: hog.x, y: rowY(hog.r) + RH / 2, vx: rnd(-90, 90), vy: rnd(-200, -60), life: rnd(.5, .9), max: .9, s: rnd(2, 4), c: '#bfe9ff' }); }
-  else { kind === 'train' ? sTrain() : sSquash(); for (let i = 0; i < 12; i++) parts.push({ x: hog.x, y: rowY(hog.r) + RH / 2, vx: rnd(-120, 120), vy: rnd(-160, -20), life: rnd(.4, .8), max: .8, s: rnd(2, 3.5), c: i % 2 ? '#7a5a3a' : '#f0d6b0' }); }
+  else { kind === 'train' ? sTrain() : sSquash(); for (let i = 0; i < 10; i++) parts.push({ x: hog.x, y: rowY(hog.r) + RH / 2 - 10, vx: rnd(-110, 110), vy: rnd(-170, -40), life: rnd(.5, .9), max: .9, s: rnd(2, 3.5), c: i % 2 ? '#ffe36b' : '#ffffff' }); }
   if (score > best) best = score; berriesTotal += berries; persist();
 }
 function update(dt) {
@@ -232,7 +240,7 @@ function drawHog(x, y) {
   ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(x, y + 10, 13 - lift * .3, 4.5 - lift * .1, 0, 0, Math.PI * 2); ctx.fill();
   ctx.save(); ctx.translate(x, y + 8 - lift); ctx.scale(1 + sq * .18, 1 - sq * .18);
   const face = hog.face; // 0 up (away), 1 right, 2 down (towards you), 3 left
-  if (state === 'over' && (deathKind === 'car' || deathKind === 'train')) ctx.scale(1.5, .25);
+  if (state === 'over' && (deathKind === 'car' || deathKind === 'train')) ctx.rotate(Math.sin(time * 9) * .25);
   const dead = state === 'over', blink = dead || (time % 3.3) > 3.17, sniff = hog.hopping ? 0 : Math.sin(time * 14) * .35 * (Math.sin(time * 1.3) > .4 ? 1 : 0);
   const footY = air ? 2.5 : 1;
   if (face === 1 || face === 3) {
@@ -299,6 +307,13 @@ function drawHog(x, y) {
   }
   ctx.restore();
 }
+function homeIcon(cx, cy, col, bg) {   // drawn top-left; tapping it goes back to the arcade
+  ctx.save();
+  if (bg) { ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - 8.5, cy + .5); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx + 8.5, cy + .5); ctx.moveTo(cx - 6, cy - 1.5); ctx.lineTo(cx - 6, cy + 8); ctx.lineTo(cx + 6, cy + 8); ctx.lineTo(cx + 6, cy - 1.5); ctx.stroke();
+  ctx.restore();
+}
 function txt(t, x, y, size, fill, stroke = '#2a4a1e', align = 'center') {
   ctx.font = `900 ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
   if (stroke) { ctx.lineWidth = size / 5; ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); } ctx.fillStyle = fill; ctx.fillText(t, x, y);
@@ -338,7 +353,8 @@ function draw() {
   ctx.restore();
   // HUD (a soft band keeps the numbers readable over traffic)
   if (state !== 'title') { const hg = ctx.createLinearGradient(0, 0, 0, 90); hg.addColorStop(0, 'rgba(20,40,15,.45)'); hg.addColorStop(1, 'rgba(20,40,15,0)'); ctx.fillStyle = hg; ctx.fillRect(0, 0, W, 90); }
-  if (state !== 'title') { txt(String(score), 20, 36, 38, '#fff', '#2a4a1e', 'left'); txt('best ' + best, 22, 64, 13, '#fff', '#2a4a1e', 'left'); txt('🍓 ' + berries, W - 64, 30, 16, '#fff', '#2a4a1e', 'right'); }
+  if (state !== 'title') { txt(String(score), 54, 36, 38, '#fff', '#2a4a1e', 'left'); txt('best ' + best, 56, 64, 13, '#fff', '#2a4a1e', 'left'); txt('🍓 ' + berries, W - 64, 30, 16, '#fff', '#2a4a1e', 'right'); }
+  homeIcon(26, 28, '#fff', 'rgba(20,40,15,.35)');
   ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2a4a1e'; ctx.lineWidth = 1.8; const sx = W - 26, sy = 28;
   ctx.beginPath(); ctx.moveTo(sx - 8, sy - 3); ctx.lineTo(sx - 4, sy - 3); ctx.lineTo(sx + 1, sy - 8); ctx.lineTo(sx + 1, sy + 8); ctx.lineTo(sx - 4, sy + 3); ctx.lineTo(sx - 8, sy + 3); ctx.closePath(); ctx.fill(); ctx.stroke();
   if (muted) { ctx.beginPath(); ctx.moveTo(sx + 4, sy - 5); ctx.lineTo(sx + 11, sy + 5); ctx.moveTo(sx + 11, sy - 5); ctx.lineTo(sx + 4, sy + 5); ctx.stroke(); }
@@ -352,7 +368,7 @@ function draw() {
   }
   if (state === 'over' && deadT > .5) {
     const y = H * .32; ctx.fillStyle = 'rgba(255,250,235,.95)'; ctx.strokeStyle = '#2a4a1e'; ctx.lineWidth = 3; rr(W / 2 - 130, y - 34, 260, 190, 22); ctx.fill(); ctx.stroke();
-    const msg = { car: 'Squished!', water: 'Splash!', train: 'Choo-choo!', slow: 'Too slow!' }[deathKind];
+    const msg = { car: 'Beep beep, bump!', water: 'Splash!', train: 'Choo-choo, bump!', slow: 'Too slow!' }[deathKind];
     txt(msg, W / 2, y, 34, '#ff8a3d', '#4a2f1a');
     txt('Score ' + score, W / 2, y + 46, 24, '#fff'); txt((score >= best && score > 0 ? 'New best! ' : 'Best ') + best, W / 2, y + 76, 17, '#ffd98a', '#4a2f1a');
     txt('🍓 ' + berries + ' berries', W / 2, y + 104, 15, '#fff');

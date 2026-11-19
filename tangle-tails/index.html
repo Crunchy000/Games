@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#4c3fa8">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Tangle Tails</title>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -37,7 +44,7 @@
     <h1>Tangle<br><span>Tails</span></h1>
     <p>A pit full of knotted snakes! Tap a snake and it slithers off the way its head is pointing. If another snake is in the way, it bonks and you lose a heart.</p>
     <div class="how"><div><b>👆</b>Tap a snake</div><div><b>🐍</b>Clear the path</div><div><b>❤️</b>3 bonks max</div></div>
-    <button class="btn" id="bPlay">Play</button>
+    <button class="btn" id="bPlay">Play</button><br><a class="btn soft" href="../" style="text-decoration:none;display:inline-block">All games</a>
     <p id="mInfo" style="font-size:.85rem"></p>
   </div></div>
   <div class="ov" id="ovWin"><div class="card">
@@ -49,7 +56,7 @@
   <div class="ov" id="ovLose"><div class="card">
     <h2>All in a knot!</h2>
     <p>Three bonks and the snakes are sulking. Look for the ones with a clear run to the edge first.</p>
-    <button class="btn" id="bRetry">Try again</button><button class="btn soft" id="bMenu">Menu</button>
+    <button class="btn" id="bRetry">Try again</button><button class="btn soft" id="bMenu">Menu</button><a class="btn soft" href="../" style="text-decoration:none;display:inline-block">All games</a>
   </div></div>
 </div>
 <script>

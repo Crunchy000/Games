@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#f7f1e3">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Ink Bounce</title>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -38,14 +45,14 @@
       <li>Ink is limited and refills slowly, so <b>short, neat lines</b> go further and score a <b>precision bonus</b>.</li>
       <li>Break every brick. Blue bricks refill ink, red ones explode, gold ones split the ball.</li>
     </ul>
-    <button class="btn" id="bStart">Start</button><button class="btn alt" id="bCont" hidden>Continue</button>
+    <button class="btn" id="bStart">Start</button><button class="btn alt" id="bCont" hidden>Continue</button><br><a href="../" style="display:inline-block;margin-top:12px;font-weight:800;color:inherit;opacity:.7">← All games</a>
     <p id="tBest" style="font-size:.9rem;opacity:.75"></p>
   </div></div>
   <div class="ov" id="ovOver"><div class="card">
     <h2 id="oTitle">Out of balls</h2>
     <p>Score</p><div class="big" id="oScore">0</div>
     <p id="oText"></p>
-    <button class="btn" id="bAgain">Try again</button>
+    <button class="btn" id="bAgain">Try again</button><br><a href="../" style="display:inline-block;margin-top:12px;font-weight:800;color:inherit;opacity:.7">← All games</a>
   </div></div>
 </div>
 <script>
@@ -156,6 +163,7 @@ function local(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX
 let lastPt = null, lastT = 0, downAt = null;
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); audio(); const p = local(e);
+  if (p.y < 52 && p.x < 46) { location.href = '../'; return; }
   if (p.y < 52 && p.x > W - 52) { save.muted = !save.muted; persist(); if (save.muted) scratchStop(); tone(660, .08, 'triangle', .05); return; }
   if (state !== 'play') return;
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
@@ -274,6 +282,13 @@ function wobRect(x, y, w, h, wob, fill, stroke, lw = 1.6) {
   ctx.moveTo(x + wob[0], y + wob[1]); ctx.lineTo(x + w + wob[2], y + wob[3]); ctx.lineTo(x + w + wob[4], y + h + wob[5]); ctx.lineTo(x + wob[6], y + h + wob[7]); ctx.closePath();
   if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.stroke(); }
 }
+function homeIcon(cx, cy, col, bg) {   // drawn top-left; tapping it goes back to the arcade
+  ctx.save();
+  if (bg) { ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - 8.5, cy + .5); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx + 8.5, cy + .5); ctx.moveTo(cx - 6, cy - 1.5); ctx.lineTo(cx - 6, cy + 8); ctx.lineTo(cx + 6, cy + 8); ctx.lineTo(cx + 6, cy - 1.5); ctx.stroke();
+  ctx.restore();
+}
 function txt(t, x, y, size, col, align = 'center', w = 700) { ctx.font = `${w} ${size}px "Segoe Print","Bradley Hand","Comic Sans MS","Chalkboard SE",system-ui,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(t, x, y); }
 function drawBrick(b) {
   const k = 1 + b.hit * 1.2, x = b.x + BW / 2, y = b.y + BH / 2;
@@ -345,7 +360,8 @@ function draw() {
   for (const u of pops) { ctx.globalAlpha = clamp(u.life * 2, 0, 1); txt(u.t, u.x, u.y, 15, u.c); } ctx.globalAlpha = 1;
   ctx.restore();
   // HUD
-  txt('score ' + score, 34, 24, 18, '#24324f', 'left'); txt('level ' + level, 34, 46, 13, 'rgba(36,50,79,.6)', 'left', 400);
+  homeIcon(24, 28, '#24324f', 'rgba(36,50,79,.08)');
+  txt('score ' + score, 50, 24, 18, '#24324f', 'left'); txt('level ' + level, 50, 46, 13, 'rgba(36,50,79,.6)', 'left', 400);
   for (let i = 0; i < lives; i++) { const x = W - 96 + i * 16, y = 24; ctx.fillStyle = '#24324f'; ctx.beginPath(); ctx.arc(x, y, 5.4, 0, Math.PI * 2); ctx.fill(); }
   // sound toggle
   ctx.strokeStyle = '#24324f'; ctx.fillStyle = '#24324f'; ctx.lineWidth = 1.8; const sx = W - 28, sy = 24;

@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#8fd3f4">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Games">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Bumble Dash</title>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -75,6 +82,7 @@ function flap() {
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
   if (x > W - 50 && y < 50) { muted = !muted; persist(); return; }
+  if (x < 50 && y < 50) { location.href = '../'; return; }
   flap();
 });
 addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') { e.preventDefault(); if (!e.repeat) flap(); } });
@@ -181,6 +189,13 @@ function drawBee() {
   ctx.save(); ctx.translate(2, -9); ctx.rotate(-.2 - flapA); ctx.beginPath(); ctx.ellipse(0, -7, 6.5, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
   ctx.restore();
 }
+function homeIcon(cx, cy, col, bg) {   // drawn top-left; tapping it goes back to the arcade
+  ctx.save();
+  if (bg) { ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - 8.5, cy + .5); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx + 8.5, cy + .5); ctx.moveTo(cx - 6, cy - 1.5); ctx.lineTo(cx - 6, cy + 8); ctx.lineTo(cx + 6, cy + 8); ctx.lineTo(cx + 6, cy - 1.5); ctx.stroke();
+  ctx.restore();
+}
 function txt(t, x, y, size, fill, stroke = '#3a2a1c', align = 'center') {
   ctx.font = `900 ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
   if (stroke) { ctx.lineWidth = size / 5; ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); } ctx.fillStyle = fill; ctx.fillText(t, x, y);
@@ -204,6 +219,7 @@ function draw() {
   ctx.restore();
   if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash * .7})`; ctx.fillRect(0, 0, W, H); }
   // HUD
+  homeIcon(26, 26, '#fff', 'rgba(58,42,28,.28)');
   ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3a2a1c'; ctx.lineWidth = 1.8; const sx = W - 30, sy = 26;
   ctx.beginPath(); ctx.moveTo(sx - 8, sy - 3); ctx.lineTo(sx - 4, sy - 3); ctx.lineTo(sx + 1, sy - 8); ctx.lineTo(sx + 1, sy + 8); ctx.lineTo(sx - 4, sy + 3); ctx.lineTo(sx - 8, sy + 3); ctx.closePath(); ctx.fill(); ctx.stroke();
   if (muted) { ctx.beginPath(); ctx.moveTo(sx + 4, sy - 5); ctx.lineTo(sx + 11, sy + 5); ctx.moveTo(sx + 11, sy - 5); ctx.lineTo(sx + 4, sy + 5); ctx.stroke(); }
