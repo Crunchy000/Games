@@ -1,6 +1,8 @@
-# Games
+# The Bear & Bean Games
 
-A small arcade of browser games, made for touch screens. Each game lives in its own folder with no build step and is a single self-contained HTML file.
+<img src="icons/logo.jpg" alt="The Bear & Bean Games sign" width="220">
+
+The Bear & Bean Games is a small arcade of browser games, made for touch screens. Each game lives in its own folder with no build step and is a single self-contained HTML file.
 
 | Game | Folder | What it is |
 | --- | --- | --- |

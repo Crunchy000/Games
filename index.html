@@ -9,10 +9,12 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Games">
+<meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
-<title>Games</title>
-<meta name="description" content="A small arcade of browser games, made for touch screens.">
+<title>The Bear &amp; Bean Games</title>
+<meta name="description" content="The Bear &amp; Bean Games: a small arcade of browser games, made for touch screens. Works offline.">
+<meta property="og:title" content="The Bear &amp; Bean Games">
+<meta property="og:image" content="icons/icon-512.png">
 <style>
   :root { --bg:#0b0816; --card:#161126; --ink:#f1ecff; --mute:#a59cc4; --line:rgba(255,255,255,.08); --pad:clamp(16px,4vw,40px); }
   * { box-sizing:border-box; }
@@ -23,6 +25,10 @@
   header { padding:32px var(--pad) 8px; max-width:1240px; margin:0 auto; }
   h1 { font-size:clamp(2.2rem,7vw,3.4rem); margin:0; letter-spacing:-.02em; font-weight:900;
        background:linear-gradient(90deg,#ffd43b,#ff6b9d 50%,#74c0fc); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  header.brand { display:flex; align-items:center; gap:clamp(14px,3vw,28px); }
+  .logo { width:clamp(112px,30vw,180px); height:auto; border-radius:12px; flex:none; box-shadow:0 10px 30px rgba(0,0,0,.45); transform:rotate(-2deg); }
+  .intro { min-width:0; }
+  header.brand h1 { font-size:clamp(1.5rem,5.6vw,3rem); line-height:1.05; }
   .sub { color:var(--mute); margin:6px 0 0; font-size:1.02rem; }
   .appbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px; min-height:0; }
   .install { border:0; border-radius:999px; padding:9px 16px; font:inherit; font-weight:800; font-size:.92rem; color:#1a1030; background:linear-gradient(90deg,#ffd43b,#ff9d6b); cursor:pointer; box-shadow:0 4px 14px rgba(255,180,80,.25); }
@@ -83,10 +89,13 @@
 </style>
 </head>
 <body>
-<header>
-  <h1>Games</h1>
-  <p class="sub">A small arcade of browser games, made for touch screens.</p>
+<header class="brand">
+  <img class="logo" src="icons/logo.jpg" width="560" height="580" alt="The Bear &amp; Bean Games: a cheerful bear in a green waistcoat and a pink bean in a wizard hat sharing a drink at a little table">
+  <div class="intro">
+  <h1>The Bear &amp; Bean Games</h1>
+  <p class="sub">A small arcade of browser games, made for touch screens. Pull up a stool.</p>
   <div id="appbar" class="appbar"><button id="install" class="install" hidden>⬇ Install app</button><span id="appnote" class="appnote"></span></div>
+  </div>
 </header>
 <main id="main">
   <section aria-label="Featured games">

@@ -9,9 +9,9 @@ copies download the new set in the background and switch over in one go.
 import hashlib, pathlib
 root = pathlib.Path(__file__).resolve().parent.parent
 games = sorted(p.parent.name for p in root.glob('*/index.html') if p.parent.name not in ('tools', 'icons'))
-files = ['./', './manifest.webmanifest'] + [f'./icons/{p.name}' for p in sorted((root / 'icons').glob('*.png'))] + [f'./{g}/' for g in games]
+files = ['./', './manifest.webmanifest'] + [f'./icons/{p.name}' for p in sorted(p for p in (root / 'icons').iterdir() if p.suffix in ('.png', '.jpg', '.webp', '.svg'))] + [f'./{g}/' for g in games]
 h = hashlib.sha256()
-for f in ['index.html', 'manifest.webmanifest'] + [f'icons/{p.name}' for p in sorted((root / 'icons').glob('*.png'))] + [f'{g}/index.html' for g in games]:
+for f in ['index.html', 'manifest.webmanifest'] + [f'icons/{p.name}' for p in sorted(p for p in (root / 'icons').iterdir() if p.suffix in ('.png', '.jpg', '.webp', '.svg'))] + [f'{g}/index.html' for g in games]:
     h.update((root / f).read_bytes())
 version = 'games-' + h.hexdigest()[:12]
 template = (root / 'tools' / 'sw-template.js').read_text()
