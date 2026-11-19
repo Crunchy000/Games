@@ -560,7 +560,10 @@ function glow(g, x, y, r, col, a = 0.5) {
 const ATLAS = {};
 const PAGES = [];
 const BGS = [];
-const RS = 2;            // sprite canvases are painted at RS x the base sprite density
+const RS = 1.6;          // sprites are painted at RS x the base sprite density
+const SRC = {};          // source rectangle of each sprite in its atlas page (canvas pixels)
+const PAGE_W = 2048;
+let pageG = null, shelfX = 0, shelfY = 0, shelfH = 0;
 const AO = '#1e140c';    // outline ink, matches the UI
 function aE(g, x, y, rx, ry, fill, stroke = AO, lw = 1) { g.beginPath(); g.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), 0, 0, TAU); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); } }
 function aP(g, pts, fill, stroke = AO, lw = 1) { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.lineJoin = 'round'; g.stroke(); } }
@@ -569,12 +572,25 @@ function aL(g, x1, y1, x2, y2, col, lw = 1, cap = 'round') { g.beginPath(); g.mo
 function sh(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, gg = n >> 8 & 255, b = n & 255; const t = f < 0 ? 0 : 255, k = Math.abs(f); return `rgb(${Math.round(r + (t - r) * k)},${Math.round(gg + (t - gg) * k)},${Math.round(b + (t - b) * k)})`; }
 function hgrad(g, x0, x1, c) { const gr = g.createLinearGradient(x0, 0, x1, 0); gr.addColorStop(0, sh(c, .28)); gr.addColorStop(.4, c); gr.addColorStop(1, sh(c, -.38)); return gr; }
 function rglow(g, x, y, r, inner, a = 1) { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, inner); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.globalAlpha *= a; g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); g.restore(); }
+function newPage() { const c = document.createElement('canvas'); c.width = PAGE_W; c.height = PAGE_W; PAGES.push(c); pageG = c.getContext('2d'); shelfX = shelfY = shelfH = 0; }
+// shrink each atlas page to the height actually used, so no memory is wasted on empty space
+function trimPages() {
+  PAGES.forEach((c, i) => {
+    const used = i === PAGES.length - 1 ? shelfY + shelfH : c._used; if (!used || used >= c.height) return;
+    const n = document.createElement('canvas'); n.width = c.width; n.height = used; n.getContext('2d').drawImage(c, 0, 0);
+    c.width = c.height = 0; PAGES[i] = n;
+  });
+}
 function mkSpr(name, w, h, ax, ay, draw, mount) {
-  const D = PD * RS, c = document.createElement('canvas');
-  c.width = Math.ceil(w * D); c.height = Math.ceil(h * D);
-  const g = c.getContext('2d'); g.scale(D, D); g.translate(ax, ay); g.lineCap = 'round'; g.lineJoin = 'round'; draw(g);
-  PAGES.push(c);
+  const D = PD * RS, pw = Math.ceil(w * D) + 2, ph = Math.ceil(h * D) + 2;
+  if (!pageG) newPage();
+  if (shelfX + pw > PAGE_W) { shelfX = 0; shelfY += shelfH; shelfH = 0; }
+  if (shelfY + ph > PAGE_W) { PAGES[PAGES.length - 1]._used = shelfY; newPage(); }
+  const x = shelfX + 1, y = shelfY + 1; shelfX += pw; shelfH = Math.max(shelfH, ph);
+  const g = pageG; g.save(); g.beginPath(); g.rect(x - 1, y - 1, pw, ph); g.clip();
+  g.setTransform(D, 0, 0, D, x + ax * D, y + ay * D); g.lineCap = 'round'; g.lineJoin = 'round'; draw(g); g.restore();
   ATLAS[name] = [PAGES.length - 1, 0, 0, w * PD, h * PD, ax * PD, ay * PD, mount == null ? null : mount / (TILE * KC)];
+  SRC[name] = [x, y, w * D, h * D];
 }
 
 /* ---------- tower parts ---------- */
@@ -1188,8 +1204,10 @@ function gatehouse(g, x, y, roads) {
 }
 function paintBg(idx, D) {
   const M = MAPS[idx], T = THEMES[idx] || THEMES[0], rng = mulberry(idx * 7919 + 13);
-  const X0 = -M.bg.ax / PD, Y0 = -M.bg.ay / PD, BW = M.bg.w / PD, BH = M.bg.h / PD;
+  // paint only the part of the map a screen can show: the field plus a frame of scenery around it
+  const X0 = -170, Y0 = -190, BW = W + 340, BH = H + 380;
   const c = document.createElement('canvas'); c.width = Math.ceil(BW * D); c.height = Math.ceil(BH * D);
+  c._rect = [X0, Y0, BW, BH];
   const g = c.getContext('2d'); g.scale(D, D); g.translate(-X0, -Y0); g.lineCap = 'round'; g.lineJoin = 'round';
   const gr = g.createLinearGradient(0, Y0, 0, Y0 + BH); gr.addColorStop(0, T.ground2); gr.addColorStop(.5, T.ground); gr.addColorStop(1, T.ground2);
   g.fillStyle = gr; g.fillRect(X0, Y0, BW, BH);
@@ -1270,7 +1288,11 @@ function paintBg(idx, D) {
   return c;
 }
 function getBg(idx) {
-  if (!BGS[idx]) BGS[idx] = paintBg(idx, clamp((view.s || 1) * (view.dpr || 1), 1.3, 2.2));
+  if (!BGS[idx]) {
+    // keep a single background in memory: release any other stage's canvas first
+    BGS.forEach((c, j) => { if (c && j !== idx) { c.width = c.height = 0; BGS[j] = null; } });
+    BGS[idx] = paintBg(idx, clamp((view.s || 1) * (view.dpr || 1), 1, 1.7));
+  }
   return BGS[idx];
 }
 
@@ -1282,7 +1304,7 @@ function loadAssets(onProgress) {
       ...Object.keys(WEAPONS).map(k => () => { for (let i = 0; i < 16; i++) mkSpr(`w_${k}_${i}`, 46, 38, 23, 24, g => WEAPONS[k](g, i * Math.PI / 8)); })];
     for (const k in CH) ATLAS[`c_${k}_walk_S_0`] = [-1, 0, 0, CH[k].h * .85 * PD, CH[k].h * PD, CH[k].h * .42 * PD, CH[k].h * PD];
     let i = 0;
-    const tick = () => { const t0 = performance.now(); while (i < steps.length && performance.now() - t0 < 30) steps[i++](); onProgress && onProgress(i / steps.length); if (i < steps.length) setTimeout(tick, 0); else res(); };
+    const tick = () => { const t0 = performance.now(); while (i < steps.length && performance.now() - t0 < 30) steps[i++](); onProgress && onProgress(i / steps.length); if (i < steps.length) setTimeout(tick, 0); else { trimPages(); pageG = null; res(); } };
     tick();
   });
 }
@@ -1290,9 +1312,9 @@ function loadAssets(onProgress) {
 function spr(g, name, x, y, sc = 1, flip = false) {
   const f = ATLAS[name]; if (!f) return null;
   const img = PAGES[f[0]]; if (!img) return null;
-  const k = sc / PD;
-  if (flip) { g.save(); g.translate(x, y); g.scale(-1, 1); g.drawImage(img, 0, 0, img.width, img.height, -f[5] * k, -f[6] * k, f[3] * k, f[4] * k); g.restore(); }
-  else g.drawImage(img, 0, 0, img.width, img.height, x - f[5] * k, y - f[6] * k, f[3] * k, f[4] * k);
+  const k = sc / PD, s = SRC[name];
+  if (flip) { g.save(); g.translate(x, y); g.scale(-1, 1); g.drawImage(img, s[0], s[1], s[2], s[3], -f[5] * k, -f[6] * k, f[3] * k, f[4] * k); g.restore(); }
+  else g.drawImage(img, s[0], s[1], s[2], s[3], x - f[5] * k, y - f[6] * k, f[3] * k, f[4] * k);
   return f;
 }
 const sprTop = (name, sc = 1) => { const f = ATLAS[name]; return f ? f[6] / PD * sc : 30; };
@@ -1317,8 +1339,8 @@ function portrait(canvas, key, bg) {
 function sprCanvas(name, size = 96, pad = 3) {
   const c = document.createElement('canvas'); c.width = size; c.height = size;
   const f = ATLAS[name]; if (!f || !PAGES[f[0]]) return c;
-  const img = PAGES[f[0]], g = c.getContext('2d'), k = Math.min((size - pad * 2) / f[3], (size - pad * 2) / f[4]);
-  g.drawImage(img, 0, 0, img.width, img.height, (size - f[3] * k) / 2, size - pad - f[4] * k, f[3] * k, f[4] * k);
+  const img = PAGES[f[0]], s = SRC[name], g = c.getContext('2d'), k = Math.min((size - pad * 2) / f[3], (size - pad * 2) / f[4]);
+  g.drawImage(img, s[0], s[1], s[2], s[3], (size - f[3] * k) / 2, size - pad - f[4] * k, f[3] * k, f[4] * k);
   return c;
 }
 
@@ -2236,9 +2258,10 @@ function drawFx(g, f) {
   }
 }
 function drawBg(g, idx) {
-  const M = MAPS[idx], img = getBg(idx);
+  const img = getBg(idx);
   if (!img) return;
-  g.drawImage(img, -M.bg.ax / PD, -M.bg.ay / PD, M.bg.w / PD, M.bg.h / PD);
+  const [x, y, w, h] = img._rect;
+  g.drawImage(img, x, y, w, h);
 }
 let titleIdx = 0;
 function render() {
@@ -2300,7 +2323,7 @@ function render() {
 // AudioBuffers (a few variants each), so the game ships no audio files.
 let AC = null, MASTER = null, NOISE = null;
 const BUF = {};
-const SR = 32000;
+const SR = 24000;
 // name: [variants, volume]
 const SFX = {
   arrow: [3, .3], ballista: [3, .26], dart: [3, .16], hit: [3, .22], zap: [3, .17], magichit: [3, .16], frostbolt: [2, .17], frosthit: [2, .22],
