@@ -4,6 +4,9 @@ A small arcade of browser games, made for touch screens. Each game lives in its 
 
 | Game | Folder | What it is |
 | --- | --- | --- |
+| Guess Five | [`guess-five/`](guess-five/) | Five-letter word puzzle in six guesses with a daily word and endless mode, hard mode, high-contrast colours, stats and sharing. British English word list. |
+| Word Hive | [`word-hive/`](word-hive/) | Honeycomb word puzzle: make words from seven letters using the centre letter. 200 hives (a new one each day), ranks, hints grid and bonus words. |
+| Sudoku | [`sudoku/`](sudoku/) | Sudoku with puzzles generated on the fly (always one solution), four difficulty levels, notes, hints, undo, mistake checking and best times. |
 | Tangle Tails | [`tangle-tails/`](tangle-tails/) | Untangling puzzle: tap snakes to slither them off the board in the direction they face. Blocked snakes bonk and cost a heart, so free them in the right order. Endless solvable levels, hints and star ratings. |
 | Slither Slide | [`slither-slide/`](slither-slide/) | Maze-painting puzzle: swipe a cartoon snake that slides until it hits a wall, painting every tile it crosses. Endless solvable levels, star ratings and six unlockable snakes. |
 | Hedge Hop | [`hedge-hop/`](hedge-hop/) | Endless crossing game: hop a hedgehog over roads, log-filled rivers and railway lines, collecting berries. |
@@ -41,3 +44,7 @@ Open any `index.html` in a browser, or serve the folder:
 python3 -m http.server 8000
 ```
 
+
+### Word lists
+
+Guess Five and Word Hive use British English word lists derived from [SCOWL](https://github.com/en-wl/wordlist) (Spell Checker Oriented Word Lists) by Kevin Atkinson and contributors, used under its licence (see [`WORDLISTS-COPYRIGHT.txt`](WORDLISTS-COPYRIGHT.txt)). Commonness levels from SCOWL decide which words are answers and which are accepted as extra guesses or bonus words.
