@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#2f7d4f">
+<title>Slither Slide</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#245f3c; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:#24382c; }
+  #app { position:relative; height:100dvh; width:100vw; display:flex; align-items:center; justify-content:center; touch-action:none; }
+  canvas { display:block; touch-action:none; }
+  .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(20,50,30,.55); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); z-index:5; }
+  .ov.show { display:flex; animation:fade .3s ease; }
+  @keyframes fade { from { opacity:0; } }
+  .card { width:min(92vw,370px); max-height:94dvh; overflow:auto; background:#fff9ec; border-radius:26px; padding:20px 18px 18px; text-align:center; box-shadow:0 6px 0 #c9b98f, 0 18px 40px rgba(0,0,0,.35); animation:pop .4s cubic-bezier(.3,1.5,.5,1); }
+  @keyframes pop { from { transform:scale(.85); opacity:0; } }
+  h1 { margin:0; font-size:2.7rem; line-height:1; font-weight:900; color:#2f9e5a; letter-spacing:-.02em; text-shadow:0 3px 0 #1d6b3b; }
+  h1 span { color:#ff8a3d; text-shadow:0 3px 0 #b5531a; }
+  h2 { margin:0 0 4px; font-size:1.8rem; font-weight:900; color:#2f9e5a; }
+  p { margin:8px 0; line-height:1.4; color:#5a6b5f; }
+  .btn { border:0; border-radius:16px; padding:13px 24px; margin:8px 4px 0; font:inherit; font-weight:900; font-size:1.08rem; cursor:pointer; color:#fff; background:#2f9e5a; box-shadow:0 4px 0 #1d6b3b; }
+  .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #1d6b3b; }
+  .btn.alt { background:#ff8a3d; box-shadow:0 4px 0 #b5531a; } .btn.soft { background:#efe6cf; color:#3b4a3f; box-shadow:0 4px 0 #c9b98f; }
+  .skins { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0 6px; }
+  .skin { border:3px solid transparent; background:#f4ecd6; border-radius:16px; padding:6px 4px 4px; cursor:pointer; font:inherit; font-size:.72rem; font-weight:800; color:#3b4a3f; }
+  .skin canvas { width:100%; height:auto; display:block; }
+  .skin.on { border-color:#2f9e5a; background:#e2f5e6; }
+  .skin.locked { opacity:.5; cursor:default; }
+  .stars { font-size:2.4rem; letter-spacing:6px; margin:4px 0; }
+  .stars span { color:#e2dac4; display:inline-block; transform:scale(.4); transition:transform .4s cubic-bezier(.3,1.8,.5,1), color .2s; }
+  .stars span.on { color:#ffc21a; transform:scale(1); text-shadow:0 3px 0 #c98a00; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+  <div class="ov show" id="ovMenu"><div class="card">
+    <h1>Slither<br><span>Slide</span></h1>
+    <p>Swipe to send your snake sliding until it bumps a wall. Paint every tile of the maze with its scales!</p>
+    <div class="skins" id="skins"></div>
+    <button class="btn" id="bPlay">Play</button>
+    <p id="mInfo" style="font-size:.85rem"></p>
+  </div></div>
+  <div class="ov" id="ovWin"><div class="card">
+    <h2 id="wTitle">Sssuper!</h2>
+    <div class="stars" id="wStars"><span>★</span><span>★</span><span>★</span></div>
+    <p id="wText"></p>
+    <button class="btn" id="bNext">Next level</button><button class="btn soft" id="bReplay">Replay</button><br>
+    <button class="btn soft" id="bMenu2">Snakes</button>
+  </div></div>
+</div>
+<script>
+(() => {
+'use strict';
+const W = 360;
+let H = 680, SC = 1;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v, rnd = (a, b) => a + Math.random() * (b - a);
+const DIRS = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] };
+
+/* ---------- the snakes (all original designs) ---------- */
+const SKINS = [
+  { id: 'pip', name: 'Pip', main: '#5ccf6e', dark: '#2f9e45', accent: '#c8f56a', pat: 'stripes', unlock: 1 },
+  { id: 'coral', name: 'Coral', main: '#ff7f6e', dark: '#d8483a', accent: '#ffd2a0', pat: 'spots', unlock: 4 },
+  { id: 'sunny', name: 'Sunny', main: '#ffcd3c', dark: '#e09a10', accent: '#ff7a3d', pat: 'zigzag', unlock: 8 },
+  { id: 'grape', name: 'Grape', main: '#a77cf2', dark: '#7046c8', accent: '#ffd1f2', pat: 'diamond', unlock: 12 },
+  { id: 'minty', name: 'Minty', main: '#4fd1c5', dark: '#1e9a8f', accent: '#ffffff', pat: 'spots', unlock: 18 },
+  { id: 'rainbow', name: 'Prism', main: '#ff6b9d', dark: '#c43a70', accent: '#ffe066', pat: 'rainbow', unlock: 25 },
+];
+let save = { level: 1, stars: {}, skin: 'pip', muted: false };
+try { save = Object.assign(save, JSON.parse(localStorage.getItem('slitherslide') || '{}')); } catch (e) {}
+const persist = () => { try { localStorage.setItem('slitherslide', JSON.stringify(save)); } catch (e) {} };
+const skin = () => SKINS.find(s => s.id === save.skin) || SKINS[0];
+const RAINBOW = ['#ff6b6b', '#ffa94d', '#ffd43b', '#69db7c', '#4dabf7', '#9775fa'];
+
+function resize() {
+  H = Math.round(clamp(W * innerHeight / innerWidth, 600, 780));
+  const s = Math.min(innerWidth / W, innerHeight / H), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px'; cv.width = Math.round(W * s * dpr); cv.height = Math.round(H * s * dpr); SC = cv.width / W;
+  layout();
+}
+
+/* ---------- sound (synthesised) ---------- */
+let ac = null;
+function audio() { if (ac) { if (ac.state === 'suspended') ac.resume(); return; } try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+function tone(f, d, type = 'sine', vol = .05, delay = 0, slide = 0) {
+  if (!ac || save.muted) return; const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + delay;
+  o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, f + slide), t + d);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .006); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + .02);
+}
+let nb = null;
+function hiss(d, vol) {
+  if (!ac || save.muted) return; if (!nb) { nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const a = nb.getChannelData(0); for (let i = 0; i < a.length; i++) a[i] = Math.random() * 2 - 1; }
+  const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = nb; f.type = 'highpass'; f.frequency.value = 4500;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .05); g.gain.exponentialRampToValueAtTime(.001, t + d); s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t, Math.random() * .5); s.stop(t + d);
+}
+const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+let paintStreak = 0;
+const sPaint = () => { tone(523 * Math.pow(2, SCALE[Math.min(10, paintStreak)] / 12), .08, 'triangle', .035); paintStreak++; };
+const sBump = () => { tone(140, .09, 'sine', .07, 0, -40); };
+const sWin = () => { hiss(.5, .05); [0, 4, 7, 12, 16].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .2, 'triangle', .06, .1 + i * .09)); };
+const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+/* ---------- level generation: carve a maze by recording slides, so it is always solvable ---------- */
+function rng32(seed) { let s = seed >>> 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function generate(n) {
+  const cols = Math.min(11, 7 + Math.floor((n - 1) / 4)), rows = Math.min(15, 9 + Math.floor((n - 1) / 3));
+  const steps = Math.min(34, 6 + Math.floor(n * 1.15));
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const rand = rng32(n * 1013 + attempt * 7919 + 17);
+    const g = Array.from({ length: rows }, () => Array(cols).fill(0)), stop = new Set();
+    const inner = (r, c) => r > 0 && c > 0 && r < rows - 1 && c < cols - 1;
+    let r = 1 + Math.floor(rand() * (rows - 2)), c = 1 + Math.floor(rand() * (cols - 2)); const start = [r, c]; g[r][c] = 1;
+    const moves = []; let last = null;
+    for (let k = 0; k < steps * 6 && moves.length < steps; k++) {
+      const dname = ['up', 'down', 'left', 'right'][Math.floor(rand() * 4)]; if (dname === last) continue;
+      const [dr, dc] = DIRS[dname], L = 1 + Math.floor(rand() * 5);
+      let rr = r, cc = c, carved = 0;
+      for (let i = 0; i < L; i++) { const nr = rr + dr, nc = cc + dc; if (!inner(nr, nc) || stop.has(nr * 64 + nc)) break; rr = nr; cc = nc; carved++; }
+      if (!carved) continue;
+      // carve, then keep sliding over any floor that already exists, exactly as the snake will
+      let pr = r, pc = c; for (let i = 0; i < carved; i++) { pr += dr; pc += dc; g[pr][pc] = 1; }
+      while (inner(rr + dr, cc + dc) && g[rr + dr][cc + dc] === 1) { rr += dr; cc += dc; }
+      const br = rr + dr, bc = cc + dc; if (inner(br, bc)) stop.add(br * 64 + bc);
+      if (rr === r && cc === c) continue;
+      moves.push(dname); r = rr; c = cc; last = dname;
+    }
+    let floor = 0; for (const row of g) for (const v of row) floor += v;
+    if (moves.length >= Math.min(steps, 5) && floor >= (rows - 2) * (cols - 2) * .38) return { g, rows, cols, start, par: moves.length, moves };
+  }
+  return generate(n + 1000);
+}
+
+/* ---------- state ---------- */
+let L = null, grid, head, moving = null, queue = [], trail = [], history = [], movesUsed = 0, state = 'menu', time = 0, pops = [], parts = [], callout = null, won = 0, BX = 0, BY = 0, CS = 30, tongue = 0, blink = 0, dir = 'down';
+function layout() {
+  if (!L) return;
+  const availH = H - 150, cs = Math.floor(Math.min((W - 20) / L.cols, availH / L.rows));
+  CS = cs; BX = (W - cs * L.cols) / 2; BY = 104 + (availH - cs * L.rows) / 2;
+}
+function startLevel(n) {
+  L = generate(n); L.n = n; layout();
+  grid = L.g.map(row => row.map(v => v));
+  head = { r: L.start[0], c: L.start[1], x: L.start[1], y: L.start[0] };
+  grid[head.r][head.c] = 2; trail = Array.from({ length: 7 }, () => [head.x, head.y]);
+  moving = null; queue = []; history = []; movesUsed = 0; pops = [{ r: head.r, c: head.c, t: 0 }]; parts = []; won = 0; dir = 'down';
+  state = 'play'; callout = { t: 'Level ' + n, life: 1.3 };
+}
+const floorLeft = () => { let n = 0; for (const row of grid) for (const v of row) if (v === 1) n++; return n; };
+const floorTotal = () => { let n = 0; for (const row of grid) for (const v of row) if (v) n++; return n; };
+
+function slide(dname) {
+  if (state !== 'play') return;
+  if (moving) { if (queue.length < 2) queue.push(dname); return; }
+  const [dr, dc] = DIRS[dname]; let r = head.r, c = head.c; const path = [];
+  while (grid[r + dr] && grid[r + dr][c + dc]) { r += dr; c += dc; path.push([r, c]); }
+  dir = dname;
+  if (!path.length) { sBump(); head.bump = { dr, dc, t: 0 }; return; }
+  history.push({ grid: grid.map(row => row.slice()), r: head.r, c: head.c, movesUsed, dir });
+  movesUsed++; paintStreak = 0;
+  moving = { path, i: 0, f: 0, dr, dc, speed: 20 + path.length * .8 };
+  hiss(.12 + path.length * .02, .02);
+}
+function undo() {
+  if (moving || !history.length || state !== 'play') return;
+  const h = history.pop(); grid = h.grid; head.r = h.r; head.c = h.c; head.x = h.c; head.y = h.r; movesUsed = h.movesUsed; dir = h.dir;
+  trail = Array.from({ length: 7 }, () => [head.x, head.y]); tone(400, .08, 'sine', .04, 0, -150);
+}
+
+/* ---------- input ---------- */
+let down = null;
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault(); audio(); const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+  if (y < 64) {
+    if (x < 56) { openMenu(); return; }
+    if (x > W - 56) { save.muted = !save.muted; persist(); return; }
+    if (x > W - 104) { if (state === 'play') { startLevel(L.n); tone(500, .08, 'triangle', .05); } return; }
+    if (x > W - 152) { undo(); return; }
+  }
+  down = { x: e.clientX, y: e.clientY, used: false };
+});
+cv.addEventListener('pointermove', e => {
+  if (!down || down.used) return; const dx = e.clientX - down.x, dy = e.clientY - down.y;
+  if (Math.hypot(dx, dy) < 22) return;
+  down.used = true; slide(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+});
+cv.addEventListener('pointerup', () => { down = null; });
+addEventListener('keydown', e => {
+  const k = { ArrowUp: 'up', w: 'up', ArrowDown: 'down', s: 'down', ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right' }[e.key];
+  if (k) { e.preventDefault(); audio(); slide(k); } else if (e.key === 'z' || e.key === 'u' || (e.key === 'z' && (e.ctrlKey || e.metaKey))) undo(); else if (e.key === 'r') state === 'play' && startLevel(L.n);
+});
+
+/* ---------- update ---------- */
+const WINS = ['Sssuper!', 'Fang-tastic!', 'Sssmooth!', 'Hiss-toric!', 'Ssslick!', 'Scale-tacular!'];
+function update(dt) {
+  time += dt; tongue = (tongue + dt) % 2.6; blink = (blink + dt) % 3.4;
+  pops.forEach(p => p.t += dt); pops = pops.filter(p => p.t < .3);
+  for (const q of parts) { q.life -= dt; q.vy += 300 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.r += q.vr * dt; } parts = parts.filter(q => q.life > 0);
+  if (callout) { callout.life -= dt; if (callout.life <= 0) callout = null; }
+  if (head && head.bump) { head.bump.t += dt; if (head.bump.t > .18) head.bump = null; }
+  if (state === 'won') { won += dt; return; }
+  if (!moving) return;
+  moving.f += dt * moving.speed;
+  while (moving && moving.f >= 1) {
+    moving.f -= 1; const [r, c] = moving.path[moving.i]; head.r = r; head.c = c;
+    trail.push([c, r]); if (trail.length > 40) trail.shift();
+    if (grid[r][c] === 1) { grid[r][c] = 2; pops.push({ r, c, t: 0 }); sPaint(); }
+    moving.i++;
+    if (moving.i >= moving.path.length) {
+      head.x = c; head.y = r; moving = null; sBump(); buzz(8);
+      if (!floorLeft()) { win(); return; }
+      if (queue.length) slide(queue.shift());
+      return;
+    }
+  }
+  if (moving) { const [r, c] = moving.path[moving.i], [pr, pc] = moving.i ? moving.path[moving.i - 1] : [head.r, head.c]; head.x = pc + (c - pc) * moving.f; head.y = pr + (r - pr) * moving.f; }
+}
+function win() {
+  state = 'won'; won = 0; sWin(); buzz(40);
+  const extra = movesUsed - L.par, stars = extra <= 0 ? 3 : extra <= 3 ? 2 : 1;
+  save.stars[L.n] = Math.max(save.stars[L.n] || 0, stars); save.level = Math.max(save.level, L.n + 1); persist();
+  const sk = skin();
+  for (let i = 0; i < 70; i++) parts.push({ x: rnd(0, W), y: rnd(-60, 0), vx: rnd(-30, 30), vy: rnd(40, 160), life: rnd(1.4, 2.4), max: 2.4, s: rnd(3, 6), c: [sk.main, sk.accent, sk.dark, '#fff'][i % 4], r: rnd(0, 6), vr: rnd(-6, 6) });
+  const newSkin = SKINS.find(s => s.unlock === L.n + 1);
+  setTimeout(() => {
+    $('wTitle').textContent = WINS[L.n % WINS.length];
+    $('wText').textContent = `${movesUsed} slide${movesUsed === 1 ? '' : 's'} · ${L.par} for three stars` + (newSkin ? ` · New snake unlocked: ${newSkin.name}!` : '');
+    const st = $('wStars').children; [...st].forEach(s => s.classList.remove('on'));
+    for (let i = 0; i < stars; i++) setTimeout(() => { st[i].classList.add('on'); tone(880 + i * 220, .15, 'triangle', .05); }, 250 + i * 250);
+    $('ovWin').classList.add('show');
+  }, 900);
+}
+
+/* ---------- drawing ---------- */
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function cellColor(sk, r, c) { return sk.pat === 'rainbow' ? RAINBOW[(r + c) % RAINBOW.length] : sk.main; }
+function drawBoard() {
+  const sk = skin(), pad = CS * .08, rad = CS * .32;
+  // leafy hedge under everything
+  rr(BX - 10, BY - 10, L.cols * CS + 20, L.rows * CS + 20, 22); ctx.fillStyle = '#3f8f4f'; ctx.fill();
+  ctx.save(); rr(BX - 10, BY - 10, L.cols * CS + 20, L.rows * CS + 20, 22); ctx.clip();
+  for (let i = 0; i < 160; i++) { const x = BX - 10 + ((i * 97) % (L.cols * CS + 20)), y = BY - 10 + ((i * 61) % (L.rows * CS + 20)); ctx.fillStyle = i % 3 ? '#4fa45e' : '#357a43'; ctx.beginPath(); ctx.ellipse(x, y, 5, 3, (i % 5) * .6, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  // floor channels: rounded tiles plus bridges between neighbours
+  const pass = (fill, which) => {
+    for (let r = 0; r < L.rows; r++) for (let c = 0; c < L.cols; c++) {
+      const v = grid[r][c]; if (!v || (which === 2 && v !== 2)) continue;
+      const x = BX + c * CS, y = BY + r * CS, col = which === 2 ? cellColor(sk, r, c) : fill;
+      const p = pops.find(q => q.r === r && q.c === c), k = which === 2 && p ? Math.min(1, p.t / .2) : 1;
+      ctx.fillStyle = col;
+      if (k < 1) { const cx = x + CS / 2, cy = y + CS / 2, s = (CS - pad * 2) * k; rr(cx - s / 2, cy - s / 2, s, s, rad * k); ctx.fill(); continue; }
+      rr(x + pad, y + pad, CS - pad * 2, CS - pad * 2, rad); ctx.fill();
+      const ok = (rr2, cc2) => grid[rr2] && grid[rr2][cc2] && (which !== 2 || grid[rr2][cc2] === 2);
+      if (ok(r, c + 1)) { ctx.fillStyle = which === 2 && sk.pat === 'rainbow' ? col : col; ctx.fillRect(x + CS / 2, y + pad, CS, CS - pad * 2); }
+      if (ok(r + 1, c)) ctx.fillRect(x + pad, y + CS / 2, CS - pad * 2, CS);
+      if (ok(r, c + 1) && ok(r + 1, c) && ok(r + 1, c + 1)) ctx.fillRect(x + CS / 2, y + CS / 2, CS, CS);
+    }
+  };
+  pass('#f4e7c6', 1); pass(null, 2);
+  // scale patterns on painted tiles
+  ctx.save();
+  for (let r = 0; r < L.rows; r++) for (let c = 0; c < L.cols; c++) {
+    if (grid[r][c] !== 2) continue; const x = BX + c * CS + CS / 2, y = BY + r * CS + CS / 2, s = CS * .18;
+    if (pops.some(q => q.r === r && q.c === c && q.t < .2)) continue;
+    ctx.fillStyle = sk.pat === 'rainbow' ? 'rgba(255,255,255,.35)' : sk.accent; ctx.strokeStyle = sk.dark; ctx.lineWidth = 1.2;
+    if (sk.pat === 'stripes') { ctx.globalAlpha = .55; ctx.fillRect(x - CS * .38, y - s * .5, CS * .76, s); }
+    else if (sk.pat === 'spots') { ctx.globalAlpha = .75; ctx.beginPath(); ctx.arc(x - s * .7, y - s * .5, s * .7, 0, Math.PI * 2); ctx.arc(x + s, y + s * .6, s * .5, 0, Math.PI * 2); ctx.fill(); }
+    else if (sk.pat === 'zigzag') { ctx.globalAlpha = .7; ctx.strokeStyle = sk.accent; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(x - CS * .3, y + s * .4); ctx.lineTo(x - CS * .1, y - s * .6); ctx.lineTo(x + CS * .1, y + s * .4); ctx.lineTo(x + CS * .3, y - s * .6); ctx.stroke(); }
+    else if (sk.pat === 'diamond') { ctx.globalAlpha = .6; ctx.beginPath(); ctx.moveTo(x, y - s * 1.2); ctx.lineTo(x + s, y); ctx.lineTo(x, y + s * 1.2); ctx.lineTo(x - s, y); ctx.closePath(); ctx.fill(); }
+    else { ctx.globalAlpha = .5; ctx.beginPath(); ctx.arc(x, y, s * .8, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = .18; ctx.strokeStyle = sk.pat === 'rainbow' ? '#000' : sk.dark; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x - s, y + s * 1.6, s * 1.1, Math.PI * 1.1, Math.PI * 1.9); ctx.arc(x + s, y + s * 1.6, s * 1.1, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawSnake() {
+  const sk = skin(), R = CS * .36, hx = BX + head.x * CS + CS / 2, hy = BY + head.y * CS + CS / 2;
+  // body follows the last cells the head passed through
+  const pts = [[hx, hy]];
+  for (let i = trail.length - 1; i >= 0 && pts.length < 7; i--) { const [c, r] = trail[i], x = BX + c * CS + CS / 2, y = BY + r * CS + CS / 2, [px, py] = pts[pts.length - 1]; if (Math.hypot(x - px, y - py) > 2) pts.push([x, y]); }
+  const pos = []; let need = R * .9;
+  for (let i = 1; i < pts.length && pos.length < 9; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i], seg = Math.hypot(bx - ax, by - ay); let d = need; while (d <= seg && pos.length < 9) { pos.push([ax + (bx - ax) * d / seg, ay + (by - ay) * d / seg]); d += R * .9; } need = d - seg; }
+  while (pos.length < 4) { const [x, y] = pos.length ? pos[pos.length - 1] : [hx, hy]; pos.push([x, y + .01]); }
+  for (let i = pos.length - 1; i >= 0; i--) {
+    const [x, y] = pos[i], k = 1 - (i + 1) / (pos.length + 2), rad = R * (.45 + .5 * k) + Math.sin(time * 8 - i) * .4;
+    ctx.fillStyle = sk.pat === 'rainbow' ? RAINBOW[i % RAINBOW.length] : (i % 2 ? sk.main : sk.dark); ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.arc(x - rad * .3, y - rad * .35, rad * .35, 0, Math.PI * 2); ctx.fill();
+  }
+  // head
+  const [dr, dc] = DIRS[dir], ang = Math.atan2(dr, dc);
+  let bx = 0, by = 0; if (head.bump) { const k = Math.sin(head.bump.t / .18 * Math.PI) * CS * .12; bx = head.bump.dc * k; by = head.bump.dr * k; }
+  const happy = state === 'won';
+  ctx.save(); ctx.translate(hx + bx, hy + by + (happy ? Math.sin(won * 14) * 3 : 0)); ctx.rotate(ang);
+  if (!moving && tongue < .35 && !happy) { const t = Math.sin(tongue / .35 * Math.PI); ctx.strokeStyle = '#e8335a'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(R * .8, 0); ctx.lineTo(R * (.8 + .7 * t), 0); ctx.lineTo(R * (1 + .75 * t), -R * .2 * t); ctx.moveTo(R * (.8 + .7 * t), 0); ctx.lineTo(R * (1 + .75 * t), R * .2 * t); ctx.stroke(); }
+  ctx.fillStyle = sk.pat === 'rainbow' ? RAINBOW[Math.floor(time * 4) % 6] : sk.main; ctx.strokeStyle = sk.dark; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, 0, R * 1.18, R * 1.02, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.ellipse(-R * .2, -R * .45, R * .55, R * .3, 0, 0, Math.PI * 2); ctx.fill();
+  // eyes (they stay upright-ish by sitting on the top of the head)
+  const blinkNow = blink > 3.25 && !happy;
+  for (const s of [-1, 1]) {
+    const ex = R * .35, ey = s * R * .52;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = sk.dark; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(ex, ey, R * .42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (blinkNow) { ctx.strokeStyle = '#1b1b1b'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(ex - R * .28, ey); ctx.lineTo(ex + R * .28, ey); ctx.stroke(); }
+    else if (happy) { ctx.strokeStyle = '#1b1b1b'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ex, ey + R * .08, R * .2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+    else { ctx.fillStyle = '#1b1b1b'; ctx.beginPath(); ctx.arc(ex + R * .14, ey, R * .21, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex + R * .2, ey - R * .08, R * .07, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.fillStyle = 'rgba(255,120,140,.55)'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(R * .05, s * R * .82, R * .2, R * .12, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = sk.dark; for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(R * .95, s * R * .18, R * .06, 0, Math.PI * 2); ctx.fill(); }
+  if (happy) { ctx.strokeStyle = sk.dark; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(R * .55, 0, R * .3, -1.1, 1.1); ctx.stroke(); }
+  ctx.restore();
+}
+function txt(t, x, y, size, col, align = 'center', stroke = null) {
+  ctx.font = `900 ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if (stroke) { ctx.lineJoin = 'round'; ctx.lineWidth = size / 5; ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); } ctx.fillStyle = col; ctx.fillText(t, x, y);
+}
+function iconBtn(x, kind) {
+  rr(x, 14, 40, 40, 13); ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fill();
+  const cx = x + 20, cy = 34; ctx.strokeStyle = '#fff'; ctx.fillStyle = '#fff'; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (kind === 'menu') { for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(cx - 9, cy + i * 6); ctx.lineTo(cx + 9, cy + i * 6); ctx.stroke(); } }
+  else if (kind === 'undo') { ctx.beginPath(); ctx.arc(cx + 1, cy + 2, 8, Math.PI * 1.15, Math.PI * .45); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx - 10, cy - 7); ctx.lineTo(cx - 8, cy + 1); ctx.lineTo(cx - 1, cy - 3); ctx.fill(); }
+  else if (kind === 'restart') { ctx.beginPath(); ctx.arc(cx, cy, 8, -.4, Math.PI * 1.6); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx + 9, cy - 9); ctx.lineTo(cx + 9, cy - 1); ctx.lineTo(cx + 2, cy - 3); ctx.fill(); }
+  else { ctx.beginPath(); ctx.moveTo(cx - 9, cy - 3); ctx.lineTo(cx - 5, cy - 3); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx, cy + 8); ctx.lineTo(cx - 5, cy + 3); ctx.lineTo(cx - 9, cy + 3); ctx.closePath(); ctx.fill(); if (save.muted) { ctx.beginPath(); ctx.moveTo(cx + 3, cy - 5); ctx.lineTo(cx + 10, cy + 5); ctx.moveTo(cx + 10, cy - 5); ctx.lineTo(cx + 3, cy + 5); ctx.stroke(); } else { ctx.beginPath(); ctx.arc(cx + 1, cy, 6, -.9, .9); ctx.stroke(); } }
+}
+function draw() {
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2f7d4f'); g.addColorStop(1, '#1d5a35'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = .1; ctx.fillStyle = '#c8f56a'; for (let i = 0; i < 14; i++) { const x = (i * 83) % W, y = (i * 137) % H; ctx.beginPath(); ctx.ellipse(x, y, 34, 14, i, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1;
+  if (!L) return;
+  iconBtn(12, 'menu'); iconBtn(W - 148, 'undo'); iconBtn(W - 100, 'restart'); iconBtn(W - 52, 'sound');
+  txt('Level ' + L.n, 62, 34, 18, '#fff', 'left');
+  const total = floorTotal(), done = total - floorLeft(), sk = skin();
+  rr(20, 70, W - 40, 12, 6); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fill();
+  rr(20, 70, Math.max(12, (W - 40) * done / total), 12, 6); ctx.fillStyle = sk.main; ctx.fill();
+  txt(`${movesUsed} / ${L.par} slides`, W / 2, 96, 12, 'rgba(255,255,255,.8)');
+  drawBoard(); drawSnake();
+  for (const q of parts) { ctx.globalAlpha = clamp(q.life / q.max * 1.4, 0, 1); ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.r); ctx.fillStyle = q.c; ctx.fillRect(-q.s / 2, -q.s / 4, q.s, q.s / 2); ctx.restore(); } ctx.globalAlpha = 1;
+  if (callout) { ctx.globalAlpha = clamp(callout.life * 3, 0, 1); txt(callout.t, W / 2, H - 34, 22, '#fff', 'center', '#1d5a35'); ctx.globalAlpha = 1; }
+  else if (state === 'play' && L.n === 1 && movesUsed < 2) { txt('Swipe to slide', W / 2, H - 34, 18, '#fff', 'center', '#1d5a35'); }
+}
+
+/* ---------- menus ---------- */
+function skinPreview(sk) {
+  const c = document.createElement('canvas'); c.width = 180; c.height = 90; const g = c.getContext('2d');
+  const pts = []; for (let i = 0; i < 9; i++) pts.push([24 + i * 15, 52 + Math.sin(i * .9) * 12]);
+  for (let i = 0; i < pts.length - 1; i++) { const [x, y] = pts[i], r = 8 + i * .9; g.fillStyle = sk.pat === 'rainbow' ? RAINBOW[i % 6] : (i % 2 ? sk.main : sk.dark); g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); if (sk.pat === 'spots' && i % 2) { g.fillStyle = sk.accent; g.beginPath(); g.arc(x - 2, y - 2, 2.6, 0, Math.PI * 2); g.fill(); } }
+  const [hx, hy] = pts[8]; g.fillStyle = sk.pat === 'rainbow' ? RAINBOW[0] : sk.main; g.strokeStyle = sk.dark; g.lineWidth = 2.4; g.beginPath(); g.ellipse(hx, hy, 19, 17, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  for (const s of [-1, 1]) { g.fillStyle = '#fff'; g.beginPath(); g.arc(hx + s * 7, hy - 6, 6.5, 0, Math.PI * 2); g.fill(); g.strokeStyle = sk.dark; g.lineWidth = 1.5; g.stroke(); g.fillStyle = '#1b1b1b'; g.beginPath(); g.arc(hx + s * 7 + 1.5, hy - 5, 3.2, 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = sk.dark; g.lineWidth = 2; g.beginPath(); g.arc(hx, hy + 2, 7, .4, Math.PI - .4); g.stroke();
+  g.strokeStyle = '#e8335a'; g.lineWidth = 2; g.lineCap = 'round'; g.beginPath(); g.moveTo(hx, hy + 12); g.lineTo(hx, hy + 20); g.lineTo(hx - 3, hy + 24); g.moveTo(hx, hy + 20); g.lineTo(hx + 3, hy + 24); g.stroke();
+  return c;
+}
+function openMenu() {
+  state = 'menu'; $('ovWin').classList.remove('show');
+  const box = $('skins'); box.innerHTML = '';
+  for (const sk of SKINS) {
+    const locked = save.level < sk.unlock, b = document.createElement('button');
+    b.className = 'skin' + (sk.id === save.skin ? ' on' : '') + (locked ? ' locked' : '');
+    b.appendChild(skinPreview(sk)); b.appendChild(document.createTextNode(locked ? `🔒 Level ${sk.unlock}` : sk.name));
+    if (!locked) b.onclick = () => { save.skin = sk.id; persist(); tone(700, .08, 'triangle', .05); openMenu(); };
+    box.appendChild(b);
+  }
+  const starsTot = Object.values(save.stars).reduce((a, b) => a + b, 0);
+  $('bPlay').textContent = save.level > 1 ? `Play level ${save.level}` : 'Play';
+  $('mInfo').textContent = save.level > 1 ? `${starsTot} stars collected · new snakes unlock as you go` : 'New snakes unlock as you clear levels';
+  $('ovMenu').classList.add('show');
+}
+$('bPlay').onclick = () => { audio(); $('ovMenu').classList.remove('show'); startLevel(save.level); };
+$('bNext').onclick = () => { $('ovWin').classList.remove('show'); startLevel(L.n + 1); };
+$('bReplay').onclick = () => { $('ovWin').classList.remove('show'); startLevel(L.n); };
+$('bMenu2').onclick = openMenu;
+document.addEventListener('visibilitychange', () => { if (ac) document.hidden ? ac.suspend() : ac.resume(); });
+let last = performance.now();
+function frame(now) { const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now; update(dt); draw(); requestAnimationFrame(frame); }
+addEventListener('resize', resize); resize();
+startLevel(Math.max(1, save.level)); state = 'menu'; openMenu();
+if (/[?&]debug\b/.test(location.search)) window.__ss = { get state() { return state; }, get L() { return L; }, get moving() { return !!moving; }, get left() { return floorLeft(); }, slide, startLevel, generate };
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
