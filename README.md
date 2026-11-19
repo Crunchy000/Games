@@ -20,7 +20,7 @@ The Bear & Bean Games is a small arcade of browser games, made for touch screens
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Help Bean hop around a mossy temple in the rainforest, changing every stone while dodging critters. Hop off and a toucan always swoops in to catch you. |
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
 | Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |
-| Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: swap gummies, make rockets, bombs and rainbow orbs, and beat level goals before your moves run out. |
+| Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: make rockets, bombs and rainbow orbs; bring honey pots down to Bear, break liquorice locks, clear sugar cubes and spreading chocolate. Lolly Pop and Free Swap boosters, +5 moves once per level. |
 | Bear vs Bean (Dots and Boxes) | [`dots-and-boxes/`](dots-and-boxes/) | Two-player pass-and-play: Bear and Bean take turns joining dots; close a box to stamp it with a paw print or a bean and go again. Renamable players, win tally, undo. |
 
 Ideas for future games are in [`TODO.md`](TODO.md).
