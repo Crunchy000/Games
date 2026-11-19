@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>River Rush</title>
-<meta name="description" content="Bear and Bean&#x27;s log has got away! Swipe to steer round rocks, hop logs, duck branches and grab jelly beans. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="Bear&#x27;s log has got away! Swipe to steer round rocks, hop logs, duck branches and grab jelly beans. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://crunchy000.github.io/Games/river-rush/">
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -22,7 +22,7 @@
 </style>
 </head>
 <body>
-<div id="app"><canvas id="c" aria-label="River Rush: steer Bear and Bean's log down the river"></canvas></div>
+<div id="app"><canvas id="c" aria-label="River Rush: steer Bear's log down the river"></canvas></div>
 <script>
 (() => {
 'use strict';
@@ -254,14 +254,8 @@ function drawRaft() {
   ctx.fillStyle = '#8a5a2b'; rr(-.62 * s, -.2 * s, 1.24 * s, .3 * s, .15 * s); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(-.55 * s, -.17 * s, 1.1 * s, .06 * s);
   ell(-.62 * s, -.05 * s, .07 * s, .15 * s, '#d9a35f'); ell(.62 * s, -.05 * s, .07 * s, .15 * s, '#d9a35f');
-  // Bean at the front (further away, so drawn first and smaller)
-  ctx.save(); ctx.translate(.33 * s, -.17 * s); ctx.scale(sq * 1.25, sq * 1.25);
-  const bg = ctx.createRadialGradient(-.03 * s, -.25 * s, .01 * s, 0, -.18 * s, .2 * s); bg.addColorStop(0, '#ffc0dc'); bg.addColorStop(.6, '#ff5fa2'); bg.addColorStop(1, '#d63a7e');
-  ell(0, -.17 * s, .12 * s, .16 * s, bg, .15); ell(.01 * s, -.34 * s, .14 * s, .035 * s, '#9a6a3a'); ell(.02 * s, -.39 * s, .07 * s, .06 * s, '#b07a44');
-  ctx.strokeStyle = '#e0458c'; ctx.lineWidth = .035 * s; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-.1 * s, -.2 * s); ctx.lineTo(-.18 * s, -.32 * s - Math.sin(time * 8) * .03 * s); ctx.moveTo(.1 * s, -.2 * s); ctx.lineTo(.2 * s, -.33 * s + Math.sin(time * 8) * .03 * s); ctx.stroke();
-  ctx.restore();
   // Bear at the back, seen from behind
-  ctx.save(); ctx.translate(-.2 * s, -.18 * s); ctx.scale(sq, sq);
+  ctx.save(); ctx.translate(0, -.18 * s); ctx.scale(sq, sq);
   ell(0, -.25 * s, .25 * s, .28 * s, '#8b5a2b'); ell(0, -.55 * s, .19 * s, .17 * s, '#8b5a2b');
   ell(-.14 * s, -.68 * s, .07 * s, .07 * s, '#8b5a2b'); ell(.14 * s, -.68 * s, .07 * s, .07 * s, '#8b5a2b'); ell(-.14 * s, -.68 * s, .035 * s, .035 * s, '#6b4220'); ell(.14 * s, -.68 * s, .035 * s, .035 * s, '#6b4220');
   ell(0, -.03 * s, .07 * s, .05 * s, '#c99a6a');
@@ -309,7 +303,7 @@ function draw() {
     ['RIVER', 'RUSH'].forEach((t, i) => { ctx.font = '900 50px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 11; ctx.strokeStyle = '#0b3a4a'; const yy = i * 50 + Math.sin(time * 3 + i) * 3; ctx.strokeText(t, 0, yy); const g = ctx.createLinearGradient(0, yy - 22, 0, yy + 22); g.addColorStop(0, i ? '#fff2a0' : '#bff4ff'); g.addColorStop(1, i ? '#ff9f2e' : '#2f9ed6'); ctx.fillStyle = g; ctx.fillText(t, 0, yy); });
     ctx.restore();
     const y = H * .13 + 124; ctx.fillStyle = 'rgba(10,40,30,.72)'; rr(30, y, W - 60, 116, 18); ctx.fill();
-    text("Bear and Bean's log has got away!", W / 2, y + 22, 13, '#fff', 'center', null, 900);
+    text("Bear's log has got away!", W / 2, y + 22, 13, '#fff', 'center', null, 900);
     ['Swipe left / right to steer', 'Swipe up to hop over logs', 'Swipe down to duck under branches', 'Grab jelly beans and honey'].forEach((l, i) => text(l, W / 2, y + 46 + i * 18, 12, '#d6f7ff', 'center', null, 700));
     if (Math.sin(time * 5) > -.3) text('TAP TO START', W / 2, y + 146, 19, '#ffd43b', 'center', '#0b3a4a');
     if (best) text('BEST ' + best, W / 2, y + 172, 12, '#fff', 'center', 'rgba(10,40,30,.8)', 800);
@@ -320,9 +314,9 @@ function draw() {
     text(Math.floor(dist) + ' m · ' + beans + ' beans · ' + honey + ' honey', W / 2, H * .27 + 36, 13, '#fff', 'center', 'rgba(10,40,30,.85)', 800);
     text('Score ' + score() + '  ·  Best ' + best, W / 2, H * .27 + 58, 15, '#fff', 'center', 'rgba(10,40,30,.85)', 900);
     ctx.fillStyle = 'rgba(10,40,30,.78)'; rr(26, H * .27 + 78, W - 52, 58, 16); ctx.fill();
-    const bearTalks = score() >= best && score() > 0; avatar(bearTalks ? IMG.bear : IMG.bean, 58, H * .27 + 107, 19);
-    text(bearTalks ? 'Bear says:' : 'Bean says:', 86, H * .27 + 96, 10, bearTalks ? '#ffd9a8' : '#ffc0dc', 'left', null, 800);
-    text(bearTalks ? 'Best trip yet! Towels, please.' : 'Soggy, but smiling. Again!', 86, H * .27 + 115, 13, '#fff', 'left', null, 900);
+    const bearTalks = score() >= best && score() > 0; avatar(IMG.bear, 58, H * .27 + 107, 19);
+    text('Bear says:', 86, H * .27 + 96, 10, '#ffd9a8', 'left', null, 800);
+    text(bearTalks ? 'Best trip yet! Towels, please.' : 'Soggy, but smiling. Again?', 86, H * .27 + 115, 13, '#fff', 'left', null, 900);
     if (stateT > 1 && Math.sin(time * 5) > -.3) text('TAP TO PADDLE AGAIN', W / 2, H * .27 + 170, 16, '#fff', 'center', '#0b3a4a');
   }
 }

@@ -6,7 +6,7 @@ non-violent.
 
 - [x] ~~**Inspired by 2048:**~~ Done as **Bean Merge**.
   Original idea: slide numbered tiles on a 4×4 grid; matching tiles merge and double.
-- [x] ~~**Inspired by Subway Surfers:**~~ Done as **River Rush** (Bear & Bean on a runaway log).
+- [x] ~~**Inspired by Subway Surfers:**~~ Done as **River Rush** (Bear on a runaway log).
   Original idea: an endless runner with three lanes; swipe to switch lanes, jump and duck past obstacles and collect coins.
 - [ ] **Inspired by Cut the Rope:** a physics puzzle; cut ropes to swing a treat into a hungry creature's mouth, collecting stars on the way.
 - [x] ~~**Inspired by Helix Jump:**~~ Covered by **Stack Drop** (hold to smash down a spinning ring tower).
