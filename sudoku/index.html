@@ -48,8 +48,8 @@
   .tool .badge { position:absolute; top:-2px; right:2px; background:var(--entered); color:#fff; border-radius:999px; font-size:.65rem; min-width:17px; height:17px; display:grid; place-items:center; padding:0 4px; }
   .tool.on { color:var(--entered); }
   .tool.on .badge { background:var(--entered); }
-  #notesBadge { background:var(--muted); }
-  .tool.on #notesBadge { background:var(--entered); }
+  #notesBadge, #hintBadge { background:var(--muted); }
+  .tool.on #notesBadge, .tool.on #hintBadge { background:var(--entered); }
   #pad { display:grid; grid-template-columns:repeat(9, 1fr); gap:5px; width:100%; max-width:500px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
   .num { border:0; background:var(--key); border-radius:12px; height:clamp(52px, 8.5dvh, 68px); font:inherit; font-size:1.7rem; font-weight:500; color:var(--entered); cursor:pointer; box-shadow:0 1px 0 var(--line), 0 2px 6px var(--shadow); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; padding:0; }
   .num:active { background:var(--peer); }
@@ -88,7 +88,7 @@
     <button class="tool" id="tUndo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
     <button class="tool" id="tErase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H8l-4-4a2 2 0 0 1 0-2.8l9.2-9.2a2 2 0 0 1 2.8 0l4.2 4.2a2 2 0 0 1 0 2.8L12 19.2"/><path d="M8.5 9.5l6 6"/></svg>Erase</button>
     <button class="tool" id="tNotes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span class="badge" id="notesBadge">OFF</span>Notes</button>
-    <button class="tool" id="tHint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span class="badge" id="hintBadge">3</span>Hint</button>
+    <button class="tool" id="tHint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span class="badge" id="hintBadge">OFF</span>Hints</button>
   </div>
   <div id="pad"></div>
 </div>
@@ -110,7 +110,7 @@
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const LEVELS = { easy: { name: 'Easy', givens: 40, blurb: 'Only safe numbers offered' }, medium: { name: 'Medium', givens: 33, blurb: 'Needs a little thought' }, hard: { name: 'Hard', givens: 28, blurb: 'Notes will help' }, expert: { name: 'Expert', givens: 24, blurb: 'Fewest clues possible' } };
+const LEVELS = { easy: { name: 'Easy', givens: 40, blurb: 'Hints start switched on' }, medium: { name: 'Medium', givens: 33, blurb: 'Needs a little thought' }, hard: { name: 'Hard', givens: 28, blurb: 'Notes will help' }, expert: { name: 'Expert', givens: 24, blurb: 'Fewest clues possible' } };
 let S = { game: null, best: {}, won: {}, muted: false, theme: null };
 try { const s = JSON.parse(localStorage.getItem('sudoku') || 'null'); if (s) S = Object.assign(S, s); } catch (e) {}
 const save = () => { try { localStorage.setItem('sudoku', JSON.stringify(S)); } catch (e) {} };
@@ -192,31 +192,24 @@ function generate(level) {
 }
 
 /* ---------- game state ---------- */
-let G, sel = -1, notesMode = false, history = [], paused = false;
+let G, sel = -1, history = [], paused = false;
 function newGame(level) {
   const { puz, sol } = generate(level);
-  G = { level, puz, sol, cur: puz.slice(), notes: Array.from({ length: 81 }, () => []), mistakes: 0, hints: 3, time: 0, done: false };
+  G = { level, puz, sol, cur: puz.slice(), mistakes: 0, time: 0, done: false, noted: Array(81).fill(0), helper: level === 'easy' };
   S.game = G; history = []; sel = puz.findIndex(v => !v); save(); render();
 }
-function at(i) { return G.cur[i]; }
-function setCell(i, v, record = true) {
+function setCell(i, v) {
   if (G.puz[i] || G.done) return;
-  if (record) history.push({ i, v: G.cur[i], notes: G.notes.map(n => n.slice()) });
-  G.cur[i] = v; G.notes[i] = [];
-  if (v && v === G.sol[i]) PEERS[i].forEach(j => { G.notes[j] = G.notes[j].filter(n => n !== v); });
+  history.push({ i, v: G.cur[i] }); G.cur[i] = v;
 }
 function clashes(i, d) { return PEERS[i].some(j => G.cur[j] === d); }
-const easyFilter = () => G.level === 'easy' && sel >= 0 && !G.puz[sel] && !G.done;
+// the numbers that could still go in an empty square, given what's on the board now
+const candidates = i => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(d => !clashes(i, d));
+const helperOn = () => G.helper && sel >= 0 && !G.puz[sel] && !G.done;
 function place(d) {
   if (sel < 0 || paused || G.done) return;
-  if (easyFilter() && clashes(sel, d)) { flash(`${d} is already in this row, column or box`); return; }
   if (G.puz[sel]) { flash('That square is part of the puzzle'); return; }
-  if (notesMode) {
-    if (G.cur[sel]) return;
-    history.push({ i: sel, v: G.cur[sel], notes: G.notes.map(n => n.slice()) });
-    const n = G.notes[sel]; G.notes[sel] = n.includes(d) ? n.filter(x => x !== d) : [...n, d].sort();
-    tone(NOTES_HZ[d] * .5, .05, 'triangle', .025); save(); render(); return;
-  }
+  if (helperOn() && clashes(sel, d)) { flash(`${d} is already in this row, column or box`); return; }
   if (G.cur[sel] === d) return;
   setCell(sel, d);
   const el = cells[sel];
@@ -235,27 +228,25 @@ function celebrateUnits(i) {
 }
 function erase() {
   if (sel < 0 || G.puz[sel] || G.done || paused) return;
-  if (!G.cur[sel] && !G.notes[sel].length) return;
-  history.push({ i: sel, v: G.cur[sel], notes: G.notes.map(n => n.slice()) }); G.cur[sel] = 0; G.notes[sel] = [];
+  if (!G.cur[sel]) { if (G.noted[sel]) { G.noted[sel] = 0; tone(300, .06, 'sine', .03); save(); render(); } return; }
+  history.push({ i: sel, v: G.cur[sel] }); G.cur[sel] = 0;
   tone(300, .06, 'sine', .03); save(); render();
 }
 function undo() {
   if (!history.length || G.done || paused) return;
-  const h = history.pop(); G.cur[h.i] = h.v; G.notes = h.notes; sel = h.i; tone(420, .06, 'sine', .03, 0, -120); save(); render();
+  const h = history.pop(); G.cur[h.i] = h.v; sel = h.i; tone(420, .06, 'sine', .03, 0, -120); save(); render();
 }
-function hint() {
+// notes are per square: toggling fills that square with its possible numbers, which then stay up to date
+function toggleNotes() {
   if (G.done || paused) return;
-  if (!G.hints) { flash('No hints left in this game'); return; }
-  let i = sel >= 0 && G.cur[sel] !== G.sol[sel] ? sel : -1;
-  if (i < 0) { // the empty square with the fewest candidates
-    let bestN = 10;
-    for (let k = 0; k < 81; k++) if (G.cur[k] !== G.sol[k]) { const used = new Set(PEERS[k].map(j => G.cur[j]).filter(Boolean)); const n = 9 - used.size; if (n < bestN) { bestN = n; i = k; } }
-  }
-  if (i < 0) return;
-  G.hints--; sel = i; setCell(i, G.sol[i]); G.puz = G.puz.slice();
-  cells[i].classList.remove('pop'); void cells[i].offsetWidth; cells[i].classList.add('pop');
-  [0, 7, 12].forEach((s, m) => tone(784 * Math.pow(2, s / 12), .12, 'triangle', .035, m * .06));
-  celebrateUnits(i); save(); render(); checkWin();
+  if (sel < 0) { flash('Select a square first'); return; }
+  if (G.puz[sel] || G.cur[sel]) { flash('That square already has a number'); return; }
+  G.noted[sel] = G.noted[sel] ? 0 : 1; save(); render();
+  tone(G.noted[sel] ? 700 : 500, .07, 'triangle', .03);
+}
+function toggleHelper() {
+  if (G.done) return; G.helper = !G.helper; save(); render();
+  tone(G.helper ? 700 : 500, .07, 'triangle', .03); flash(G.helper ? 'Hints on: clashing numbers fade out' : 'Hints off');
 }
 function checkWin() {
   if (G.done || G.cur.some((v, i) => v !== G.sol[i])) return;
@@ -265,7 +256,7 @@ function checkWin() {
   [0, 4, 7, 12, 16, 19, 24].forEach((s, m) => tone(523 * Math.pow(2, s / 12), .22, 'triangle', .05, .3 + m * .08));
   setTimeout(() => {
     $('wTime').textContent = fmt(G.time);
-    $('wText').textContent = `${LEVELS[G.level].name} · ${G.mistakes} mistake${G.mistakes === 1 ? '' : 's'} · ${3 - G.hints} hint${3 - G.hints === 1 ? '' : 's'}` + (S.best[G.level] === G.time ? ' · New best time!' : ` · Best ${fmt(S.best[G.level])}`);
+    $('wText').textContent = `${LEVELS[G.level].name} · ${G.mistakes} mistake${G.mistakes === 1 ? '' : 's'}` + (S.best[G.level] === G.time ? ' · New best time!' : ` · Best ${fmt(S.best[G.level])}`);
     $('ovWin').classList.add('show');
   }, 1300);
 }
@@ -286,15 +277,15 @@ function render() {
     c.classList.toggle('same', !!sv && i !== sel && v === sv);
     c.classList.toggle('bad', !!v && !G.puz[i] && v !== G.sol[i]);
     if (v) c.textContent = v;
-    else if (G.notes[i].length) c.innerHTML = '<div class="notes">' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => `<span class="${d === sv ? 'hl' : ''}">${G.notes[i].includes(d) ? d : ''}</span>`).join('') + '</div>';
+    else if (G.noted[i] && !G.done) { const cand = candidates(i); c.innerHTML = '<div class="notes">' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => `<span class="${d === sv ? 'hl' : ''}">${cand.includes(d) ? d : ''}</span>`).join('') + '</div>'; }
     else c.textContent = '';
   }
   const cnt = Array(10).fill(0); G.cur.forEach((v, i) => { if (v && v === G.sol[i]) cnt[v]++; });
-  const filt = easyFilter();
+  const filt = helperOn();
   [...pad.children].forEach((b, k) => { const left = 9 - cnt[k + 1]; b.classList.toggle('done', left === 0); b.classList.toggle('clash', filt && clashes(sel, k + 1) && G.cur[sel] !== k + 1); });
   $('iDiff').textContent = LEVELS[G.level].name; $('iMis').textContent = G.mistakes; $('iTime').textContent = fmt(G.time);
-  $('tNotes').classList.toggle('on', notesMode); $('notesBadge').textContent = notesMode ? 'ON' : 'OFF';
-  $('hintBadge').textContent = G.hints;
+  const nOn = sel >= 0 && !!G.noted[sel] && !G.cur[sel]; $('tNotes').classList.toggle('on', nOn); $('notesBadge').textContent = nOn ? 'ON' : 'OFF';
+  $('tHint').classList.toggle('on', !!G.helper); $('hintBadge').textContent = G.helper ? 'ON' : 'OFF';
   board.classList.toggle('isPaused', paused);
   $('bPause').innerHTML = paused ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' : '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
   $('bSound').innerHTML = S.muted ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4zM22 9l-6 6M16 9l6 6"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
@@ -307,8 +298,8 @@ board.addEventListener('pointerdown', e => { audio(); if (paused) { setPaused(fa
 pad.addEventListener('click', e => { const b = e.target.closest('.num'); if (b) { audio(); place(+b.dataset.d); } });
 $('tUndo').onclick = () => { audio(); undo(); };
 $('tErase').onclick = () => { audio(); erase(); };
-$('tNotes').onclick = () => { audio(); notesMode = !notesMode; tone(notesMode ? 700 : 500, .06, 'triangle', .03); render(); };
-$('tHint').onclick = () => { audio(); hint(); };
+$('tNotes').onclick = () => { audio(); toggleNotes(); };
+$('tHint').onclick = () => { audio(); toggleHelper(); };
 function setPaused(p) { if (G.done) return; paused = p; render(); }
 $('bPause').onclick = () => setPaused(!paused);
 $('bTheme').onclick = () => { S.theme = isDark() ? 'light' : 'dark'; save(); applyTheme(); audio(); tone(isDark() ? 440 : 880, .08, 'sine', .03); };
@@ -318,7 +309,8 @@ addEventListener('keydown', e => {
   audio();
   if (/^[1-9]$/.test(e.key)) place(+e.key);
   else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') erase();
-  else if (e.key === 'n' || e.key === 'N') { notesMode = !notesMode; render(); }
+  else if (e.key === 'n' || e.key === 'N') toggleNotes();
+  else if (e.key === 'h' || e.key === 'H') toggleHelper();
   else if ((e.key === 'z' && (e.ctrlKey || e.metaKey)) || e.key === 'u') undo();
   else if (e.key.startsWith('Arrow')) {
     e.preventDefault(); if (sel < 0) sel = 0;
@@ -341,8 +333,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && G &
 let last = performance.now();
 setInterval(() => { const now = performance.now(), dt = (now - last) / 1000; last = now; if (G && !G.done && !paused && !document.querySelector('.ov.show')) { G.time += dt; $('iTime').textContent = fmt(G.time); if (Math.floor(G.time) % 5 === 0) save(); } }, 250);
 
-if (S.game && !S.game.done && S.game.sol) { G = S.game; sel = G.puz.findIndex((v, i) => !v && !G.cur[i]); render(); }
-else { G = { level: 'easy', puz: Array(81).fill(0), sol: Array(81).fill(0), cur: Array(81).fill(0), notes: Array.from({ length: 81 }, () => []), mistakes: 0, hints: 3, time: 0, done: true }; render(); openNew(false); }
+if (S.game && !S.game.done && S.game.sol) { G = S.game; if (G.helper === undefined) G.helper = G.level === 'easy'; if (!G.noted) G.noted = Array(81).fill(0); delete G.autoNotes; delete G.notes; delete G.hints; sel = G.puz.findIndex((v, i) => !v && !G.cur[i]); render(); }
+else { G = { level: 'easy', puz: Array(81).fill(0), sol: Array(81).fill(0), cur: Array(81).fill(0), mistakes: 0, time: 0, done: true, noted: Array(81).fill(0), helper: false }; render(); openNew(false); }
 if (/[?&]debug\b/.test(location.search)) window.__sd = { get G() { return G; }, generate, countSolutions, place, newGame, select: i => { sel = i; render(); } };
 })();
 </script>
