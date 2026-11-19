@@ -16,9 +16,7 @@ The Bear & Bean Games is a small arcade of browser games, made for touch screens
 | Hedge Hop | [`hedge-hop/`](hedge-hop/) | Endless crossing game: hop a hedgehog over roads, log-filled rivers and railway lines, collecting berries. |
 | Bumble Dash | [`bumble-dash/`](bumble-dash/) | One-tap flyer: keep a bee aloft through gaps between honeycomb towers; grab pollen for bonus points. |
 | Ink Bounce | [`ink-bounce/`](ink-bounce/) | Blueprint brick breaker with no paddle: draw one line at a time with limited ink; neat lines refund ink, and falling ink drops and pots refill it. |
-| Busy Beaver | [`busy-beaver/`](busy-beaver/) | Chew trees so they fall into the river and build a dam. Swipe up to climb for apples, dodge acorns from squirrels and berries from birds (or climb up and tickle the squirrels). |
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Help Bean hop around a mossy temple in the rainforest, changing every stone while dodging critters. Hop off and a toucan always swoops in to catch you. |
-| Honey Heights | [`honey-heights/`](honey-heights/) | Help Bear climb three trees for honey at different heights and carry it down to Bean. Grumpy bees make him dizzy and drop his load. |
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
 | Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |
 | Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: make rockets, bombs and rainbow orbs; bring honey pots down to Bear, break liquorice locks, clear sugar cubes and spreading chocolate. Lolly Pop and Free Swap boosters, +5 moves once per level. |
