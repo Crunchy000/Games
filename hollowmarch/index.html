@@ -2295,28 +2295,165 @@ function render() {
   }
 }
 
-/* =================== audio (CC0 sound effects by Kenney: RPG Audio, Digital Audio and other packs) =================== */
+/* =================== audio: original sounds, synthesised in code =================== */
+// Every sound is rendered here from oscillators, filtered noise and plucked strings into small
+// AudioBuffers (a few variants each), so the game ships no audio files.
 let AC = null, MASTER = null, NOISE = null;
 const BUF = {};
+const SR = 32000;
+// name: [variants, volume]
 const SFX = {
-  arrow: [['drawKnife1', 'drawKnife2', 'drawKnife3'], 0.24], ballista: [['plank000', 'plank001', 'plank002'], 0.2], dart: [['metall000', 'metall001', 'metall002'], 0.12],
-  hit: [['hitl000', 'hitl001', 'hitl002'], 0.16], zap: [['glass001', 'glass002', 'glass003'], 0.14], magichit: [['glassl000', 'glassl001', 'glassl002'], 0.12],
-  frostbolt: [['phaserDown2'], 0.13], frosthit: [['glassl000', 'glassl001'], 0.2], thunder: [['zapTwoTone'], 0.18], thunder2: [['field000'], 0.12],
-  cannon: [['lowRandom'], 0.24], catapult: [['creak1'], 0.32], crunch: [['crunch000', 'crunch001', 'crunch002'], 0.28], lowboom: [['lowboom000', 'lowboom001'], 0.34],
-  clang: [['punch000', 'punch001', 'punch002'], 0.24], heavy: [['punchh000', 'punchh001'], 0.35],
-  die: [['cloth2', 'dropLeather'], 0.28], robotdie: [['metalh000', 'metalh001'], 0.28], ufodie: [['phaserDown1'], 0.2], allydie: [['plate000'], 0.3],
-  coin: [['handleCoins2'], 0.45], bonus: [['handleCoins'], 0.45], drop: [['drop002'], 0.3],
-  build: [['doorClose_2'], 0.38], plank: [['plank001'], 0.4], upgrade: [['powerUp2'], 0.26], confirm: [['confirm001', 'confirm002'], 0.3],
-  ui: [['click001', 'click002'], 0.35], open: [['open001'], 0.35], close: [['close001'], 0.28], select: [['select001'], 0.3], back: [['back001'], 0.3],
-  toggle: [['toggle001'], 0.35], error: [['error004'], 0.35], question: [['question001'], 0.3],
-  horn: [['jwave'], 0.4], bell: [['bell000'], 0.22], finalwave: [['jfinal'], 0.42], vfinal: [['v_final_round'], 0.5], vfight: [['vf_fight'], 0.5],
-  leak: [['lowDown'], 0.35], level: [['powerUp10'], 0.3], vlevel: [['vlevelup'], 0.45],
-  freeze: [['glassh000'], 0.4], freeze2: [['highUp'], 0.24], snare: [['creak1'], 0.4], slime: [['slime000'], 0.3],
-  whoosh: [['cloth1', 'clothBelt'], 0.4], thruster: [['thruster000'], 0.32], vfire: [['v_war_fire_in_the_hole'], 0.45], vgo: [['v_war_go_go_go'], 0.42],
-  boss: [['zapThreeToneDown'], 0.4], win: [['jwin'], 0.5], vwin: [['v_you_win'], 0.55], vflawless: [['vf_flawless_victory'], 0.55],
-  lose: [['jlose'], 0.5], vlose: [['v_game_over'], 0.55], spawn: [['phaseJump1'], 0.1], step: [['stepg000', 'stepg001'], 0.45], stepsnow: [['steps000', 'steps001'], 0.45],
-  crystal: [['zapThreeToneUp'], 0.35], crystal2: [['glassh000'], 0.45], star: [['pluck001', 'pluck002'], 0.45], bigboom2: [['spaceTrash2'], 0.2],
+  arrow: [3, .3], ballista: [3, .26], dart: [3, .16], hit: [3, .22], zap: [3, .17], magichit: [3, .16], frostbolt: [2, .17], frosthit: [2, .22],
+  thunder: [2, .26], thunder2: [1, .16], cannon: [2, .32], catapult: [2, .34], crunch: [3, .3], lowboom: [2, .42], clang: [3, .24], heavy: [2, .36],
+  die: [3, .28], robotdie: [2, .3], ufodie: [1, .24], allydie: [1, .3], coin: [2, .4], bonus: [1, .42], drop: [1, .32],
+  build: [1, .4], plank: [1, .38], upgrade: [1, .3], confirm: [2, .28], ui: [2, .3], open: [1, .3], close: [1, .26], select: [1, .26], back: [1, .26],
+  toggle: [1, .3], error: [1, .3], question: [1, .28], horn: [1, .42], bell: [1, .26], finalwave: [1, .44], vfinal: [1, .46], vfight: [1, .44],
+  leak: [1, .36], level: [1, .32], vlevel: [1, .34], freeze: [1, .36], freeze2: [1, .26], snare: [1, .38], slime: [1, .3],
+  whoosh: [2, .36], thruster: [1, .34], vfire: [1, .36], vgo: [1, .42], boss: [1, .44], win: [1, .46], vwin: [1, .42], vflawless: [1, .44],
+  lose: [1, .44], vlose: [1, .42], spawn: [2, .12], step: [2, .4], stepsnow: [2, .4], crystal: [1, .34], crystal2: [1, .36], star: [3, .4], bigboom2: [1, .26],
 };
+
+/* ---------- tiny synth toolkit (writes straight into a Float32Array) ---------- */
+const MIDI = m => 440 * Math.pow(2, (m - 69) / 12);
+function envAt(t, att, dec, dur) { const a = t < att ? t / att : Math.exp(-(t - att) / dec); const tail = dur - t < .02 ? Math.max(0, (dur - t) / .02) : 1; return a * tail; }
+function wave(type, ph) { const p = ph - Math.floor(ph); return type === 'sine' ? Math.sin(p * TAU) : type === 'tri' ? 1 - 4 * Math.abs(p - .5) : type === 'saw' ? 2 * p - 1 : p < .5 ? 1 : -1; }
+function addTone(o, { t0 = 0, dur, f0, f1 = f0, type = 'sine', vol = .5, att = .004, dec = dur / 3, vib = 0, vibF = 6, glide = 'exp', lp = 0 }) {
+  const s0 = Math.floor(t0 * SR), n = Math.floor(dur * SR); let ph = 0, y = 0;
+  for (let i = 0; i < n && s0 + i < o.length; i++) {
+    const t = i / SR, k = t / dur, f = (glide === 'exp' ? f0 * Math.pow(f1 / f0, k) : f0 + (f1 - f0) * k) * (1 + vib * Math.sin(TAU * vibF * t));
+    ph += f / SR; let x = wave(type, ph) * envAt(t, att, dec, dur) * vol;
+    if (lp) { y += (1 - Math.exp(-TAU * lp / SR)) * (x - y); x = y; }
+    o[s0 + i] += x;
+  }
+}
+function addNoise(o, rng, { t0 = 0, dur, vol = .5, att = .002, dec = dur / 3, lp0 = 8000, lp1 = lp0, hp = 0, grain = 0 }) {
+  const s0 = Math.floor(t0 * SR), n = Math.floor(dur * SR); let y = 0, hy = 0, g = 1;
+  for (let i = 0; i < n && s0 + i < o.length; i++) {
+    const t = i / SR, k = t / dur, fc = lp0 * Math.pow(lp1 / lp0, k);
+    y += (1 - Math.exp(-TAU * fc / SR)) * ((rng() * 2 - 1) - y);
+    let x = y; if (hp) { hy += (1 - Math.exp(-TAU * hp / SR)) * (x - hy); x -= hy; }
+    if (grain && i % 64 === 0) g = rng() < grain ? 1 : .15;
+    o[s0 + i] += x * envAt(t, att, dec, dur) * vol * g;
+  }
+}
+function addBell(o, { t0 = 0, f, vol = .4, dur = 1, parts = [[1, 1, .5], [2.76, .5, .25], [5.4, .3, .12], [8.93, .2, .07]] }) {
+  for (const [r, a, d] of parts) addTone(o, { t0, dur, f0: f * r, vol: vol * a, att: .002, dec: d * dur });
+}
+function addPluck(o, rng, { t0 = 0, f, dur = .5, vol = .5, damp = .996, bright = .5 }) {
+  const s0 = Math.floor(t0 * SR), L = Math.max(2, Math.round(SR / f)), buf = new Float32Array(L);
+  for (let i = 0; i < L; i++) buf[i] = rng() * 2 - 1;
+  let idx = 0, prev = 0; const n = Math.floor(dur * SR);
+  for (let i = 0; i < n && s0 + i < o.length; i++) {
+    const cur = buf[idx], nxt = buf[(idx + 1) % L], v = damp * (cur * (1 - bright * .5) + nxt * bright * .5 + (1 - bright) * .5 * (cur + nxt) - (1 - bright) * .5 * cur);
+    buf[idx] = (cur + nxt) * .5 * damp * (1 - bright) + v * bright; prev = cur; idx = (idx + 1) % L;
+    o[s0 + i] += cur * vol * (n - i < 300 ? (n - i) / 300 : 1);
+  }
+}
+function addCrackle(o, rng, { t0 = 0, dur, vol = .5, density = .02, dec = dur / 2 }) {
+  const s0 = Math.floor(t0 * SR), n = Math.floor(dur * SR); let hp = 0, ring = 0;
+  for (let i = 0; i < n && s0 + i < o.length; i++) {
+    if (rng() < density * Math.exp(-i / SR / dec)) ring = (rng() * 2 - 1);
+    ring *= .9; const x = ring + (rng() * 2 - 1) * .1 * Math.abs(ring); hp += .2 * (x - hp);
+    o[s0 + i] += (x - hp) * vol * 2;
+  }
+}
+function addBrass(o, { t0 = 0, dur, f, vol = .4, att = .06, rel = .25, vib = .006, bright = 3 }) {
+  const s0 = Math.floor(t0 * SR), n = Math.floor(dur * SR); let ph = 0, ph2 = 0, y = 0;
+  for (let i = 0; i < n && s0 + i < o.length; i++) {
+    const t = i / SR, e = Math.min(1, t / att) * (t > dur - rel ? Math.max(0, (dur - t) / rel) : 1);
+    const ff = f * (1 + vib * Math.sin(TAU * 5.2 * t)) * (t < att ? .985 + .015 * t / att : 1);
+    ph += ff / SR; ph2 += ff * 1.003 / SR;
+    const x = (wave('saw', ph) + wave('saw', ph2)) * .5;
+    const fc = f * (1.2 + bright * e); y += (1 - Math.exp(-TAU * fc / SR)) * (x - y);
+    o[s0 + i] += y * e * vol;
+  }
+}
+function addDrum(o, rng, { t0 = 0, f = 90, dur = .5, vol = .6, snap = .3 }) {
+  addTone(o, { t0, dur, f0: f * 1.6, f1: f * .7, vol, att: .002, dec: dur * .35 });
+  addNoise(o, rng, { t0, dur: .12, vol: vol * snap, lp0: 2400, lp1: 600, dec: .04 });
+}
+function echo(o, delay, fb, mix) { const d = Math.floor(delay * SR); for (let i = d; i < o.length; i++) o[i] += o[i - d] * fb * mix; }
+function drive(o, k) { for (let i = 0; i < o.length; i++) o[i] = Math.tanh(o[i] * k) / Math.tanh(k); }
+
+/* ---------- the sound set ---------- */
+// each entry: (variant, rng) => [durationSeconds, render(o)]
+const SYN = {
+  arrow: (v, r) => [.28, o => { addPluck(o, r, { f: [196, 220, 185][v], dur: .22, vol: .5, damp: .985, bright: .8 }); addNoise(o, r, { t0: .01, dur: .2, vol: .4, lp0: 3500, lp1: 900, hp: 500, att: .02, dec: .07 }); }],
+  ballista: (v, r) => [.2, o => { addTone(o, { dur: .16, f0: 150 * [1, 1.1, .92][v], f1: 70, vol: .7, dec: .04 }); addNoise(o, r, { dur: .06, vol: .5, lp0: 1800, dec: .015 }); }],
+  dart: (v, r) => [.12, o => { addTone(o, { dur: .08, f0: 2300 * [1, 1.08, .93][v], f1: 1900, vol: .35, dec: .02 }); addTone(o, { dur: .06, f0: 3400, vol: .2, dec: .015 }); addNoise(o, r, { dur: .05, vol: .5, hp: 2500, dec: .012 }); }],
+  hit: (v, r) => [.16, o => { addNoise(o, r, { dur: .12, vol: .9, lp0: 900 * [1, 1.2, .8][v], lp1: 300, dec: .03 }); addTone(o, { dur: .12, f0: 150, f1: 80, vol: .6, dec: .03 }); }],
+  zap: (v, r) => [.26, o => { addTone(o, { dur: .22, f0: 420 * [1, 1.12, .9][v], f1: 1500, type: 'tri', vol: .45, att: .01, dec: .09, vib: .04, vibF: 30 }); addTone(o, { dur: .2, f0: 840, f1: 3000, vol: .15, dec: .06 }); addNoise(o, r, { dur: .2, vol: .12, hp: 4000, dec: .08 }); }],
+  magichit: (v, r) => [.45, o => { const f = 1100 * [1, 1.12, .9][v]; addBell(o, { f, vol: .3, dur: .45, parts: [[1, 1, .3], [1.5, .6, .25], [2.4, .4, .15]] }); addNoise(o, r, { dur: .2, vol: .3, lp0: 6000, hp: 1500, dec: .05 }); }],
+  frostbolt: (v, r) => [.36, o => { addTone(o, { dur: .32, f0: 1900 * [1, .9][v], f1: 600, type: 'tri', vol: .35, att: .01, dec: .12 }); addNoise(o, r, { dur: .3, vol: .25, hp: 3500, dec: .12 }); }],
+  frosthit: (v, r) => [.6, o => { [2093, 2637, 3520, 4186].forEach((f, i) => addTone(o, { t0: i * .012, dur: .55, f0: f * [1, 1.06][v] * (1 + (r() - .5) * .01), vol: .22, att: .002, dec: .14 })); addNoise(o, r, { dur: .05, vol: .6, hp: 3000, dec: .012 }); }],
+  thunder: (v, r) => [1.1, o => { addCrackle(o, r, { dur: .5, vol: .7, density: .03, dec: .25 }); addNoise(o, r, { t0: .03, dur: 1.05, vol: .9, lp0: 260, lp1: 70, att: .03, dec: .35 }); addTone(o, { dur: .5, f0: 70, f1: 40, vol: .4, dec: .2 }); }],
+  thunder2: (v, r) => [.35, o => { addTone(o, { dur: .32, f0: 62, f1: 58, type: 'saw', vol: .35, att: .005, dec: .12, lp: 1400, vib: .02, vibF: 40 }); addNoise(o, r, { dur: .3, vol: .18, hp: 2000, dec: .1, grain: .5 }); }],
+  cannon: (v, r) => [.55, o => { addTone(o, { dur: .45, f0: 95 * [1, .9][v], f1: 38, vol: .9, att: .002, dec: .13 }); addNoise(o, r, { dur: .45, vol: 1, lp0: 1200, lp1: 160, dec: .1 }); drive(o, 2.2); }],
+  catapult: (v, r) => [.5, o => { addTone(o, { dur: .32, f0: 170 * [1, 1.1][v], f1: 140, type: 'saw', vol: .3, att: .02, dec: .2, vib: .08, vibF: 23, lp: 900 }); addTone(o, { t0: .3, dur: .18, f0: 120, f1: 60, vol: .7, dec: .05 }); addNoise(o, r, { t0: .3, dur: .12, vol: .5, lp0: 1200, dec: .03 }); }],
+  snare: (v, r) => [.6, o => { addTone(o, { dur: .5, f0: 140, f1: 190, type: 'saw', vol: .22, att: .05, dec: .3, vib: .1, vibF: 17, lp: 700 }); addNoise(o, r, { dur: .55, vol: .45, lp0: 2500, lp1: 1200, hp: 600, att: .05, dec: .2, grain: .45 }); }],
+  crunch: (v, r) => [.32, o => { addNoise(o, r, { dur: .3, vol: .9, lp0: 1600 * [1, 1.2, .85][v], lp1: 500, dec: .09, grain: .55 }); addTone(o, { dur: .15, f0: 110, f1: 60, vol: .4, dec: .04 }); }],
+  lowboom: (v, r) => [1.2, o => { addNoise(o, r, { dur: 1.15, vol: 1, lp0: 600, lp1: 60, att: .004, dec: .32 }); addTone(o, { dur: .9, f0: 60 * [1, .9][v], f1: 28, vol: .9, dec: .3 }); addCrackle(o, r, { t0: .05, dur: .6, vol: .25, density: .01, dec: .2 }); drive(o, 1.8); }],
+  bigboom2: (v, r) => [.9, o => { addCrackle(o, r, { dur: .85, vol: .6, density: .02, dec: .3 }); addNoise(o, r, { dur: .8, vol: .35, lp0: 3000, lp1: 400, hp: 300, dec: .25, grain: .4 }); }],
+  clang: (v, r) => [.32, o => { const f = [523, 587, 494][v]; addBell(o, { f, vol: .35, dur: .3, parts: [[1, 1, .35], [2.76, .6, .2], [5.4, .4, .1], [8.93, .25, .06]] }); addNoise(o, r, { dur: .04, vol: .6, hp: 2000, dec: .01 }); }],
+  heavy: (v, r) => [.4, o => { addTone(o, { dur: .35, f0: 100 * [1, .88][v], f1: 45, vol: 1, dec: .09 }); addNoise(o, r, { dur: .2, vol: .8, lp0: 700, lp1: 200, dec: .05 }); drive(o, 1.6); }],
+  die: (v, r) => [.3, o => { addNoise(o, r, { dur: .22, vol: .7, lp0: 700 * [1, 1.2, .85][v], lp1: 250, att: .02, dec: .06 }); addTone(o, { t0: .08, dur: .2, f0: 110, f1: 55, vol: .6, dec: .05 }); }],
+  robotdie: (v, r) => [.7, o => { [0, .07, .16, .27].forEach((t0, i) => addBell(o, { t0, f: [380, 290, 450, 330][(i + v) % 4], vol: .25, dur: .35, parts: [[1, 1, .3], [2.4, .6, .2], [4.1, .4, .1]] })); addTone(o, { t0: .25, dur: .4, f0: 90, f1: 40, vol: .6, dec: .1 }); }],
+  ufodie: (v, r) => [.75, o => { addTone(o, { dur: .7, f0: 950, f1: 110, type: 'tri', vol: .4, att: .005, dec: .4, vib: .06, vibF: 18 }); addCrackle(o, r, { t0: .5, dur: .25, vol: .3, density: .02 }); }],
+  allydie: (v, r) => [.5, o => { addBell(o, { f: 300, vol: .25, dur: .4, parts: [[1, 1, .3], [2.5, .5, .15], [4.6, .3, .08]] }); addTone(o, { t0: .05, dur: .3, f0: 120, f1: 55, vol: .7, dec: .08 }); addNoise(o, r, { t0: .05, dur: .2, vol: .4, lp0: 900, dec: .05 }); }],
+  coin: (v, r) => [.4, o => { const f = [2637, 2960][v]; addBell(o, { f, vol: .3, dur: .35, parts: [[1, 1, .4], [1.5, .4, .25], [2.6, .2, .1]] }); addBell(o, { t0: .07, f: f * 1.335, vol: .25, dur: .3, parts: [[1, 1, .4], [1.5, .4, .25]] }); }],
+  bonus: (v, r) => [.8, o => { for (let i = 0; i < 7; i++) addBell(o, { t0: i * .06 + r() * .02, f: [2093, 2637, 3136, 2349, 3520, 2794, 4186][i], vol: .22, dur: .4, parts: [[1, 1, .4], [1.5, .4, .25]] }); }],
+  drop: (v, r) => [.2, o => { addTone(o, { dur: .16, f0: 1300, f1: 420, vol: .5, att: .002, dec: .05 }); }],
+  build: (v, r) => [.6, o => { [0, .14, .3].forEach((t0, i) => { addTone(o, { t0, dur: .12, f0: [200, 180, 220][i], f1: 110, vol: .6, dec: .03 }); addNoise(o, r, { t0, dur: .07, vol: .6, lp0: 2200, lp1: 800, dec: .015 }); }); }],
+  plank: (v, r) => [.2, o => { addTone(o, { dur: .16, f0: 240, f1: 130, vol: .6, dec: .04 }); addNoise(o, r, { dur: .08, vol: .5, lp0: 2600, lp1: 900, dec: .02 }); }],
+  upgrade: (v, r) => [.6, o => { [72, 76, 79, 84].forEach((m, i) => addTone(o, { t0: i * .07, dur: .3, f0: MIDI(m), type: 'tri', vol: .3, dec: .1 })); addBell(o, { t0: .28, f: MIDI(96), vol: .15, dur: .3 }); }],
+  confirm: (v, r) => [.3, o => { addTone(o, { dur: .1, f0: MIDI(79 + v * 2), type: 'tri', vol: .35, dec: .05 }); addTone(o, { t0: .08, dur: .2, f0: MIDI(84 + v * 2), type: 'tri', vol: .35, dec: .07 }); }],
+  ui: (v, r) => [.05, o => { addTone(o, { dur: .035, f0: [1800, 2100][v], vol: .4, att: .001, dec: .008 }); addNoise(o, r, { dur: .02, vol: .2, hp: 3000, dec: .004 }); }],
+  open: (v, r) => [.25, o => { addNoise(o, r, { dur: .2, vol: .25, lp0: 900, lp1: 4000, att: .05, dec: .08 }); addTone(o, { t0: .1, dur: .12, f0: 1200, f1: 1500, type: 'tri', vol: .25, dec: .04 }); }],
+  close: (v, r) => [.22, o => { addNoise(o, r, { dur: .18, vol: .22, lp0: 4000, lp1: 800, att: .02, dec: .07 }); addTone(o, { t0: .06, dur: .1, f0: 1100, f1: 850, type: 'tri', vol: .22, dec: .03 }); }],
+  select: (v, r) => [.12, o => { addTone(o, { dur: .1, f0: 1250, f1: 1400, type: 'tri', vol: .4, dec: .03 }); }],
+  back: (v, r) => [.2, o => { addTone(o, { dur: .08, f0: MIDI(79), type: 'tri', vol: .3, dec: .04 }); addTone(o, { t0: .07, dur: .12, f0: MIDI(72), type: 'tri', vol: .3, dec: .05 }); }],
+  toggle: (v, r) => [.12, o => { addTone(o, { dur: .03, f0: 1600, vol: .4, dec: .008 }); addTone(o, { t0: .05, dur: .04, f0: 2200, vol: .35, dec: .01 }); }],
+  error: (v, r) => [.3, o => { addTone(o, { dur: .1, f0: 165, type: 'square', vol: .22, dec: .06, lp: 1400 }); addTone(o, { t0: .13, dur: .14, f0: 140, type: 'square', vol: .22, dec: .07, lp: 1400 }); }],
+  question: (v, r) => [.3, o => { addTone(o, { dur: .1, f0: MIDI(76), type: 'tri', vol: .3, dec: .05 }); addTone(o, { t0: .1, dur: .18, f0: MIDI(81), f1: MIDI(83), type: 'tri', vol: .3, dec: .07 }); }],
+  horn: (v, r) => [1.8, o => { addBrass(o, { dur: 1.4, f: 98, vol: .55, att: .18, rel: .45, bright: 4 }); addBrass(o, { t0: .05, dur: 1.35, f: 147, vol: .3, att: .2, rel: .45, bright: 3 }); echo(o, .17, .5, .6); }],
+  bell: (v, r) => [2, o => { addBell(o, { f: 330, vol: .45, dur: 2, parts: [[1, 1, .5], [2, .55, .35], [2.4, .4, .3], [3, .3, .2], [4.2, .2, .12]] }); }],
+  finalwave: (v, r) => [2.2, o => { for (let i = 0; i < 14; i++) addDrum(o, r, { t0: .9 * (1 - Math.pow(1 - i / 14, 1.6)), f: 110, dur: .2, vol: .25 + i * .02, snap: .6 }); addDrum(o, r, { t0: .95, f: 70, dur: .9, vol: .9 }); addBrass(o, { t0: .95, dur: 1.2, f: MIDI(45), vol: .4, att: .03, rel: .5 }); addBrass(o, { t0: .95, dur: 1.2, f: MIDI(52), vol: .3, att: .03, rel: .5 }); echo(o, .19, .45, .5); }],
+  vfinal: (v, r) => [1.4, o => { addDrum(o, r, { f: 70, dur: .5, vol: .9 }); addDrum(o, r, { t0: .25, f: 70, dur: .6, vol: .9 }); addBrass(o, { t0: .25, dur: .9, f: MIDI(45), vol: .45, att: .02, rel: .4 }); addBrass(o, { t0: .25, dur: .9, f: MIDI(48), vol: .35, att: .02, rel: .4 }); echo(o, .21, .4, .5); }],
+  vfight: (v, r) => [1.1, o => { addDrum(o, r, { f: 80, dur: .5, vol: .8 }); addBrass(o, { t0: .05, dur: .8, f: MIDI(55), vol: .45, att: .25, rel: .3, bright: 5 }); addBrass(o, { t0: .05, dur: .8, f: MIDI(62), vol: .3, att: .25, rel: .3 }); }],
+  vfire: (v, r) => [1, o => { addTone(o, { dur: .85, f0: 2400, f1: 520, vol: .35, att: .05, dec: .6, vib: .01, vibF: 7 }); addNoise(o, r, { dur: .9, vol: .15, lp0: 3000, lp1: 800, hp: 400, att: .2, dec: .4 }); }],
+  vgo: (v, r) => [.7, o => { [0, .13, .26].forEach((t0, i) => addDrum(o, r, { t0, f: [110, 130, 160][i], dur: .3, vol: .7, snap: .5 })); }],
+  vlevel: (v, r) => [1, o => { [84, 88, 91, 96, 100].forEach((m, i) => addBell(o, { t0: i * .06, f: MIDI(m), vol: .16, dur: .7, parts: [[1, 1, .4], [2, .3, .2]] })); }],
+  level: (v, r) => [.9, o => { [60, 64, 67, 72, 76, 79].forEach((m, i) => addTone(o, { t0: i * .055, dur: .35, f0: MIDI(m), type: 'tri', vol: .28, dec: .12 })); addNoise(o, r, { t0: .2, dur: .6, vol: .12, hp: 5000, dec: .2 }); }],
+  leak: (v, r) => [.7, o => { addTone(o, { dur: .55, f0: 330, f1: 120, type: 'square', vol: .2, att: .01, dec: .3, lp: 900 }); addDrum(o, r, { t0: .05, f: 60, dur: .5, vol: .6 }); }],
+  freeze: (v, r) => [.9, o => { [3136, 3951, 4699, 5274, 6272].forEach((f, i) => addTone(o, { t0: i * .025, dur: .8, f0: f * (1 + (r() - .5) * .006), vol: .14, att: .003, dec: .25 })); addCrackle(o, r, { dur: .3, vol: .3, density: .02 }); }],
+  freeze2: (v, r) => [.6, o => { addTone(o, { dur: .5, f0: 900, f1: 2600, type: 'tri', vol: .25, att: .02, dec: .25 }); }],
+  slime: (v, r) => [.4, o => { addTone(o, { dur: .32, f0: 300, f1: 140, vol: .5, att: .01, dec: .1, vib: .25, vibF: 26 }); addNoise(o, r, { dur: .25, vol: .3, lp0: 600, dec: .08 }); }],
+  whoosh: (v, r) => [.45, o => { addNoise(o, r, { dur: .2, vol: .55, lp0: 400 * [1, 1.3][v], lp1: 2800, att: .12, dec: .5 }); addNoise(o, r, { t0: .2, dur: .22, vol: .55, lp0: 2800, lp1: 400, att: .002, dec: .08 }); }],
+  thruster: (v, r) => [1.3, o => { addNoise(o, r, { dur: 1.25, vol: .9, lp0: 200, lp1: 1600, att: .6, dec: .4 }); addTone(o, { dur: 1.2, f0: 60, f1: 110, type: 'saw', vol: .15, att: .5, dec: .5, lp: 300 }); }],
+  boss: (v, r) => [2.2, o => { [[45, 0], [44, .45], [41, .9]].forEach(([m, t0]) => { addBrass(o, { t0, dur: .8, f: MIDI(m), vol: .5, att: .05, rel: .3, bright: 2 }); addBrass(o, { t0, dur: .8, f: MIDI(m - 12), vol: .4, att: .05, rel: .3, bright: 1.5 }); addDrum(o, r, { t0, f: 55, dur: .7, vol: .8 }); }); echo(o, .23, .45, .55); drive(o, 1.4); }],
+  win: (v, r) => [2.4, o => { [[72, 0, .16], [76, .16, .16], [79, .32, .16], [84, .48, 1.4]].forEach(([m, t0, d]) => addBrass(o, { t0, dur: d + .1, f: MIDI(m), vol: .42, att: .02, rel: Math.min(.4, d), bright: 4 }));
+    [64, 67].forEach(m => addBrass(o, { t0: .48, dur: 1.5, f: MIDI(m), vol: .28, att: .03, rel: .5 })); [0, .48].forEach(t0 => addDrum(o, r, { t0, f: 90, dur: .6, vol: .6 })); echo(o, .2, .4, .45); }],
+  vwin: (v, r) => [1.4, o => { [60, 64, 67, 72].forEach(m => addBrass(o, { dur: 1.1, f: MIDI(m), vol: .25, att: .02, rel: .5, bright: 4 })); addDrum(o, r, { f: 90, dur: .6, vol: .7 }); addNoise(o, r, { t0: .1, dur: 1, vol: .12, hp: 6000, dec: .35 }); }],
+  vflawless: (v, r) => [1.8, o => { [64, 67, 71, 76].forEach(m => addBrass(o, { dur: 1.3, f: MIDI(m), vol: .24, att: .02, rel: .5, bright: 4 })); [88, 91, 95, 100, 103].forEach((m, i) => addBell(o, { t0: .3 + i * .07, f: MIDI(m), vol: .14, dur: .9, parts: [[1, 1, .4], [2, .3, .2]] })); addDrum(o, r, { f: 90, dur: .6, vol: .7 }); echo(o, .19, .4, .4); }],
+  lose: (v, r) => [2.6, o => { [[67, 0, .4], [63, .4, .4], [60, .8, .5], [55, 1.3, 1.2]].forEach(([m, t0, d]) => addBrass(o, { t0, dur: d + .1, f: MIDI(m), vol: .36, att: .05, rel: Math.min(.5, d), bright: 1.6 })); addDrum(o, r, { t0: 1.3, f: 60, dur: 1, vol: .6 }); echo(o, .25, .4, .5); }],
+  vlose: (v, r) => [1.4, o => { addBrass(o, { dur: 1.2, f: MIDI(43), vol: .4, att: .1, rel: .6, bright: 1.2 }); addTone(o, { dur: 1.2, f0: MIDI(55), f1: MIDI(50), type: 'saw', vol: .1, att: .1, dec: .5, lp: 600 }); }],
+  spawn: (v, r) => [.6, o => { addNoise(o, r, { dur: .55, vol: .6, lp0: 300, lp1: 1500, att: .2, dec: .2 }); addTone(o, { dur: .5, f0: 700 * [1, 1.15][v], f1: 220, type: 'tri', vol: .25, att: .1, dec: .2, vib: .05, vibF: 9 }); }],
+  step: (v, r) => [.12, o => { addNoise(o, r, { dur: .08, vol: .7, lp0: 500 * [1, 1.2][v], dec: .02 }); }],
+  stepsnow: (v, r) => [.16, o => { addNoise(o, r, { dur: .12, vol: .5, lp0: 5000, hp: 1500, att: .01, dec: .04, grain: .5 }); }],
+  crystal: (v, r) => [1.2, o => { [72, 79, 84, 88, 91].forEach((m, i) => addTone(o, { t0: i * .07, dur: 1, f0: MIDI(m), type: 'tri', vol: .18, att: .01, dec: .35 })); addTone(o, { dur: 1, f0: 200, f1: 800, vol: .15, att: .3, dec: .3 }); }],
+  crystal2: (v, r) => [.8, o => { addBell(o, { f: 1760, vol: .3, dur: .8, parts: [[1, 1, .45], [2.01, .5, .3], [3.03, .3, .2]] }); }],
+  star: (v, r) => [.7, o => { addPluck(o, r, { f: MIDI([79, 83, 86][v]), dur: .6, vol: .5, damp: .998, bright: .9 }); addBell(o, { f: MIDI([91, 95, 98][v]), vol: .12, dur: .5 }); }],
+};
+function renderSfx(name, v) {
+  const key = name + v; if (BUF[key] || !AC || !SYN[name]) return BUF[key];
+  const rng = mulberry(name.length * 997 + v * 131 + name.charCodeAt(0));
+  const [dur, fn] = SYN[name](v, rng);
+  const o = new Float32Array(Math.ceil(dur * SR)); fn(o);
+  let pk = 0; for (let i = 0; i < o.length; i++) pk = Math.max(pk, Math.abs(o[i]));
+  if (pk > 0) { const k = .95 / pk; for (let i = 0; i < o.length; i++) o[i] *= k; }
+  for (let i = 0; i < 48 && i < o.length; i++) o[o.length - 1 - i] *= i / 48;
+  const b = AC.createBuffer(1, o.length, SR); b.getChannelData(0).set(o); BUF[key] = b; return b;
+}
 function ensureAudio() {
   if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => { }); return; }
   try {
@@ -2324,10 +2461,10 @@ function ensureAudio() {
     MASTER = AC.createGain(); MASTER.gain.value = 0.8; MASTER.connect(AC.destination);
     NOISE = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
     const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    const names = new Set(Object.values(SFX).flatMap(v => v[0]));
-    for (const n of names) {
-      fetch('sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(ab => new Promise((res, rej) => AC.decodeAudioData(ab, res, rej))).then(b => { BUF[n] = b; }).catch(() => { });
-    }
+    // pre-render everything in small slices so the first shots don't hitch
+    const jobs = Object.entries(SFX).flatMap(([n, [k]]) => Array.from({ length: k }, (_, v) => [n, v]));
+    const step = () => { const t0 = performance.now(); while (jobs.length && performance.now() - t0 < 8) { const [n, v] = jobs.shift(); renderSfx(n, v); } if (jobs.length) setTimeout(step, 16); };
+    setTimeout(step, 0);
   } catch (e) { AC = null; }
 }
 function tone(f, d, type = 'sine', v = 0.1, f2 = null, delay = 0) {
@@ -2344,11 +2481,11 @@ function noise(d, v = 0.15, freq = 1000, type = 'lowpass', delay = 0) {
   s.connect(f).connect(g).connect(MASTER); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.03);
 }
 function sample(name, delay = 0, rate = 1) {
-  const def = SFX[name]; if (!def) return false;
-  const pick = def[0][Math.floor(Math.random() * def[0].length)], b = BUF[pick];
+  const def = SFX[name]; if (!def || !AC) return false;
+  const b = renderSfx(name, Math.floor(Math.random() * def[0]));
   if (!b) return false;
   const s = AC.createBufferSource(), g = AC.createGain();
-  s.buffer = b; s.playbackRate.value = rate * (0.94 + Math.random() * 0.12);
+  s.buffer = b; s.playbackRate.value = rate * (0.95 + Math.random() * 0.1);
   g.gain.value = def[1];
   s.connect(g).connect(MASTER); s.start(AC.currentTime + delay);
   return true;

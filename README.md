@@ -1,6 +1,6 @@
 # Games
 
-A small arcade of browser games, made for touch screens. Each game lives in its own folder with no build step. Most are a single self-contained HTML file; Hollowmarch also ships its sound files next to its `index.html`.
+A small arcade of browser games, made for touch screens. Each game lives in its own folder with no build step and is a single self-contained HTML file.
 
 | Game | Folder | What it is |
 | --- | --- | --- |
@@ -39,4 +39,4 @@ python3 -m http.server 8000
 
 ## Credits
 
-Hollowmarch's artwork (towers, characters, effects and maps) is original and drawn in code. Its sound effects are free CC0 packs by [Kenney](https://kenney.nl): RPG Audio, Digital Audio, Impact Sounds, Interface Sounds, Sci-fi Sounds, Music Jingles and Voiceover.
+Hollowmarch's artwork (towers, characters, effects and maps) and sound effects are original and generated in code; it uses no image or audio files.
