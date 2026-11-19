@@ -15,7 +15,7 @@ The Bear & Bean Games is a small arcade of browser games, made for touch screens
 | Slither Slide | [`slither-slide/`](slither-slide/) | Maze-painting puzzle: swipe a cartoon snake that slides until it hits a wall, painting every tile it crosses. Endless solvable levels, star ratings and six unlockable snakes. |
 | Hedge Hop | [`hedge-hop/`](hedge-hop/) | Endless crossing game: hop a hedgehog over roads, log-filled rivers and railway lines, collecting berries. |
 | Bumble Dash | [`bumble-dash/`](bumble-dash/) | One-tap flyer: keep a bee aloft through gaps between honeycomb towers; grab pollen for bonus points. |
-| Ink Bounce | [`ink-bounce/`](ink-bounce/) | Brick breaker with no paddle: draw lines with limited ink to bounce the ball; short, neat lines score a precision bonus. |
+| Ink Bounce | [`ink-bounce/`](ink-bounce/) | Blueprint brick breaker with no paddle: draw one line at a time with limited ink; neat lines refund ink, and falling ink drops and pots refill it. |
 | Busy Beaver | [`busy-beaver/`](busy-beaver/) | Timed tree-chewing: drag to walk, tap fast (or hold) to chew. Trees fall away from you, so chew from the left to drop them in the river and build a dam. Birch, oak and pine, sunny and sunset woods, and a nap when time runs out. |
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Help Bean hop around a mossy temple in the rainforest, changing every stone while dodging critters. Hop off and a toucan always swoops in to catch you. |
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
