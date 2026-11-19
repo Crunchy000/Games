@@ -3,84 +3,120 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0816">
 <title>Games</title>
 <meta name="description" content="A small arcade of browser games, made for touch screens.">
 <style>
-  :root { --bg:#0b0816; --card:#161126; --ink:#f1ecff; --mute:#a59cc4; --line:rgba(255,255,255,.08); }
+  :root { --bg:#0b0816; --card:#161126; --ink:#f1ecff; --mute:#a59cc4; --line:rgba(255,255,255,.08); --pad:clamp(16px,4vw,40px); }
   * { box-sizing:border-box; }
-  body { margin:0; min-height:100vh; background:radial-gradient(1200px 600px at 50% -10%, #2a1a52 0%, var(--bg) 60%); color:var(--ink);
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; min-height:100vh; background:radial-gradient(1200px 600px at 50% -10%, #2a1a52 0%, var(--bg) 60%) fixed, var(--bg); color:var(--ink);
          font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
-  main { max-width:960px; margin:0 auto; padding:48px 20px 64px; }
+  a { color:inherit; text-decoration:none; }
+  header { padding:32px var(--pad) 8px; max-width:1240px; margin:0 auto; }
   h1 { font-size:clamp(2.2rem,7vw,3.4rem); margin:0; letter-spacing:-.02em; font-weight:900;
        background:linear-gradient(90deg,#ffd43b,#ff6b9d 50%,#74c0fc); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .sub { color:var(--mute); margin:8px 0 32px; font-size:1.05rem; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:18px; }
-  a.card { display:flex; flex-direction:column; text-decoration:none; color:inherit; background:var(--card); border:1px solid var(--line);
-           border-radius:18px; overflow:hidden; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
-  a.card:hover, a.card:focus-visible { transform:translateY(-4px); box-shadow:0 14px 34px rgba(0,0,0,.45); border-color:rgba(255,255,255,.22); outline:none; }
-  .art { aspect-ratio:4/3; display:block; }
-  .art svg { width:100%; height:100%; display:block; }
-  .meta { padding:14px 16px 16px; }
-  .meta h2 { margin:0 0 4px; font-size:1.1rem; }
-  .meta p { margin:0; color:var(--mute); font-size:.9rem; line-height:1.4; }
-  .tag { display:inline-block; margin-top:10px; font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#cfc4ff;
-         background:rgba(255,255,255,.07); padding:4px 8px; border-radius:999px; }
-  footer { margin-top:40px; color:var(--mute); font-size:.85rem; text-align:center; }
+  .sub { color:var(--mute); margin:6px 0 0; font-size:1.02rem; }
+  main { max-width:1240px; margin:0 auto; padding-bottom:48px; }
+
+  /* shared scroller */
+  .scroller { display:flex; gap:14px; overflow-x:auto; overscroll-behavior-x:contain; scroll-snap-type:x mandatory; scroll-padding-inline:var(--pad);
+              padding:6px var(--pad) 18px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .scroller::-webkit-scrollbar { display:none; }
+  .scroller > * { scroll-snap-align:start; flex:none; }
+  .rowwrap { position:relative; }
+  .arrow { position:absolute; top:calc(50% - 30px); z-index:2; width:42px; height:42px; border-radius:50%; border:1px solid rgba(255,255,255,.2);
+           background:rgba(20,14,40,.82); color:#fff; font-size:1.2rem; cursor:pointer; display:none; place-items:center; backdrop-filter:blur(6px);
+           box-shadow:0 6px 18px rgba(0,0,0,.4); transition:opacity .2s, transform .15s; }
+  .arrow:hover { transform:scale(1.08); } .arrow[disabled] { opacity:0; pointer-events:none; }
+  .arrow.l { left:8px; } .arrow.r { right:8px; }
+  @media (hover:hover) and (pointer:fine) { .arrow { display:grid; } }
+  a:focus-visible, button:focus-visible { outline:3px solid #ffd43b; outline-offset:3px; }
+
+  /* featured */
+  .hero { position:relative; display:flex; flex-direction:column; width:min(86vw,520px); border-radius:24px; overflow:hidden; border:1px solid var(--line); background:var(--card);
+          box-shadow:0 18px 40px rgba(0,0,0,.45); transition:transform .2s; }
+  .hero:hover { transform:translateY(-3px); }
+  .hero .art { position:relative; aspect-ratio:16/9; display:block; }
+  .hero .art svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .hero .shade { position:absolute; left:0; right:0; bottom:0; height:40%; background:linear-gradient(180deg, rgba(22,17,38,0), var(--card)); }
+  .hero .info { display:flex; flex-direction:column; align-items:flex-start; padding:4px 20px 18px; flex:1; }
+  .hero .info p { flex:1; }
+  .hero h3 { margin:0 0 4px; font-size:clamp(1.4rem,4.6vw,1.9rem); font-weight:900; letter-spacing:-.01em; }
+  .hero p { margin:0 0 12px; color:#ddd6f5; font-size:.95rem; line-height:1.35; max-width:44ch; }
+  .play { display:inline-flex; align-items:center; gap:6px; background:#fff; color:#1a1030; font-weight:900; border-radius:999px; padding:8px 16px; font-size:.95rem; }
+  .badge { position:absolute; top:14px; left:14px; background:linear-gradient(90deg,#ffd43b,#ff8a3d); color:#2a1500; font-weight:900; font-size:.72rem;
+           letter-spacing:.08em; padding:5px 10px; border-radius:999px; box-shadow:0 4px 10px rgba(0,0,0,.3); }
+  .dots { display:flex; justify-content:center; gap:7px; margin-top:-6px; }
+  .dots button { width:8px; height:8px; border-radius:99px; border:0; padding:0; background:rgba(255,255,255,.25); cursor:pointer; transition:width .25s, background .25s; }
+  .dots button.on { width:22px; background:#fff; }
+
+  /* category rows */
+  section.cat { margin-top:22px; }
+  .cathead { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:0 var(--pad); }
+  .cathead h2 { margin:0; font-size:1.3rem; font-weight:900; letter-spacing:-.01em; }
+  .cathead span { color:var(--mute); font-size:.88rem; white-space:nowrap; }
+  @media (max-width:560px) { .cathead .blurb { display:none; } }
+  .tile { width:clamp(150px,42vw,210px); border-radius:18px; overflow:hidden; background:var(--card); border:1px solid var(--line); position:relative;
+          transition:transform .15s ease, box-shadow .15s ease, border-color .15s; }
+  .tile:hover { transform:translateY(-4px); box-shadow:0 14px 30px rgba(0,0,0,.45); border-color:rgba(255,255,255,.22); }
+  .tile .art { aspect-ratio:4/3; display:block; }
+  .tile .art svg { width:100%; height:100%; display:block; }
+  .tile .meta { padding:10px 12px 12px; }
+  .tile h3 { margin:0; font-size:1rem; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tile .tag { display:inline-block; margin-top:6px; font-size:.68rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#cfc4ff;
+               background:rgba(255,255,255,.07); padding:3px 8px; border-radius:999px; }
+  .tile .badge { top:8px; left:8px; font-size:.62rem; padding:4px 8px; }
+  footer { margin-top:30px; color:var(--mute); font-size:.85rem; text-align:center; padding:0 var(--pad); }
+  noscript ul { padding:0 var(--pad); line-height:1.7; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; scroll-behavior:auto !important; } }
 </style>
 </head>
 <body>
-<main>
+<header>
   <h1>Games</h1>
-  <p class="sub">A small arcade of browser games, made for touch screens. Tap a card to play.</p>
-  <div class="grid">
+  <p class="sub">A small arcade of browser games, made for touch screens.</p>
+</header>
+<main id="main">
+  <section aria-label="Featured games">
+    <div class="rowwrap">
+      <button class="arrow l" aria-label="Previous featured game">‹</button>
+      <div class="scroller" id="featured"></div>
+      <button class="arrow r" aria-label="Next featured game">›</button>
+    </div>
+    <div class="dots" id="dots" role="tablist" aria-label="Featured game"></div>
+  </section>
+  <div id="cats"></div>
+  <noscript><ul>
+<li><a href="tile-burst/">Tile Burst</a> — Drag blocks onto the board, fill rows and columns to burst them, and chain combos for big scores.</li>
+<li><a href="gummy-pop/">Gummy Pop</a> — Swap gummies to make matches, build rockets, bombs and rainbow orbs, and clear level goals.</li>
+<li><a href="smash-city/">Smash City</a> — Climb buildings, punch them to rubble and dodge the army as a giant monster.</li>
+<li><a href="pyramid-hop/">Pyramid Hop</a> — Hop across a cube pyramid to change every colour while critters bounce after you.</li>
+<li><a href="vector-front/">Vector Front</a> — A first-person wireframe tank battle, seen through a crackly remote camera feed.</li>
+<li><a href="hex-colour-balance/">Hex Colour Balance</a> — Place red, green and blue gems until each hexagon balances to white, across endless levels.</li>
+<li><a href="hollowmarch/">Hollowmarch</a> — Build and upgrade towers, lead two heroes and call down spells to hold the road against the Hollow Horde.</li>
+<li><a href="massive-armies/">Massive Armies</a> — Command thousands of soldiers in a 3D battle simulation: pick a formation, research units and win a 25-battle campaign.</li>
+<li><a href="dots-and-boxes/">Dots and Boxes</a> — Two players take turns joining dots. Close a box to claim it and go again.</li>
+  </ul></noscript>
+  <footer>Works best on a phone. Desktop players can use the keyboard: arrows/WASD and space.</footer>
+</main>
 
-    <a class="card" href="smash-city/">
-      <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
-        <defs><linearGradient id="s1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1238"/><stop offset=".6" stop-color="#5b2c6f"/><stop offset="1" stop-color="#f08a5d"/></linearGradient></defs>
-        <rect width="200" height="150" fill="url(#s1)"/><circle cx="160" cy="38" r="14" fill="#ffd9a0"/>
-        <rect x="18" y="52" width="44" height="88" fill="#b5523b"/><rect x="128" y="70" width="40" height="70" fill="#3f7f8c"/>
-        <g fill="#ffd877"><rect x="24" y="60" width="8" height="9"/><rect x="48" y="74" width="8" height="9"/><rect x="24" y="102" width="8" height="9"/><rect x="134" y="80" width="8" height="9"/><rect x="152" y="96" width="8" height="9"/></g>
-        <path d="M44 84 l8 -4 6 5 -2 8 -9 2 -5 -6z" fill="#120a14"/>
-        <rect y="138" width="200" height="12" fill="#262030"/>
-        <g transform="translate(92 138)"><ellipse cx="0" cy="-26" rx="15" ry="18" fill="#a476ee"/><ellipse cx="5" cy="-23" rx="8" ry="12" fill="#dccafc"/>
-          <path d="M-6 -50 q-6 -8 -3 -14 q4 8 9 5z M3 -52 q1 -9 6 -12 q-1 8 0 13z" fill="#f6ead0"/><ellipse cx="3" cy="-46" rx="12" ry="10" fill="#a476ee"/>
-          <circle cx="8" cy="-49" r="4.5" fill="#fff"/><circle cx="9.5" cy="-48.5" r="2.2" fill="#111"/><rect x="-9" y="-16" width="9" height="16" rx="4" fill="#5d35aa"/><rect x="2" y="-16" width="9" height="16" rx="4" fill="#5d35aa"/>
-          <path d="M8 -33 L26 -36" stroke="#5d35aa" stroke-width="7" stroke-linecap="round"/><circle cx="28" cy="-36" r="5.5" fill="#a476ee"/></g>
-      </svg></span>
-      <span class="meta"><h2>Smash City</h2><p>Climb buildings, punch them to rubble and dodge the army as a giant monster.</p><span class="tag">Action</span></span>
-    </a>
-
-    <a class="card" href="pyramid-hop/">
-      <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
-        <defs><linearGradient id="p1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060a22"/><stop offset="1" stop-color="#3a1d5c"/></linearGradient></defs>
-        <rect width="200" height="150" fill="url(#p1)"/>
-        <defs><g id="cube"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#3b5bdb"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g></defs>
-        <g transform="translate(100 40)"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#ffd43b"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g>
-        <use href="#cube" x="86" y="64"/><g transform="translate(114 64)"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#ffd43b"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g>
-        <use href="#cube" x="72" y="88"/><use href="#cube" x="100" y="88"/><use href="#cube" x="128" y="88"/>
-        <use href="#cube" x="58" y="112"/><use href="#cube" x="86" y="112"/><use href="#cube" x="114" y="112"/><use href="#cube" x="142" y="112"/>
-        <g transform="translate(100 36)"><ellipse cx="0" cy="-10" rx="9" ry="10" fill="#2fd6b4"/><circle cx="-3" cy="-12" r="3" fill="#fff"/><circle cx="4" cy="-12" r="3" fill="#fff"/><circle cx="-2" cy="-11" r="1.5" fill="#14213d"/><circle cx="5" cy="-11" r="1.5" fill="#14213d"/><ellipse cx="-4" cy="-1" rx="3.5" ry="2" fill="#ff9a3c"/><ellipse cx="4" cy="-1" rx="3.5" ry="2" fill="#ff9a3c"/></g>
-        <circle cx="128" cy="78" r="6" fill="#ff6b3d"/>
-      </svg></span>
-      <span class="meta"><h2>Pyramid Hop</h2><p>Hop across a cube pyramid to change every colour while critters bounce after you.</p><span class="tag">Puzzle · Arcade</span></span>
-    </a>
-
-    <a class="card" href="vector-front/">
-      <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
-        <rect width="200" height="150" fill="#000"/>
-        <g fill="none" stroke="#45ff7d" stroke-width="1.4" stroke-linejoin="round">
-          <path d="M0 80 H200" opacity=".8"/><path d="M0 80 L20 70 L34 76 L52 58 L66 72 L90 66 L110 50 L126 68 L150 62 L170 74 L200 66" opacity=".7"/>
-          <path d="M70 108 L130 108 L124 96 L76 96z M84 96 L88 88 L112 88 L116 96 M104 92 L140 90"/>
-          <path d="M30 100 L46 100 L38 84z M160 104 L178 104 L178 90 L160 90z M160 90 L166 84 L184 84 L178 90 M184 84 L184 98 L178 104"/>        </g>
-        <circle cx="100" cy="22" r="14" fill="none" stroke="#ff4b3e" stroke-width="1.2"/><path d="M100 22 L110 14" stroke="#ff4b3e"/><rect x="104" y="16" width="3" height="3" fill="#ff4b3e"/>
-        <rect width="200" height="150" fill="url(#scan)" opacity=".5"/>
-        <defs><pattern id="scan" width="4" height="3" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="rgba(0,0,0,.6)"/></pattern></defs>
-      </svg></span>
-      <span class="meta"><h2>Vector Front</h2><p>A first-person wireframe tank battle, seen through a crackly remote camera feed.</p><span class="tag">Shooter</span></span>
-    </a>
-
-    <a class="card" href="gummy-pop/">
-      <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
+<template id="art-tile-burst"><svg viewBox="0 0 200 150" aria-hidden="true">
+        <defs><linearGradient id="tb1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#20265e"/><stop offset=".6" stop-color="#2b1d5c"/><stop offset="1" stop-color="#3c1a54"/></linearGradient>
+          <g id="tbT"><rect x="-8.5" y="-8.5" width="17" height="17" rx="3.5"/><rect x="-6" y="-6.5" width="7" height="1.8" rx=".9" fill="#fff" opacity=".55"/></g></defs>
+        <rect width="200" height="150" fill="url(#tb1)"/>
+        <rect x="50" y="10" width="100" height="100" rx="10" fill="rgba(10,10,40,.55)" stroke="rgba(255,255,255,.15)"/>
+        <g fill="rgba(120,130,220,.14)"><rect x="56" y="16" width="88" height="88" rx="4"/></g>
+        <g><use href="#tbT" x="66" y="92" fill="#ffd43b"/><use href="#tbT" x="88" y="92" fill="#ffd43b"/><use href="#tbT" x="110" y="92" fill="#22b8cf"/><use href="#tbT" x="132" y="92" fill="#22b8cf"/>
+          <use href="#tbT" x="66" y="70" fill="#ff5d73"/><use href="#tbT" x="88" y="70" fill="#ff5d73"/><use href="#tbT" x="132" y="70" fill="#51cf66"/><use href="#tbT" x="132" y="48" fill="#51cf66"/>
+          <use href="#tbT" x="66" y="48" fill="#9775fa"/><use href="#tbT" x="66" y="26" fill="#9775fa"/></g>
+        <rect x="100" y="61" width="21" height="62" rx="5" fill="#fff" opacity=".18" transform="rotate(90 110.5 92)"/>
+        <g opacity=".95"><use href="#tbT" x="110" y="48" fill="#4c6ef5" opacity=".45"/><use href="#tbT" x="110" y="70" fill="#4c6ef5" opacity=".45"/></g>
+        <g transform="translate(150 128) scale(.55)"><use href="#tbT" x="0" y="0" fill="#ffa94d"/><use href="#tbT" x="21" y="0" fill="#ffa94d"/><use href="#tbT" x="0" y="-21" fill="#ffa94d"/></g>
+        <g transform="translate(40 128) scale(.55)"><use href="#tbT" x="0" y="0" fill="#4c6ef5"/><use href="#tbT" x="0" y="-21" fill="#4c6ef5"/></g>
+        <g fill="#fff"><rect x="118" y="38" width="3" height="3" opacity=".8"/><rect x="146" y="60" width="2.5" height="2.5" opacity=".7"/><rect x="58" y="82" width="2" height="2" opacity=".7"/></g>
+      </svg></template>
+<template id="art-gummy-pop"><svg viewBox="0 0 200 150" aria-hidden="true">
         <defs><linearGradient id="gp1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9ecb"/><stop offset=".5" stop-color="#c99bff"/><stop offset="1" stop-color="#7fd8ff"/></linearGradient>
           <radialGradient id="gpR" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffc2cf"/><stop offset=".5" stop-color="#ff4d6d"/><stop offset="1" stop-color="#b3123a"/></radialGradient>
           <radialGradient id="gpO" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffd59a"/><stop offset=".5" stop-color="#ff9f1c"/><stop offset="1" stop-color="#c96a00"/></radialGradient>
@@ -99,30 +135,41 @@
         <rect x="64" y="64" width="102" height="22" rx="11" fill="none" stroke="#fff" stroke-width="2.5"/>
         <g fill="#fff" opacity=".85"><circle cx="40" cy="30" r="2.2"/><circle cx="75" cy="30" r="2.2"/><circle cx="110" cy="30" r="2.2"/><circle cx="145" cy="30" r="2.2"/><circle cx="40" cy="70" r="2.2"/><circle cx="40" cy="110" r="2.2"/><circle cx="110" cy="110" r="2.2"/></g>
         <circle cx="115" cy="75" r="17" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.5"/>
-      </svg></span>
-      <span class="meta"><h2>Gummy Pop</h2><p>Swap gummies to make matches, build rockets, bombs and rainbow orbs, and clear level goals.</p><span class="tag">Match-3</span></span>
-    </a>
-
-    <a class="card" href="dots-and-boxes/">
-      <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
-        <defs><linearGradient id="d1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a1d45"/><stop offset="1" stop-color="#101a33"/></linearGradient></defs>
-        <rect width="200" height="150" fill="url(#d1)"/>
-        <rect x="44" y="19" width="32" height="32" rx="5" fill="#ff6b6b" opacity=".9"/><rect x="84" y="59" width="32" height="32" rx="5" fill="#4dabf7" opacity=".9"/><rect x="124" y="59" width="32" height="32" rx="5" fill="#4dabf7" opacity=".9"/>
-        <g stroke-width="6" stroke-linecap="round">
-          <g stroke="#ff6b6b"><path d="M40 15 H80 M40 55 H80 M40 15 V55 M80 15 V55 M120 95 H160 M40 95 V135"/></g>
-          <g stroke="#4dabf7"><path d="M80 55 H120 M80 95 H120 M80 55 V95 M120 55 V95 M120 55 H160 M160 55 V95 M80 135 H120"/></g>
-          <path d="M120 95 H160" stroke="#4dabf7"/>
-        </g>
-        <g fill="#f4f0ff"><circle cx="40" cy="15" r="4"/><circle cx="80" cy="15" r="4"/><circle cx="120" cy="15" r="4"/><circle cx="160" cy="15" r="4"/>
-          <circle cx="40" cy="55" r="4"/><circle cx="80" cy="55" r="4"/><circle cx="120" cy="55" r="4"/><circle cx="160" cy="55" r="4"/>
-          <circle cx="40" cy="95" r="4"/><circle cx="80" cy="95" r="4"/><circle cx="120" cy="95" r="4"/><circle cx="160" cy="95" r="4"/>
-          <circle cx="40" cy="135" r="4"/><circle cx="80" cy="135" r="4"/><circle cx="120" cy="135" r="4"/><circle cx="160" cy="135" r="4"/></g>
-      </svg></span>
-      <span class="meta"><h2>Dots and Boxes</h2><p>Two players take turns joining dots. Close a box to claim it and go again.</p><span class="tag">2 players</span></span>
-    </a>
-
-    <a class="card" href="hex-colour-balance/">
-      <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
+      </svg></template>
+<template id="art-smash-city"><svg viewBox="0 0 200 150" aria-hidden="true">
+        <defs><linearGradient id="s1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1238"/><stop offset=".6" stop-color="#5b2c6f"/><stop offset="1" stop-color="#f08a5d"/></linearGradient></defs>
+        <rect width="200" height="150" fill="url(#s1)"/><circle cx="160" cy="38" r="14" fill="#ffd9a0"/>
+        <rect x="18" y="52" width="44" height="88" fill="#b5523b"/><rect x="128" y="70" width="40" height="70" fill="#3f7f8c"/>
+        <g fill="#ffd877"><rect x="24" y="60" width="8" height="9"/><rect x="48" y="74" width="8" height="9"/><rect x="24" y="102" width="8" height="9"/><rect x="134" y="80" width="8" height="9"/><rect x="152" y="96" width="8" height="9"/></g>
+        <path d="M44 84 l8 -4 6 5 -2 8 -9 2 -5 -6z" fill="#120a14"/>
+        <rect y="138" width="200" height="12" fill="#262030"/>
+        <g transform="translate(92 138)"><ellipse cx="0" cy="-26" rx="15" ry="18" fill="#a476ee"/><ellipse cx="5" cy="-23" rx="8" ry="12" fill="#dccafc"/>
+          <path d="M-6 -50 q-6 -8 -3 -14 q4 8 9 5z M3 -52 q1 -9 6 -12 q-1 8 0 13z" fill="#f6ead0"/><ellipse cx="3" cy="-46" rx="12" ry="10" fill="#a476ee"/>
+          <circle cx="8" cy="-49" r="4.5" fill="#fff"/><circle cx="9.5" cy="-48.5" r="2.2" fill="#111"/><rect x="-9" y="-16" width="9" height="16" rx="4" fill="#5d35aa"/><rect x="2" y="-16" width="9" height="16" rx="4" fill="#5d35aa"/>
+          <path d="M8 -33 L26 -36" stroke="#5d35aa" stroke-width="7" stroke-linecap="round"/><circle cx="28" cy="-36" r="5.5" fill="#a476ee"/></g>
+      </svg></template>
+<template id="art-pyramid-hop"><svg viewBox="0 0 200 150" aria-hidden="true">
+        <defs><linearGradient id="p1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060a22"/><stop offset="1" stop-color="#3a1d5c"/></linearGradient></defs>
+        <rect width="200" height="150" fill="url(#p1)"/>
+        <defs><g id="cube"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#3b5bdb"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g></defs>
+        <g transform="translate(100 40)"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#ffd43b"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g>
+        <use href="#cube" x="86" y="64"/><g transform="translate(114 64)"><path d="M0 -8 L14 0 L0 8 L-14 0z" fill="#ffd43b"/><path d="M-14 0 L0 8 L0 24 L-14 16z" fill="#1c2a6b"/><path d="M0 8 L14 0 L14 16 L0 24z" fill="#2c3f99"/></g>
+        <use href="#cube" x="72" y="88"/><use href="#cube" x="100" y="88"/><use href="#cube" x="128" y="88"/>
+        <use href="#cube" x="58" y="112"/><use href="#cube" x="86" y="112"/><use href="#cube" x="114" y="112"/><use href="#cube" x="142" y="112"/>
+        <g transform="translate(100 36)"><ellipse cx="0" cy="-10" rx="9" ry="10" fill="#2fd6b4"/><circle cx="-3" cy="-12" r="3" fill="#fff"/><circle cx="4" cy="-12" r="3" fill="#fff"/><circle cx="-2" cy="-11" r="1.5" fill="#14213d"/><circle cx="5" cy="-11" r="1.5" fill="#14213d"/><ellipse cx="-4" cy="-1" rx="3.5" ry="2" fill="#ff9a3c"/><ellipse cx="4" cy="-1" rx="3.5" ry="2" fill="#ff9a3c"/></g>
+        <circle cx="128" cy="78" r="6" fill="#ff6b3d"/>
+      </svg></template>
+<template id="art-vector-front"><svg viewBox="0 0 200 150" aria-hidden="true">
+        <rect width="200" height="150" fill="#000"/>
+        <g fill="none" stroke="#45ff7d" stroke-width="1.4" stroke-linejoin="round">
+          <path d="M0 80 H200" opacity=".8"/><path d="M0 80 L20 70 L34 76 L52 58 L66 72 L90 66 L110 50 L126 68 L150 62 L170 74 L200 66" opacity=".7"/>
+          <path d="M70 108 L130 108 L124 96 L76 96z M84 96 L88 88 L112 88 L116 96 M104 92 L140 90"/>
+          <path d="M30 100 L46 100 L38 84z M160 104 L178 104 L178 90 L160 90z M160 90 L166 84 L184 84 L178 90 M184 84 L184 98 L178 104"/>        </g>
+        <circle cx="100" cy="22" r="14" fill="none" stroke="#ff4b3e" stroke-width="1.2"/><path d="M100 22 L110 14" stroke="#ff4b3e"/><rect x="104" y="16" width="3" height="3" fill="#ff4b3e"/>
+        <rect width="200" height="150" fill="url(#scan)" opacity=".5"/>
+        <defs><pattern id="scan" width="4" height="3" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="rgba(0,0,0,.6)"/></pattern></defs>
+      </svg></template>
+<template id="art-hex-colour-balance"><svg viewBox="0 0 200 150" aria-hidden="true">
         <defs><radialGradient id="h1" cx="50%" cy="50%" r="65%"><stop offset="0" stop-color="#141b30"/><stop offset="1" stop-color="#05070c"/></radialGradient>
           <radialGradient id="h2"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#e8eeff" stop-opacity=".9"/><stop offset="1" stop-color="#bcc9ff" stop-opacity="0"/></radialGradient></defs>
         <rect width="200" height="150" fill="url(#h1)"/>
@@ -130,25 +177,8 @@
         <polygon points="127.7,61.1 140.6,68.6 140.6,83.4 127.7,90.9 114.8,83.4 114.8,68.6" fill="#ff3d52"/><polygon points="127.7,66.7 134.9,70.8 134.9,79.2 127.7,83.3 120.5,79.2 120.5,70.8" fill="#ff8a96" opacity=".85"/><polygon points="127.7,61.1 140.6,68.6 140.6,83.4 127.7,90.9 114.8,83.4 114.8,68.6" fill="none" stroke="#9e1424" stroke-width="1.2" opacity=".6"/><polygon points="113.9,37.1 126.7,44.6 126.7,59.4 113.9,66.9 101.0,59.4 101.0,44.6" fill="#3df08c"/><polygon points="113.9,42.7 121.1,46.8 121.1,55.2 113.9,59.3 106.7,55.2 106.7,46.8" fill="#9cf7c4" opacity=".85"/><polygon points="113.9,37.1 126.7,44.6 126.7,59.4 113.9,66.9 101.0,59.4 101.0,44.6" fill="none" stroke="#13804a" stroke-width="1.2" opacity=".6"/><polygon points="86.1,37.1 99.0,44.6 99.0,59.4 86.1,66.9 73.3,59.4 73.3,44.6" fill="#4f7fff"/><polygon points="86.1,42.7 93.3,46.8 93.3,55.2 86.1,59.3 78.9,55.2 78.9,46.8" fill="#a5bdff" opacity=".85"/><polygon points="86.1,37.1 99.0,44.6 99.0,59.4 86.1,66.9 73.3,59.4 73.3,44.6" fill="none" stroke="#1c3aa6" stroke-width="1.2" opacity=".6"/><polygon points="72.3,61.1 85.2,68.6 85.2,83.4 72.3,90.9 59.4,83.4 59.4,68.6" fill="#ff3d52"/><polygon points="72.3,66.7 79.5,70.8 79.5,79.2 72.3,83.3 65.1,79.2 65.1,70.8" fill="#ff8a96" opacity=".85"/><polygon points="72.3,61.1 85.2,68.6 85.2,83.4 72.3,90.9 59.4,83.4 59.4,68.6" fill="none" stroke="#9e1424" stroke-width="1.2" opacity=".6"/><polygon points="86.1,85.1 99.0,92.6 99.0,107.4 86.1,114.9 73.3,107.4 73.3,92.6" fill="#3df08c"/><polygon points="86.1,90.7 93.3,94.8 93.3,103.2 86.1,107.3 78.9,103.2 78.9,94.8" fill="#9cf7c4" opacity=".85"/><polygon points="86.1,85.1 99.0,92.6 99.0,107.4 86.1,114.9 73.3,107.4 73.3,92.6" fill="none" stroke="#13804a" stroke-width="1.2" opacity=".6"/><polygon points="113.9,85.1 126.7,92.6 126.7,107.4 113.9,114.9 101.0,107.4 101.0,92.6" fill="#4f7fff"/><polygon points="113.9,90.7 121.1,94.8 121.1,103.2 113.9,107.3 106.7,103.2 106.7,94.8" fill="#a5bdff" opacity=".85"/><polygon points="113.9,85.1 126.7,92.6 126.7,107.4 113.9,114.9 101.0,107.4 101.0,92.6" fill="none" stroke="#1c3aa6" stroke-width="1.2" opacity=".6"/>
         <circle cx="100" cy="76" r="30.4" fill="url(#h2)" opacity=".75"/>
         <polygon points="100.0,61.1 112.9,68.6 112.9,83.4 100.0,90.9 87.1,83.4 87.1,68.6" fill="#f4f6ff"/>
-      </svg></span>
-      <span class="meta"><h2>Hex Colour Balance</h2><p>Place red, green and blue gems until each hexagon balances to white, across endless levels.</p><span class="tag">Puzzle</span></span>
-    </a>
-
-    <a class="card" href="massive-armies/">
-      <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
-        <rect width="200" height="150" fill="#5f8f45"/>
-        <path d="M0 108 Q60 96 100 104 T200 98 V150 H0z" fill="#527d3b"/>
-        <rect x="94" y="18" width="4" height="114" fill="#8b8778" opacity=".55"/>
-        <g fill="#4a7fe8"><rect x="28" y="36" width="3" height="3"/><rect x="28" y="41" width="3" height="3"/><rect x="28" y="46" width="3" height="3"/><rect x="28" y="51" width="3" height="3"/><rect x="28" y="56" width="3" height="3"/><rect x="28" y="61" width="3" height="3"/><rect x="28" y="66" width="3" height="3"/><rect x="28" y="71" width="3" height="3"/><rect x="28" y="76" width="3" height="3"/><rect x="28" y="81" width="3" height="3"/><rect x="28" y="86" width="3" height="3"/><rect x="28" y="91" width="3" height="3"/><rect x="28" y="96" width="3" height="3"/><rect x="28" y="101" width="3" height="3"/><rect x="28" y="106" width="3" height="3"/><rect x="28" y="111" width="3" height="3"/><rect x="33" y="36" width="3" height="3"/><rect x="33" y="41" width="3" height="3"/><rect x="33" y="46" width="3" height="3"/><rect x="33" y="51" width="3" height="3"/><rect x="33" y="56" width="3" height="3"/><rect x="33" y="61" width="3" height="3"/><rect x="33" y="66" width="3" height="3"/><rect x="33" y="71" width="3" height="3"/><rect x="33" y="76" width="3" height="3"/><rect x="33" y="81" width="3" height="3"/><rect x="33" y="86" width="3" height="3"/><rect x="33" y="91" width="3" height="3"/><rect x="33" y="96" width="3" height="3"/><rect x="33" y="101" width="3" height="3"/><rect x="33" y="106" width="3" height="3"/><rect x="33" y="111" width="3" height="3"/><rect x="38" y="36" width="3" height="3"/><rect x="38" y="41" width="3" height="3"/><rect x="38" y="46" width="3" height="3"/><rect x="38" y="51" width="3" height="3"/><rect x="38" y="56" width="3" height="3"/><rect x="38" y="61" width="3" height="3"/><rect x="38" y="66" width="3" height="3"/><rect x="38" y="71" width="3" height="3"/><rect x="38" y="76" width="3" height="3"/><rect x="38" y="81" width="3" height="3"/><rect x="38" y="86" width="3" height="3"/><rect x="38" y="91" width="3" height="3"/><rect x="38" y="96" width="3" height="3"/><rect x="38" y="101" width="3" height="3"/><rect x="38" y="106" width="3" height="3"/><rect x="38" y="111" width="3" height="3"/><rect x="43" y="36" width="3" height="3"/><rect x="43" y="41" width="3" height="3"/><rect x="43" y="46" width="3" height="3"/><rect x="43" y="51" width="3" height="3"/><rect x="43" y="56" width="3" height="3"/><rect x="43" y="61" width="3" height="3"/><rect x="43" y="66" width="3" height="3"/><rect x="43" y="71" width="3" height="3"/><rect x="43" y="76" width="3" height="3"/><rect x="43" y="81" width="3" height="3"/><rect x="43" y="86" width="3" height="3"/><rect x="43" y="91" width="3" height="3"/><rect x="43" y="96" width="3" height="3"/><rect x="43" y="101" width="3" height="3"/><rect x="43" y="106" width="3" height="3"/><rect x="43" y="111" width="3" height="3"/><rect x="48" y="36" width="3" height="3"/><rect x="48" y="41" width="3" height="3"/><rect x="48" y="46" width="3" height="3"/><rect x="48" y="51" width="3" height="3"/><rect x="48" y="56" width="3" height="3"/><rect x="48" y="61" width="3" height="3"/><rect x="48" y="66" width="3" height="3"/><rect x="48" y="71" width="3" height="3"/><rect x="48" y="76" width="3" height="3"/><rect x="48" y="81" width="3" height="3"/><rect x="48" y="86" width="3" height="3"/><rect x="48" y="91" width="3" height="3"/><rect x="48" y="96" width="3" height="3"/><rect x="48" y="101" width="3" height="3"/><rect x="48" y="106" width="3" height="3"/><rect x="48" y="111" width="3" height="3"/><rect x="53" y="36" width="3" height="3"/><rect x="53" y="41" width="3" height="3"/><rect x="53" y="46" width="3" height="3"/><rect x="53" y="51" width="3" height="3"/><rect x="53" y="56" width="3" height="3"/><rect x="53" y="61" width="3" height="3"/><rect x="53" y="66" width="3" height="3"/><rect x="53" y="71" width="3" height="3"/><rect x="53" y="76" width="3" height="3"/><rect x="53" y="81" width="3" height="3"/><rect x="53" y="86" width="3" height="3"/><rect x="53" y="91" width="3" height="3"/><rect x="53" y="96" width="3" height="3"/><rect x="53" y="101" width="3" height="3"/><rect x="53" y="106" width="3" height="3"/><rect x="53" y="111" width="3" height="3"/><rect x="58" y="36" width="3" height="3"/><rect x="58" y="41" width="3" height="3"/><rect x="58" y="46" width="3" height="3"/><rect x="58" y="51" width="3" height="3"/><rect x="58" y="56" width="3" height="3"/><rect x="58" y="61" width="3" height="3"/><rect x="58" y="66" width="3" height="3"/><rect x="58" y="71" width="3" height="3"/><rect x="58" y="76" width="3" height="3"/><rect x="58" y="81" width="3" height="3"/><rect x="58" y="86" width="3" height="3"/><rect x="58" y="91" width="3" height="3"/><rect x="58" y="96" width="3" height="3"/><rect x="58" y="101" width="3" height="3"/><rect x="58" y="106" width="3" height="3"/><rect x="58" y="111" width="3" height="3"/></g>
-        <g fill="#e2564a"><rect x="132" y="36" width="3" height="3"/><rect x="132" y="41" width="3" height="3"/><rect x="132" y="46" width="3" height="3"/><rect x="132" y="51" width="3" height="3"/><rect x="132" y="56" width="3" height="3"/><rect x="132" y="61" width="3" height="3"/><rect x="132" y="66" width="3" height="3"/><rect x="132" y="71" width="3" height="3"/><rect x="132" y="76" width="3" height="3"/><rect x="132" y="81" width="3" height="3"/><rect x="132" y="86" width="3" height="3"/><rect x="132" y="91" width="3" height="3"/><rect x="132" y="96" width="3" height="3"/><rect x="132" y="101" width="3" height="3"/><rect x="132" y="106" width="3" height="3"/><rect x="132" y="111" width="3" height="3"/><rect x="137" y="36" width="3" height="3"/><rect x="137" y="41" width="3" height="3"/><rect x="137" y="46" width="3" height="3"/><rect x="137" y="51" width="3" height="3"/><rect x="137" y="56" width="3" height="3"/><rect x="137" y="61" width="3" height="3"/><rect x="137" y="66" width="3" height="3"/><rect x="137" y="71" width="3" height="3"/><rect x="137" y="76" width="3" height="3"/><rect x="137" y="81" width="3" height="3"/><rect x="137" y="86" width="3" height="3"/><rect x="137" y="91" width="3" height="3"/><rect x="137" y="96" width="3" height="3"/><rect x="137" y="101" width="3" height="3"/><rect x="137" y="106" width="3" height="3"/><rect x="137" y="111" width="3" height="3"/><rect x="142" y="36" width="3" height="3"/><rect x="142" y="41" width="3" height="3"/><rect x="142" y="46" width="3" height="3"/><rect x="142" y="51" width="3" height="3"/><rect x="142" y="56" width="3" height="3"/><rect x="142" y="61" width="3" height="3"/><rect x="142" y="66" width="3" height="3"/><rect x="142" y="71" width="3" height="3"/><rect x="142" y="76" width="3" height="3"/><rect x="142" y="81" width="3" height="3"/><rect x="142" y="86" width="3" height="3"/><rect x="142" y="91" width="3" height="3"/><rect x="142" y="96" width="3" height="3"/><rect x="142" y="101" width="3" height="3"/><rect x="142" y="106" width="3" height="3"/><rect x="142" y="111" width="3" height="3"/><rect x="147" y="36" width="3" height="3"/><rect x="147" y="41" width="3" height="3"/><rect x="147" y="46" width="3" height="3"/><rect x="147" y="51" width="3" height="3"/><rect x="147" y="56" width="3" height="3"/><rect x="147" y="61" width="3" height="3"/><rect x="147" y="66" width="3" height="3"/><rect x="147" y="71" width="3" height="3"/><rect x="147" y="76" width="3" height="3"/><rect x="147" y="81" width="3" height="3"/><rect x="147" y="86" width="3" height="3"/><rect x="147" y="91" width="3" height="3"/><rect x="147" y="96" width="3" height="3"/><rect x="147" y="101" width="3" height="3"/><rect x="147" y="106" width="3" height="3"/><rect x="147" y="111" width="3" height="3"/><rect x="152" y="36" width="3" height="3"/><rect x="152" y="41" width="3" height="3"/><rect x="152" y="46" width="3" height="3"/><rect x="152" y="51" width="3" height="3"/><rect x="152" y="56" width="3" height="3"/><rect x="152" y="61" width="3" height="3"/><rect x="152" y="66" width="3" height="3"/><rect x="152" y="71" width="3" height="3"/><rect x="152" y="76" width="3" height="3"/><rect x="152" y="81" width="3" height="3"/><rect x="152" y="86" width="3" height="3"/><rect x="152" y="91" width="3" height="3"/><rect x="152" y="96" width="3" height="3"/><rect x="152" y="101" width="3" height="3"/><rect x="152" y="106" width="3" height="3"/><rect x="152" y="111" width="3" height="3"/><rect x="157" y="36" width="3" height="3"/><rect x="157" y="41" width="3" height="3"/><rect x="157" y="46" width="3" height="3"/><rect x="157" y="51" width="3" height="3"/><rect x="157" y="56" width="3" height="3"/><rect x="157" y="61" width="3" height="3"/><rect x="157" y="66" width="3" height="3"/><rect x="157" y="71" width="3" height="3"/><rect x="157" y="76" width="3" height="3"/><rect x="157" y="81" width="3" height="3"/><rect x="157" y="86" width="3" height="3"/><rect x="157" y="91" width="3" height="3"/><rect x="157" y="96" width="3" height="3"/><rect x="157" y="101" width="3" height="3"/><rect x="157" y="106" width="3" height="3"/><rect x="157" y="111" width="3" height="3"/><rect x="162" y="36" width="3" height="3"/><rect x="162" y="41" width="3" height="3"/><rect x="162" y="46" width="3" height="3"/><rect x="162" y="51" width="3" height="3"/><rect x="162" y="56" width="3" height="3"/><rect x="162" y="61" width="3" height="3"/><rect x="162" y="66" width="3" height="3"/><rect x="162" y="71" width="3" height="3"/><rect x="162" y="76" width="3" height="3"/><rect x="162" y="81" width="3" height="3"/><rect x="162" y="86" width="3" height="3"/><rect x="162" y="91" width="3" height="3"/><rect x="162" y="96" width="3" height="3"/><rect x="162" y="101" width="3" height="3"/><rect x="162" y="106" width="3" height="3"/><rect x="162" y="111" width="3" height="3"/></g>
-        <g fill="#2f3a2a"><circle cx="20" cy="60" r="3"/><circle cx="20" cy="90" r="3"/><circle cx="180" cy="60" r="3"/><circle cx="180" cy="90" r="3"/></g>
-        <path d="M66 74 Q100 52 128 70" fill="none" stroke="#f4e3b0" stroke-width="1.4" stroke-dasharray="2 3"/>
-      </svg></span>
-      <span class="meta"><h2>Massive Armies</h2><p>Command thousands of soldiers in a 3D battle simulation: pick a formation, research units and win a 25-battle campaign.</p><span class="tag">Strategy</span></span>
-    </a>
-
-    <a class="card" href="hollowmarch/">
-      <span class="art"><svg viewBox="0 0 200 150" aria-hidden="true">
+      </svg></template>
+<template id="art-hollowmarch"><svg viewBox="0 0 200 150" aria-hidden="true">
         <defs><linearGradient id="hm1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fbb7f"/><stop offset="1" stop-color="#46a067"/></linearGradient>
           <g id="hmt"><path d="M0 -14 L7 0 H-7z" fill="#3c9a5e"/><path d="M0 -14 L7 0 H0z" fill="#2f7f4c"/></g></defs>
         <rect width="200" height="150" fill="url(#hm1)"/>
@@ -164,12 +194,91 @@
         <g transform="translate(46 70)"><rect x="-3.5" y="-3" width="7" height="6" fill="#3a3a52"/><rect x="-4" y="-11" width="8" height="8" fill="#3d6fb6"/><rect x="-4" y="-18" width="8" height="7" fill="#e8b88e"/><rect x="-4" y="-18" width="8" height="3" fill="#c3cad2"/></g>
         <path d="M176 92 Q156 74 132 82" fill="none" stroke="#e7a6ff" stroke-width="2" stroke-dasharray="3 3"/><circle cx="132" cy="82" r="3.5" fill="#f6dcff"/>
         <circle cx="152" cy="16" r="11" fill="#c8432d" stroke="#3a0f08" stroke-width="2"/><path d="M147 15 a5 5 0 1 1 10 0 v3 h-10z" fill="#f1dfb4"/><circle cx="150" cy="15" r="1.4" fill="#3a0f08"/><circle cx="154" cy="15" r="1.4" fill="#3a0f08"/>
-      </svg></span>
-      <span class="meta"><h2>Hollowmarch</h2><p>Build and upgrade towers, lead two heroes and call down spells to hold the road against the Hollow Horde.</p><span class="tag">Tower defense</span></span>
-    </a>
+      </svg></template>
+<template id="art-massive-armies"><svg viewBox="0 0 200 150" aria-hidden="true">
+        <rect width="200" height="150" fill="#5f8f45"/>
+        <path d="M0 108 Q60 96 100 104 T200 98 V150 H0z" fill="#527d3b"/>
+        <rect x="94" y="18" width="4" height="114" fill="#8b8778" opacity=".55"/>
+        <g fill="#4a7fe8"><rect x="28" y="36" width="3" height="3"/><rect x="28" y="41" width="3" height="3"/><rect x="28" y="46" width="3" height="3"/><rect x="28" y="51" width="3" height="3"/><rect x="28" y="56" width="3" height="3"/><rect x="28" y="61" width="3" height="3"/><rect x="28" y="66" width="3" height="3"/><rect x="28" y="71" width="3" height="3"/><rect x="28" y="76" width="3" height="3"/><rect x="28" y="81" width="3" height="3"/><rect x="28" y="86" width="3" height="3"/><rect x="28" y="91" width="3" height="3"/><rect x="28" y="96" width="3" height="3"/><rect x="28" y="101" width="3" height="3"/><rect x="28" y="106" width="3" height="3"/><rect x="28" y="111" width="3" height="3"/><rect x="33" y="36" width="3" height="3"/><rect x="33" y="41" width="3" height="3"/><rect x="33" y="46" width="3" height="3"/><rect x="33" y="51" width="3" height="3"/><rect x="33" y="56" width="3" height="3"/><rect x="33" y="61" width="3" height="3"/><rect x="33" y="66" width="3" height="3"/><rect x="33" y="71" width="3" height="3"/><rect x="33" y="76" width="3" height="3"/><rect x="33" y="81" width="3" height="3"/><rect x="33" y="86" width="3" height="3"/><rect x="33" y="91" width="3" height="3"/><rect x="33" y="96" width="3" height="3"/><rect x="33" y="101" width="3" height="3"/><rect x="33" y="106" width="3" height="3"/><rect x="33" y="111" width="3" height="3"/><rect x="38" y="36" width="3" height="3"/><rect x="38" y="41" width="3" height="3"/><rect x="38" y="46" width="3" height="3"/><rect x="38" y="51" width="3" height="3"/><rect x="38" y="56" width="3" height="3"/><rect x="38" y="61" width="3" height="3"/><rect x="38" y="66" width="3" height="3"/><rect x="38" y="71" width="3" height="3"/><rect x="38" y="76" width="3" height="3"/><rect x="38" y="81" width="3" height="3"/><rect x="38" y="86" width="3" height="3"/><rect x="38" y="91" width="3" height="3"/><rect x="38" y="96" width="3" height="3"/><rect x="38" y="101" width="3" height="3"/><rect x="38" y="106" width="3" height="3"/><rect x="38" y="111" width="3" height="3"/><rect x="43" y="36" width="3" height="3"/><rect x="43" y="41" width="3" height="3"/><rect x="43" y="46" width="3" height="3"/><rect x="43" y="51" width="3" height="3"/><rect x="43" y="56" width="3" height="3"/><rect x="43" y="61" width="3" height="3"/><rect x="43" y="66" width="3" height="3"/><rect x="43" y="71" width="3" height="3"/><rect x="43" y="76" width="3" height="3"/><rect x="43" y="81" width="3" height="3"/><rect x="43" y="86" width="3" height="3"/><rect x="43" y="91" width="3" height="3"/><rect x="43" y="96" width="3" height="3"/><rect x="43" y="101" width="3" height="3"/><rect x="43" y="106" width="3" height="3"/><rect x="43" y="111" width="3" height="3"/><rect x="48" y="36" width="3" height="3"/><rect x="48" y="41" width="3" height="3"/><rect x="48" y="46" width="3" height="3"/><rect x="48" y="51" width="3" height="3"/><rect x="48" y="56" width="3" height="3"/><rect x="48" y="61" width="3" height="3"/><rect x="48" y="66" width="3" height="3"/><rect x="48" y="71" width="3" height="3"/><rect x="48" y="76" width="3" height="3"/><rect x="48" y="81" width="3" height="3"/><rect x="48" y="86" width="3" height="3"/><rect x="48" y="91" width="3" height="3"/><rect x="48" y="96" width="3" height="3"/><rect x="48" y="101" width="3" height="3"/><rect x="48" y="106" width="3" height="3"/><rect x="48" y="111" width="3" height="3"/><rect x="53" y="36" width="3" height="3"/><rect x="53" y="41" width="3" height="3"/><rect x="53" y="46" width="3" height="3"/><rect x="53" y="51" width="3" height="3"/><rect x="53" y="56" width="3" height="3"/><rect x="53" y="61" width="3" height="3"/><rect x="53" y="66" width="3" height="3"/><rect x="53" y="71" width="3" height="3"/><rect x="53" y="76" width="3" height="3"/><rect x="53" y="81" width="3" height="3"/><rect x="53" y="86" width="3" height="3"/><rect x="53" y="91" width="3" height="3"/><rect x="53" y="96" width="3" height="3"/><rect x="53" y="101" width="3" height="3"/><rect x="53" y="106" width="3" height="3"/><rect x="53" y="111" width="3" height="3"/><rect x="58" y="36" width="3" height="3"/><rect x="58" y="41" width="3" height="3"/><rect x="58" y="46" width="3" height="3"/><rect x="58" y="51" width="3" height="3"/><rect x="58" y="56" width="3" height="3"/><rect x="58" y="61" width="3" height="3"/><rect x="58" y="66" width="3" height="3"/><rect x="58" y="71" width="3" height="3"/><rect x="58" y="76" width="3" height="3"/><rect x="58" y="81" width="3" height="3"/><rect x="58" y="86" width="3" height="3"/><rect x="58" y="91" width="3" height="3"/><rect x="58" y="96" width="3" height="3"/><rect x="58" y="101" width="3" height="3"/><rect x="58" y="106" width="3" height="3"/><rect x="58" y="111" width="3" height="3"/></g>
+        <g fill="#e2564a"><rect x="132" y="36" width="3" height="3"/><rect x="132" y="41" width="3" height="3"/><rect x="132" y="46" width="3" height="3"/><rect x="132" y="51" width="3" height="3"/><rect x="132" y="56" width="3" height="3"/><rect x="132" y="61" width="3" height="3"/><rect x="132" y="66" width="3" height="3"/><rect x="132" y="71" width="3" height="3"/><rect x="132" y="76" width="3" height="3"/><rect x="132" y="81" width="3" height="3"/><rect x="132" y="86" width="3" height="3"/><rect x="132" y="91" width="3" height="3"/><rect x="132" y="96" width="3" height="3"/><rect x="132" y="101" width="3" height="3"/><rect x="132" y="106" width="3" height="3"/><rect x="132" y="111" width="3" height="3"/><rect x="137" y="36" width="3" height="3"/><rect x="137" y="41" width="3" height="3"/><rect x="137" y="46" width="3" height="3"/><rect x="137" y="51" width="3" height="3"/><rect x="137" y="56" width="3" height="3"/><rect x="137" y="61" width="3" height="3"/><rect x="137" y="66" width="3" height="3"/><rect x="137" y="71" width="3" height="3"/><rect x="137" y="76" width="3" height="3"/><rect x="137" y="81" width="3" height="3"/><rect x="137" y="86" width="3" height="3"/><rect x="137" y="91" width="3" height="3"/><rect x="137" y="96" width="3" height="3"/><rect x="137" y="101" width="3" height="3"/><rect x="137" y="106" width="3" height="3"/><rect x="137" y="111" width="3" height="3"/><rect x="142" y="36" width="3" height="3"/><rect x="142" y="41" width="3" height="3"/><rect x="142" y="46" width="3" height="3"/><rect x="142" y="51" width="3" height="3"/><rect x="142" y="56" width="3" height="3"/><rect x="142" y="61" width="3" height="3"/><rect x="142" y="66" width="3" height="3"/><rect x="142" y="71" width="3" height="3"/><rect x="142" y="76" width="3" height="3"/><rect x="142" y="81" width="3" height="3"/><rect x="142" y="86" width="3" height="3"/><rect x="142" y="91" width="3" height="3"/><rect x="142" y="96" width="3" height="3"/><rect x="142" y="101" width="3" height="3"/><rect x="142" y="106" width="3" height="3"/><rect x="142" y="111" width="3" height="3"/><rect x="147" y="36" width="3" height="3"/><rect x="147" y="41" width="3" height="3"/><rect x="147" y="46" width="3" height="3"/><rect x="147" y="51" width="3" height="3"/><rect x="147" y="56" width="3" height="3"/><rect x="147" y="61" width="3" height="3"/><rect x="147" y="66" width="3" height="3"/><rect x="147" y="71" width="3" height="3"/><rect x="147" y="76" width="3" height="3"/><rect x="147" y="81" width="3" height="3"/><rect x="147" y="86" width="3" height="3"/><rect x="147" y="91" width="3" height="3"/><rect x="147" y="96" width="3" height="3"/><rect x="147" y="101" width="3" height="3"/><rect x="147" y="106" width="3" height="3"/><rect x="147" y="111" width="3" height="3"/><rect x="152" y="36" width="3" height="3"/><rect x="152" y="41" width="3" height="3"/><rect x="152" y="46" width="3" height="3"/><rect x="152" y="51" width="3" height="3"/><rect x="152" y="56" width="3" height="3"/><rect x="152" y="61" width="3" height="3"/><rect x="152" y="66" width="3" height="3"/><rect x="152" y="71" width="3" height="3"/><rect x="152" y="76" width="3" height="3"/><rect x="152" y="81" width="3" height="3"/><rect x="152" y="86" width="3" height="3"/><rect x="152" y="91" width="3" height="3"/><rect x="152" y="96" width="3" height="3"/><rect x="152" y="101" width="3" height="3"/><rect x="152" y="106" width="3" height="3"/><rect x="152" y="111" width="3" height="3"/><rect x="157" y="36" width="3" height="3"/><rect x="157" y="41" width="3" height="3"/><rect x="157" y="46" width="3" height="3"/><rect x="157" y="51" width="3" height="3"/><rect x="157" y="56" width="3" height="3"/><rect x="157" y="61" width="3" height="3"/><rect x="157" y="66" width="3" height="3"/><rect x="157" y="71" width="3" height="3"/><rect x="157" y="76" width="3" height="3"/><rect x="157" y="81" width="3" height="3"/><rect x="157" y="86" width="3" height="3"/><rect x="157" y="91" width="3" height="3"/><rect x="157" y="96" width="3" height="3"/><rect x="157" y="101" width="3" height="3"/><rect x="157" y="106" width="3" height="3"/><rect x="157" y="111" width="3" height="3"/><rect x="162" y="36" width="3" height="3"/><rect x="162" y="41" width="3" height="3"/><rect x="162" y="46" width="3" height="3"/><rect x="162" y="51" width="3" height="3"/><rect x="162" y="56" width="3" height="3"/><rect x="162" y="61" width="3" height="3"/><rect x="162" y="66" width="3" height="3"/><rect x="162" y="71" width="3" height="3"/><rect x="162" y="76" width="3" height="3"/><rect x="162" y="81" width="3" height="3"/><rect x="162" y="86" width="3" height="3"/><rect x="162" y="91" width="3" height="3"/><rect x="162" y="96" width="3" height="3"/><rect x="162" y="101" width="3" height="3"/><rect x="162" y="106" width="3" height="3"/><rect x="162" y="111" width="3" height="3"/></g>
+        <g fill="#2f3a2a"><circle cx="20" cy="60" r="3"/><circle cx="20" cy="90" r="3"/><circle cx="180" cy="60" r="3"/><circle cx="180" cy="90" r="3"/></g>
+        <path d="M66 74 Q100 52 128 70" fill="none" stroke="#f4e3b0" stroke-width="1.4" stroke-dasharray="2 3"/>
+      </svg></template>
+<template id="art-dots-and-boxes"><svg viewBox="0 0 200 150" aria-hidden="true">
+        <defs><linearGradient id="d1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a1d45"/><stop offset="1" stop-color="#101a33"/></linearGradient></defs>
+        <rect width="200" height="150" fill="url(#d1)"/>
+        <rect x="44" y="19" width="32" height="32" rx="5" fill="#ff6b6b" opacity=".9"/><rect x="84" y="59" width="32" height="32" rx="5" fill="#4dabf7" opacity=".9"/><rect x="124" y="59" width="32" height="32" rx="5" fill="#4dabf7" opacity=".9"/>
+        <g stroke-width="6" stroke-linecap="round">
+          <g stroke="#ff6b6b"><path d="M40 15 H80 M40 55 H80 M40 15 V55 M80 15 V55 M120 95 H160 M40 95 V135"/></g>
+          <g stroke="#4dabf7"><path d="M80 55 H120 M80 95 H120 M80 55 V95 M120 55 V95 M120 55 H160 M160 55 V95 M80 135 H120"/></g>
+          <path d="M120 95 H160" stroke="#4dabf7"/>
+        </g>
+        <g fill="#f4f0ff"><circle cx="40" cy="15" r="4"/><circle cx="80" cy="15" r="4"/><circle cx="120" cy="15" r="4"/><circle cx="160" cy="15" r="4"/>
+          <circle cx="40" cy="55" r="4"/><circle cx="80" cy="55" r="4"/><circle cx="120" cy="55" r="4"/><circle cx="160" cy="55" r="4"/>
+          <circle cx="40" cy="95" r="4"/><circle cx="80" cy="95" r="4"/><circle cx="120" cy="95" r="4"/><circle cx="160" cy="95" r="4"/>
+          <circle cx="40" cy="135" r="4"/><circle cx="80" cy="135" r="4"/><circle cx="120" cy="135" r="4"/><circle cx="160" cy="135" r="4"/></g>
+      </svg></template>
 
-  </div>
-  <footer>Works best on a phone. Desktop players can use the keyboard: arrows/WASD and space.</footer>
-</main>
+<script>
+(() => {
+  const GAMES = [{"slug": "tile-burst", "title": "Tile Burst", "desc": "Drag blocks onto the board, fill rows and columns to burst them, and chain combos for big scores.", "tag": "Block puzzle", "isNew": true}, {"slug": "gummy-pop", "title": "Gummy Pop", "desc": "Swap gummies to make matches, build rockets, bombs and rainbow orbs, and clear level goals.", "tag": "Match-3", "isNew": true}, {"slug": "smash-city", "title": "Smash City", "desc": "Climb buildings, punch them to rubble and dodge the army as a giant monster.", "tag": "Action", "isNew": false}, {"slug": "pyramid-hop", "title": "Pyramid Hop", "desc": "Hop across a cube pyramid to change every colour while critters bounce after you.", "tag": "Puzzle · Arcade", "isNew": false}, {"slug": "vector-front", "title": "Vector Front", "desc": "A first-person wireframe tank battle, seen through a crackly remote camera feed.", "tag": "Shooter", "isNew": false}, {"slug": "hex-colour-balance", "title": "Hex Colour Balance", "desc": "Place red, green and blue gems until each hexagon balances to white, across endless levels.", "tag": "Puzzle", "isNew": false}, {"slug": "hollowmarch", "title": "Hollowmarch", "desc": "Build and upgrade towers, lead two heroes and call down spells to hold the road against the Hollow Horde.", "tag": "Tower defense", "isNew": false}, {"slug": "massive-armies", "title": "Massive Armies", "desc": "Command thousands of soldiers in a 3D battle simulation: pick a formation, research units and win a 25-battle campaign.", "tag": "Strategy", "isNew": false}, {"slug": "dots-and-boxes", "title": "Dots and Boxes", "desc": "Two players take turns joining dots. Close a box to claim it and go again.", "tag": "2 players", "isNew": true}];
+  const FEATURED = ["tile-burst", "gummy-pop", "hollowmarch", "massive-armies", "smash-city"];
+  const CATS = [["Puzzle", "Think, match and clear", ["tile-burst", "gummy-pop", "hex-colour-balance", "pyramid-hop"]], ["Action & Arcade", "Fast fingers, big explosions", ["smash-city", "vector-front", "pyramid-hop"]], ["Strategy", "Plan, build and command", ["hollowmarch", "massive-armies"]], ["Two players", "Pass the phone to a friend", ["dots-and-boxes"]]];
+  const bySlug = Object.fromEntries(GAMES.map(g => [g.slug, g]));
+  const art = slug => document.getElementById('art-' + slug).innerHTML;
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // featured carousel
+  const feat = document.getElementById('featured'), dots = document.getElementById('dots');
+  feat.innerHTML = FEATURED.map(s => { const g = bySlug[s]; return `
+    <a class="hero" href="${g.slug}/" aria-label="Play ${esc(g.title)}">
+      <span class="art">${art(s).replace('<svg ', '<svg preserveAspectRatio="xMidYMid slice" ')}<span class="shade"></span></span>
+      ${g.isNew ? '<span class="badge">NEW</span>' : ''}
+      <span class="info"><h3>${esc(g.title)}</h3><p>${esc(g.desc)}</p><span class="play">▶ Play</span></span>
+    </a>`; }).join('');
+  dots.innerHTML = FEATURED.map((s, i) => `<button role="tab" aria-label="${esc(bySlug[s].title)}" data-i="${i}"></button>`).join('');
+  const heroes = [...feat.children], dotBtns = [...dots.children];
+  const goTo = i => feat.scrollTo({ left: heroes[i].offsetLeft - feat.firstElementChild.offsetLeft, behavior: 'smooth' });
+  dotBtns.forEach(b => b.addEventListener('click', () => { stopAuto(); goTo(+b.dataset.i); }));
+  let cur = 0;
+  const syncDots = () => {
+    const x = feat.scrollLeft, maxX = feat.scrollWidth - feat.clientWidth;
+    let i = heroes.reduce((b, h, k) => Math.abs(h.offsetLeft - heroes[0].offsetLeft - x) < Math.abs(heroes[b].offsetLeft - heroes[0].offsetLeft - x) ? k : b, 0);
+    if (x >= maxX - 4 && auto === null) i = heroes.length - 1;
+    cur = i; dotBtns.forEach((d, k) => { d.classList.toggle('on', k === i); d.setAttribute('aria-selected', k === i); });
+  };
+  feat.addEventListener('scroll', syncDots, { passive: true });
+  let auto = matchMedia('(prefers-reduced-motion: reduce)').matches ? null : setInterval(() => {
+    const atEnd = feat.scrollLeft >= feat.scrollWidth - feat.clientWidth - 4;
+    goTo(atEnd ? 0 : (cur + 1) % heroes.length);
+  }, 5000);
+  syncDots();
+  const stopAuto = () => { if (auto) { clearInterval(auto); auto = null; } };
+  ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(ev => feat.addEventListener(ev, stopAuto, { passive: true }));
+
+  // category rows
+  document.getElementById('cats').innerHTML = CATS.map(([name, blurb, list], ci) => `
+    <section class="cat" aria-labelledby="cat${ci}">
+      <div class="cathead"><h2 id="cat${ci}">${esc(name)}</h2><span><span class="blurb">${esc(blurb)} · </span>${list.length} game${list.length > 1 ? 's' : ''}</span></div>
+      <div class="rowwrap">
+        <button class="arrow l" aria-label="Scroll ${esc(name)} left">‹</button>
+        <div class="scroller">${list.map(s => { const g = bySlug[s]; return `
+          <a class="tile" href="${g.slug}/"><span class="art">${art(s)}</span>${g.isNew ? '<span class="badge">NEW</span>' : ''}
+            <span class="meta"><h3>${esc(g.title)}</h3><span class="tag">${esc(g.tag)}</span></span></a>`; }).join('')}</div>
+        <button class="arrow r" aria-label="Scroll ${esc(name)} right">›</button>
+      </div>
+    </section>`).join('');
+
+  // arrows for every scroller
+  document.querySelectorAll('.rowwrap').forEach(w => {
+    const sc = w.querySelector('.scroller'), L = w.querySelector('.arrow.l'), R = w.querySelector('.arrow.r');
+    const upd = () => { L.disabled = sc.scrollLeft < 8; R.disabled = sc.scrollLeft + sc.clientWidth > sc.scrollWidth - 8; };
+    const step = () => Math.max(160, sc.clientWidth * .8);
+    L.addEventListener('click', () => { stopAuto(); sc.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    R.addEventListener('click', () => { stopAuto(); sc.scrollBy({ left: step(), behavior: 'smooth' }); });
+    sc.addEventListener('scroll', upd, { passive: true }); addEventListener('resize', upd); upd();
+  });
+})();
+</script>
 </body>
 </html>
