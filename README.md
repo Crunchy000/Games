@@ -4,6 +4,7 @@ A small arcade of browser games, made for touch screens. Each game lives in its 
 
 | Game | Folder | What it is |
 | --- | --- | --- |
+| Ink Bounce | [`ink-bounce/`](ink-bounce/) | Brick breaker with no paddle: draw lines with limited ink to bounce the ball; short, neat lines score a precision bonus. |
 | Smash City | [`smash-city/`](smash-city/) | Climb and smash buildings as a giant monster while the army fights back. |
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Hop around a cube pyramid to change every colour while dodging critters. |
 | Vector Front | [`vector-front/`](vector-front/) | First-person wireframe tank battle with a TV-static camera look. |
