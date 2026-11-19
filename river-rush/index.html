@@ -28,7 +28,7 @@
 'use strict';
 const W = 360, cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let H = 680, SC = 1, HY = 230, F = 400;
-const CAMH = 1.7, PZ = 3.5, LANE = 1.15, RIVER = 2.35, FAR = 46;
+const CAMH = 1.7, PZ = 4.1, LANE = .8, RIVER = 1.75, FAR = 46;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v, rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
 const IMG = { bear: new Image(), bean: new Image() }; IMG.bear.src = '../icons/bear.png'; IMG.bean.src = '../icons/bean.png';
 let best = 0; try { best = +localStorage.getItem('riverrush-best') || 0; } catch (e) {}
@@ -149,7 +149,7 @@ function update(dt) {
   rowZ -= speed * dt; while (rowZ < FAR) { spawnRow(rowZ = Math.max(rowZ, FAR - 2) + Math.max(8.5, 13 - dist / 140)); }
   for (const o of objs) {
     if (o.done || o.hitDone || Math.abs(o.z - PZ) > .45) continue;
-    if (Math.abs(o.lane * LANE - P.x) > .62) continue;
+    if (Math.abs(o.lane * LANE - P.x) > .45) continue;
     if (o.type === 'bean') { o.done = true; beans++; sBean(); const q = proj(P.x, .8, PZ); for (let i = 0; i < 5; i++) parts.push({ x: q.x, y: q.y - 20, vx: rnd(-60, 60), vy: rnd(-140, -40), g: 300, life: .5, max: .5, s: 2.5, c: o.c }); }
     else if (o.type === 'honey') { o.done = true; honey++; sHoney(); toast('Honey! +50', '#ffe08a', 18); }
     else if (o.type === 'rock') hit(o);
@@ -219,19 +219,19 @@ function drawObj(o) {
   const x = o.lane * LANE, p = proj(x, 0, o.z), s = p.s; if (s < 3) return;
   ctx.globalAlpha = clamp((FAR - o.z) / 5, 0, 1);
   if (o.type === 'rock') {
-    ell(p.x, p.y, .5 * s, .1 * s, 'rgba(255,255,255,.6)');
-    ctx.fillStyle = '#8a8f96'; ctx.beginPath(); ctx.moveTo(p.x - .45 * s, p.y); ctx.quadraticCurveTo(p.x - .5 * s, p.y - .55 * s, p.x - .1 * s, p.y - .7 * s); ctx.quadraticCurveTo(p.x + .4 * s, p.y - .75 * s, p.x + .45 * s, p.y); ctx.closePath(); ctx.fill();
+    ell(p.x, p.y, .4 * s, .08 * s, 'rgba(255,255,255,.6)');
+    ctx.fillStyle = '#8a8f96'; ctx.beginPath(); ctx.moveTo(p.x - .36 * s, p.y); ctx.quadraticCurveTo(p.x - .4 * s, p.y - .5 * s, p.x - .08 * s, p.y - .62 * s); ctx.quadraticCurveTo(p.x + .32 * s, p.y - .66 * s, p.x + .36 * s, p.y); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#a9aeb5'; ctx.beginPath(); ctx.ellipse(p.x - .12 * s, p.y - .45 * s, .18 * s, .12 * s, -.4, 0, 6.3); ctx.fill();
     ctx.fillStyle = '#6a9f4a'; ctx.beginPath(); ctx.ellipse(p.x + .1 * s, p.y - .66 * s, .16 * s, .05 * s, 0, 0, 6.3); ctx.fill();
   } else if (o.type === 'log') {
-    const w = o.wide ? LANE * .5 : .55, bob = Math.sin(time * 3 + o.wob) * .03;
+    const w = o.wide ? LANE * .5 : .36, bob = Math.sin(time * 3 + o.wob) * .03;
     const a = proj(x - w, .12 + bob, o.z), b = proj(x + w, .12 + bob, o.z), r = .14 * s;
     ell(p.x, p.y, (b.x - a.x) / 2 + r, .07 * s, 'rgba(255,255,255,.5)');
     ctx.fillStyle = '#8a5a2b'; rr(a.x, a.y - r, b.x - a.x, r * 2, r); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(a.x + r * .5, a.y - r * .7, b.x - a.x - r, r * .4);
     ell(b.x, b.y, r * .6, r, '#d9a35f'); ctx.strokeStyle = '#a8763a'; ctx.lineWidth = Math.max(.5, s * .01); ctx.beginPath(); ctx.ellipse(b.x, b.y, r * .3, r * .5, 0, 0, 6.3); ctx.stroke();
   } else if (o.type === 'branch') {
-    const y = 1.05, a = proj(x - .9, y, o.z), b = proj(x + .9, y, o.z), sideX = o.lane <= 0 ? -RIVER - .3 : RIVER + .3, bank = proj(sideX, 0, o.z), bt = proj(sideX, y + .5, o.z);
+    const y = 1.05, a = proj(x - .48, y, o.z), b = proj(x + .48, y, o.z), sideX = o.lane <= 0 ? -RIVER - .3 : RIVER + .3, bank = proj(sideX, 0, o.z), bt = proj(sideX, y + .5, o.z);
     ctx.strokeStyle = '#6b4423'; ctx.lineCap = 'round'; ctx.lineWidth = .07 * s;
     ctx.beginPath(); ctx.moveTo(bank.x, bank.y); ctx.lineTo(bt.x, bt.y); ctx.stroke();
     ctx.lineWidth = .06 * s; ctx.beginPath(); ctx.moveTo(bt.x, bt.y); ctx.lineTo(o.lane <= 0 ? b.x : a.x, b.y); ctx.lineTo(o.lane <= 0 ? a.x : b.x, a.y + .05 * s); ctx.stroke();
@@ -246,26 +246,48 @@ function drawObj(o) {
   ctx.globalAlpha = 1;
 }
 function drawRaft() {
-  const p = proj(P.x, P.jy, PZ), s = p.s * .68, duck = P.duck > 0 ? 1 : 0, sq = duck ? .6 : 1, flash = P.safe > 0;
-  const g = proj(P.x, 0, PZ);
-  ell(g.x, g.y + .02 * s, .75 * s * (1 - P.jy * .2), .12 * s, 'rgba(0,30,60,.25)');
-  if (P.jy < .05) for (const d of [-1, 1]) { ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = .03 * s; ctx.beginPath(); ctx.moveTo(g.x + d * .6 * s, g.y); ctx.quadraticCurveTo(g.x + d * .85 * s, g.y + .1 * s, g.x + d * (1 + Math.sin(time * 9) * .05) * s, g.y + .25 * s); ctx.stroke(); }
-  if (flash) ctx.globalAlpha = .55 + .2 * Math.sin(time * 6);
-  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(P.tilt * .4 + (P.hurt > 0 ? Math.sin(time * 9) * .12 : 0));
-  // the log, seen end-on from behind
-  ctx.fillStyle = '#8a5a2b'; rr(-.62 * s, -.2 * s, 1.24 * s, .3 * s, .15 * s); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(-.55 * s, -.17 * s, 1.1 * s, .06 * s);
-  ell(-.62 * s, -.05 * s, .07 * s, .15 * s, '#d9a35f'); ell(.62 * s, -.05 * s, .07 * s, .15 * s, '#d9a35f');
-  // Bear at the back, seen from behind
-  ctx.save(); ctx.translate(0, -.18 * s); ctx.scale(sq, sq);
+  // three logs lashed together, running away from the camera, with Bear sat on top
+  const duck = P.duck > 0, sq = duck ? .62 : 1, fade = P.safe > 0 ? .55 + .2 * Math.sin(time * 6) : 1, y = P.jy;
+  const ZN = PZ - .25, ZF = PZ + 1.05, R = .11, bobs = [Math.sin(time * 3.1) * .012, Math.sin(time * 2.7 + 1) * .012, Math.sin(time * 3.4 + 2) * .012];
+  const g = proj(P.x, 0, PZ + .3);
+  ell(g.x, g.y + .04 * g.s, .42 * g.s * (1 - y * .2), .09 * g.s, 'rgba(0,30,60,.22)');
+  if (y < .05) for (const d of [-1, 1]) { const w = proj(P.x + d * .4, 0, ZN); ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = .025 * w.s; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.quadraticCurveTo(w.x + d * .15 * w.s, w.y + .08 * w.s, w.x + d * (.3 + Math.sin(time * 3) * .02) * w.s, w.y + .2 * w.s); ctx.stroke(); }
+  ctx.save(); ctx.globalAlpha = fade;
+  const pv = proj(P.x, y, ZN); ctx.translate(pv.x, pv.y); ctx.rotate(P.tilt * .35 + (P.hurt > 0 ? Math.sin(time * 9) * .1 : 0)); ctx.translate(-pv.x, -pv.y);
+  const logs = [-1, 0, 1].map(i => ({ i, n: proj(P.x + i * .235, y + R + bobs[i + 1], ZN), f: proj(P.x + i * .235, y + R + bobs[i + 1], ZF) }));
+  // far logs first so the middle one overlaps neatly
+  for (const L of [logs[0], logs[2], logs[1]]) {
+    const { n, f } = L, rn = R * n.s, rf = R * f.s;
+    const gr = ctx.createLinearGradient(n.x - rn, 0, n.x + rn, 0); gr.addColorStop(0, '#6b4220'); gr.addColorStop(.45, '#a06a38'); gr.addColorStop(1, '#5a3618');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(f.x - rf, f.y); ctx.lineTo(f.x + rf, f.y); ctx.lineTo(n.x + rn, n.y); ctx.lineTo(n.x - rn, n.y); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(f.x, f.y, rf, rf * .9, 0, Math.PI, 0); ctx.fill();
+    // bark lines and a soft top highlight
+    ctx.strokeStyle = 'rgba(40,20,5,.35)'; ctx.lineWidth = Math.max(.6, .008 * n.s);
+    for (const t of [-.45, .3]) { ctx.beginPath(); ctx.moveTo(f.x + t * rf, f.y - rf * .2); ctx.lineTo(n.x + t * rn, n.y - rn * .2); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(255,230,190,.35)'; ctx.lineWidth = Math.max(.8, .02 * n.s); ctx.beginPath(); ctx.moveTo(f.x - rf * .15, f.y - rf * .75); ctx.lineTo(n.x - rn * .15, n.y - rn * .75); ctx.stroke();
+    // cut end with growth rings
+    ell(n.x, n.y, rn, rn * .95, '#6b4220'); ell(n.x, n.y, rn * .86, rn * .82, '#e0b277');
+    ctx.strokeStyle = 'rgba(150,95,40,.65)'; ctx.lineWidth = Math.max(.6, .008 * n.s);
+    for (const k of [.62, .4, .2]) { ctx.beginPath(); ctx.ellipse(n.x + rn * .04, n.y + rn * .03, rn * .86 * k, rn * .82 * k, 0, 0, 6.3); ctx.stroke(); }
+  }
+  // rope lashings across all three logs
+  for (const z of [ZN + .25, ZF - .3]) {
+    const a = proj(P.x - .36, y + R * 1.6, z), c = proj(P.x + .36, y + R * 1.6, z);
+    ctx.strokeStyle = '#d9c08a'; ctx.lineWidth = Math.max(1.2, .035 * a.s); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo((a.x + c.x) / 2, a.y - .03 * a.s, c.x, c.y); ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,90,40,.6)'; ctx.lineWidth = Math.max(.6, .01 * a.s);
+    for (let k = 1; k < 8; k++) { const xx = a.x + (c.x - a.x) * k / 8; ctx.beginPath(); ctx.moveTo(xx - .012 * a.s, a.y - .02 * a.s); ctx.lineTo(xx + .012 * a.s, a.y + .015 * a.s); ctx.stroke(); }
+  }
+  // Bear, seen from behind, sitting mid-raft
+  const bp = proj(P.x, y + R * 2, PZ + .35), s = bp.s * .62;
+  ctx.save(); ctx.translate(bp.x, bp.y); ctx.scale(sq, sq);
   ell(0, -.25 * s, .25 * s, .28 * s, '#8b5a2b'); ell(0, -.55 * s, .19 * s, .17 * s, '#8b5a2b');
   ell(-.14 * s, -.68 * s, .07 * s, .07 * s, '#8b5a2b'); ell(.14 * s, -.68 * s, .07 * s, .07 * s, '#8b5a2b'); ell(-.14 * s, -.68 * s, .035 * s, .035 * s, '#6b4220'); ell(.14 * s, -.68 * s, .035 * s, .035 * s, '#6b4220');
   ell(0, -.03 * s, .07 * s, .05 * s, '#c99a6a');
-  // arms paddling
-  const pad = Math.sin(time * 7);
+  const pad = Math.sin(time * 4);
   ell(-.26 * s, -.3 * s + pad * .04 * s, .07 * s, .14 * s, '#7a4e25', .5); ell(.26 * s, -.3 * s - pad * .04 * s, .07 * s, .14 * s, '#7a4e25', -.5);
   ctx.restore();
-  ctx.restore(); ctx.globalAlpha = 1;
+  ctx.restore();
 }
 function homeIcon(cx, cy) {
   ctx.fillStyle = 'rgba(10,40,30,.4)'; ctx.beginPath(); ctx.arc(cx, cy, 17, 0, 6.3); ctx.fill();
