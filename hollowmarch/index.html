@@ -276,6 +276,18 @@ button:focus-visible{outline:3px solid var(--frost);outline-offset:2px}
 </section>
 
 <script>
+// If anything goes wrong while loading, show it on screen instead of leaving a blank page.
+(function () {
+  function show(msg) {
+    var d = document.getElementById('bootErr');
+    if (!d) { d = document.createElement('div'); d.id = 'bootErr'; d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#3a0d0d;color:#ffe2d6;font:13px/1.4 system-ui,sans-serif;padding:10px 12px;border-radius:10px;border:1px solid #c8432d;white-space:pre-wrap;word-break:break-word'; (document.body || document.documentElement).appendChild(d); }
+    d.textContent = 'Something went wrong. Please tell the developer:\n' + msg;
+  }
+  window.addEventListener('error', function (e) { show((e.message || 'error') + (e.lineno ? ' (line ' + e.lineno + ')' : '')); });
+  window.addEventListener('unhandledrejection', function (e) { show('Promise: ' + (e.reason && (e.reason.message || e.reason))); });
+})();
+</script>
+<script>
 'use strict';
 /* =================== core utils =================== */
 const KS = Math.sin(55 * Math.PI / 180), KC = Math.cos(55 * Math.PI / 180);
@@ -560,7 +572,7 @@ function glow(g, x, y, r, col, a = 0.5) {
 const ATLAS = {};
 const PAGES = [];
 const BGS = [];
-const RS = 1.6;          // sprites are painted at RS x the base sprite density
+const RS = 1.5;          // sprites are painted at RS x the base sprite density
 const SRC = {};          // source rectangle of each sprite in its atlas page (canvas pixels)
 const PAGE_W = 2048;
 let pageG = null, shelfX = 0, shelfY = 0, shelfH = 0;
@@ -1291,7 +1303,7 @@ function getBg(idx) {
   if (!BGS[idx]) {
     // keep a single background in memory: release any other stage's canvas first
     BGS.forEach((c, j) => { if (c && j !== idx) { c.width = c.height = 0; BGS[j] = null; } });
-    BGS[idx] = paintBg(idx, clamp((view.s || 1) * (view.dpr || 1), 1, 1.7));
+    BGS[idx] = paintBg(idx, clamp((view.s || 1) * (view.dpr || 1), 1, 1.6));
   }
   return BGS[idx];
 }
@@ -3038,7 +3050,22 @@ function frame(now) {
   if (G) updateUI();
   requestAnimationFrame(frame);
 }
+// Phones can drop canvas contents after a GPU reset; if the art pages are lost, paint them again.
+let artBusy = false;
+function rebuildArt() {
+  if (artBusy) return; artBusy = true;
+  for (const k in ATLAS) delete ATLAS[k]; for (const k in SRC) delete SRC[k];
+  PAGES.forEach(c => { c.width = c.height = 0; }); PAGES.length = 0; pageG = null; shelfX = shelfY = shelfH = 0;
+  BGS.forEach((c, i) => { if (c) c.width = c.height = 0; BGS[i] = null; });
+  loadAssets().then(() => { artBusy = false; }, () => { artBusy = false; });
+}
+function artLost() {
+  const c = PAGES[0]; if (!c) return false;
+  const g = c.getContext('2d'); return !!(g && g.isContextLost && g.isContextLost());
+}
 function boot(data) {
+  cv.addEventListener('contextrestored', rebuildArt);
+  setInterval(() => { if (!artBusy && artLost()) rebuildArt(); }, 2000);
   if (data && data.save) SAVE = Object.assign(defaultSave(), data.save);
   showTitleBg(0);
   showScreen('title');
