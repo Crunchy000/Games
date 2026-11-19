@@ -2,7 +2,9 @@
 
 <img src="icons/logo.jpg" alt="The Bear & Bean Games sign" width="220">
 
-The Bear & Bean Games is a small arcade of browser games, made for touch screens. Each game lives in its own folder with no build step and is a single self-contained HTML file.
+The Bear & Bean Games: just wholesome mini-games that work offline. Totally free, with no ads, no monetisation and no tracking. Made for touch screens; each game lives in its own folder with no build step and is a single self-contained HTML file.
+
+Play at https://crunchy000.github.io/Games/
 
 | Game | Folder | What it is |
 | --- | --- | --- |

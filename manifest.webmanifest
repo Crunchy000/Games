@@ -2,7 +2,7 @@
   "id": "./",
   "name": "The Bear & Bean Games",
   "short_name": "Bear & Bean",
-  "description": "The Bear & Bean Games: a small arcade of browser games, made for touch screens. Works offline.",
+  "description": "The Bear & Bean Games: wholesome mini-games that work offline. Totally free, with no ads, no monetisation and no tracking.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -28,5 +28,10 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "categories": [
+    "games",
+    "entertainment",
+    "kids"
   ]
 }
