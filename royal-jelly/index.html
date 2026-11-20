@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Royal Jelly</title>
-<meta name="description" content="A queen bee logic puzzle: place one queen bee in every row, column and colour patch, with no two bees touching. A daily puzzle plus endless boards from 6×6 to 9×9. Free, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A Queen Bean logic puzzle: crown one Bean in every row, column and colour patch, with no two Beans touching. A daily puzzle plus endless boards from 6×6 to 9×9. Free, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://crunchy000.github.io/Games/royal-jelly/">
 <style>
   :root { --bg:#fff4dc; --ink:#3b2614; --muted:#8c7356; --panel:#ffe9bf; --line:rgba(59,38,20,.18); --thick:#3b2614; --bad:#d93a3a; --accent:#f2a516; }
@@ -108,18 +108,18 @@
 <div class="ov" id="ovHelp"><div class="card">
   <button class="ib x" data-close>✕</button>
   <h2>How to play</h2>
-  <p>Every hive needs a queen. Place one queen bee in:</p>
+  <p>Every patch needs a queen. Crown one Queen Bean in:</p>
   <ul><li>every <b>row</b></li><li>every <b>column</b></li><li>every <b>colour patch</b></li></ul>
-  <p>And no two queen bees may touch, not even corner to corner.</p>
+  <p>And no two Queen Beans may touch, not even corner to corner.</p>
   <div class="ex" id="exGrid"></div>
-  <p>Tap a square to place a queen bee, and tap her again to take her off. Squares she rules out get dotted for you automatically.</p><p>You can also drag across squares to add your own dots as reminders.</p>
+  <p>Tap a square to place a Queen Bean, and tap her again to take her off. Squares she rules out get dotted for you automatically.</p><p>You can also drag across squares to add your own dots as reminders.</p>
   <p>Every puzzle has exactly one answer, so you never need to guess.</p>
   <div class="row2"><button class="btn" data-close>Let's play</button></div>
 </div></div>
 <div class="ov" id="ovSet"><div class="card">
   <button class="ib x" data-close>✕</button>
   <h2>Settings</h2>
-  <div class="set"><div>Show clashes<small>Stripe squares where two bees break a rule</small></div><button class="sw" id="swClash"></button></div>
+  <div class="set"><div>Show clashes<small>Stripe squares where two Beans break a rule</small></div><button class="sw" id="swClash"></button></div>
   <div class="set"><div>Sound</div><button class="sw" id="swSound"></button></div>
 </div></div>
 <div class="ov" id="ovWin"><div class="card">
@@ -250,7 +250,7 @@ function analyse() {
 }
 
 /* ---------- drawing ---------- */
-const BEE = `<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="13" cy="16" rx="7" ry="5" fill="#fff" stroke="#3b2614" stroke-width="1.6" opacity=".95" transform="rotate(-30 13 16)"/><ellipse cx="27" cy="16" rx="7" ry="5" fill="#fff" stroke="#3b2614" stroke-width="1.6" opacity=".95" transform="rotate(30 27 16)"/><ellipse cx="20" cy="25" rx="10" ry="9.5" fill="#ffc21a" stroke="#3b2614" stroke-width="2"/><path d="M11.5 22.5h17M11 27h18" stroke="#3b2614" stroke-width="3" stroke-linecap="round"/><circle cx="16.5" cy="20" r="1.6" fill="#3b2614"/><circle cx="23.5" cy="20" r="1.6" fill="#3b2614"/><path d="M12.5 12.5l2.5-6 3 4 2-5 2 5 3-4 2.5 6z" fill="#ffd84a" stroke="#b37a00" stroke-width="1.4" stroke-linejoin="round"/><circle cx="20" cy="6.2" r="1.3" fill="#ff5fa2"/></svg>`;
+const BEE = `<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="35.5" rx="10" ry="2" fill="#3b2614" opacity=".18"/><path d="M6.5 24.5C5.8 15.5 13.5 12.6 19.5 16.4C25.5 11.8 34.8 14.6 33.8 24.2C33 32.6 25.6 35.6 19.6 35.2C11.6 34.7 6.9 31 6.5 24.5Z" fill="#ff5fa2" stroke="#8a1f4c" stroke-width="1.8" stroke-linejoin="round"/><ellipse cx="12.4" cy="21" rx="3.4" ry="1.7" fill="#fff" opacity=".75" transform="rotate(-28 12.4 21)"/><circle cx="15.8" cy="25.4" r="2.5" fill="#3b2614"/><circle cx="24.4" cy="25.4" r="2.5" fill="#3b2614"/><circle cx="16.6" cy="24.6" r=".9" fill="#fff"/><circle cx="25.2" cy="24.6" r=".9" fill="#fff"/><path d="M17.3 29.4q2.8 2.4 5.6 0" stroke="#3b2614" stroke-width="1.6" fill="none" stroke-linecap="round"/><ellipse cx="12.2" cy="28.6" rx="2.2" ry="1.3" fill="#ff9cc6"/><ellipse cx="28" cy="28.6" rx="2.2" ry="1.3" fill="#ff9cc6"/><path d="M12.6 15.6L13.4 6.6L17.3 10.6L20 4.6L22.7 10.6L26.6 6.6L27.4 15.6Q20 13.2 12.6 15.6Z" fill="#ffd23f" stroke="#b37a00" stroke-width="1.4" stroke-linejoin="round"/><circle cx="20" cy="4.6" r="1.5" fill="#ffd23f" stroke="#b37a00" stroke-width="1"/><circle cx="20" cy="12.2" r="1.3" fill="#7bd3ff"/></svg>`;
 function build() {
   const b = $('board'), n = P.n; b.innerHTML = ''; b.classList.toggle('won', !!G.done);
   b.style.gridTemplateColumns = `repeat(${n}, 1fr)`; b.style.gridTemplateRows = `repeat(${n}, 1fr)`;
@@ -272,12 +272,12 @@ function render() {
     if (d.dataset.v !== want) { d.dataset.v = want; d.innerHTML = want === 'q' ? BEE : want === 'd' ? '<div class="dot"></div>' : want === 'a' ? '<div class="dot auto"></div>' : ''; }
     d.classList.toggle('clash', S.clash && a.clash.has(i));
     d.classList.toggle('hint', i === hintCell);
-    d.setAttribute('aria-label', `Row ${((i / P.n) | 0) + 1}, column ${i % P.n + 1}${v === 2 ? ', queen bee' : v === 1 ? ', dot' : ''}`);
+    d.setAttribute('aria-label', `Row ${((i / P.n) | 0) + 1}, column ${i % P.n + 1}${v === 2 ? ', Queen Bean' : v === 1 ? ', dot' : ''}`);
   }
   $('bUndo').disabled = !hist.length || G.done;
   $('bHint').disabled = $('bClear').disabled = G.done;
   document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
-  $('msg').textContent = G.done ? 'Solved! Pick a size for a new puzzle.' : S.mode === 'daily' ? `Daily hive #${G.day + 1} · ${a.q.length} of ${P.n} queens` : `${a.q.length} of ${P.n} queens placed`;
+  $('msg').textContent = G.done ? 'Solved! Pick a size for a new puzzle.' : S.mode === 'daily' ? `Daily puzzle #${G.day + 1} · ${a.q.length} of ${P.n} queens` : `${a.q.length} of ${P.n} queens placed`;
   tickTime();
   return a;
 }
@@ -325,19 +325,19 @@ function undo() { const h = hist.pop(); if (!h || G.done) return; for (const [i,
 function hint() {
   if (G.done) return;
   const n = P.n, solSet = new Set(P.sol.map((c, r) => r * n + c));
-  // first fix mistakes: a bee in the wrong place, then a dot on a bee's square
+  // first fix mistakes: a Bean in the wrong place, then a dot on a Bean's square
   const wrongBee = G.cells.findIndex((v, i) => v === 2 && !solSet.has(i));
   const wrongDot = G.cells.findIndex((v, i) => v === 1 && solSet.has(i));
   let i, v, say;
-  if (wrongBee >= 0) { i = wrongBee; v = 0; say = 'That queen bee can’t stay there, so I’ve taken her off.'; }
-  else if (wrongDot >= 0) { i = wrongDot; v = 0; say = 'A queen bee belongs on this dotted square, so I’ve cleared the dot.'; }
+  if (wrongBee >= 0) { i = wrongBee; v = 0; say = 'That Queen Bean can’t stay there, so I’ve taken her off.'; }
+  else if (wrongDot >= 0) { i = wrongDot; v = 0; say = 'A Queen Bean belongs on this dotted square, so I’ve cleared the dot.'; }
   else {
     // reveal the queen of the patch with the fewest open squares left
     const a = analyse(), open = Array(n).fill(0), has = Array(n).fill(false);
     G.cells.forEach((x, j) => { if (x === 2) has[P.reg[j]] = true; else if (x === 0 && !a.ruled.has(j)) open[P.reg[j]]++; });
     let best = -1; for (let g = 0; g < n; g++) if (!has[g] && (best < 0 || open[g] < open[best])) best = g;
     if (best < 0) return;
-    i = [...solSet].find(j => P.reg[j] === best); v = 2; say = 'Here’s a queen bee to get you going.';
+    i = [...solSet].find(j => P.reg[j] === best); v = 2; say = 'Here’s a Queen Bean to get you going.';
   }
   G.hints++; setCells([[i, v]]); hintCell = i; render(); $('msg').textContent = say; save();
 }
@@ -353,8 +353,8 @@ function win() {
   [523, 659, 784, 1047, 1319].forEach((f, k) => tone(f, .22, 'triangle', .05, .15 + k * .09));
   setTimeout(confetti, 200);
   setTimeout(() => {
-    $('winSub').textContent = `${S.mode === 'daily' ? 'Daily hive' : P.n + '×' + P.n + ' hive'} solved in ${fmt(G.time)}${G.hints ? ` with ${G.hints} hint${G.hints > 1 ? 's' : ''}` : ''}.`;
-    $('winTitle').textContent = G.hints ? 'Long live the queens!' : ['Long live the queens!', 'A right royal job!', 'Buzzing! Every hive has a queen.'][(Math.random() * 3) | 0];
+    $('winSub').textContent = `${S.mode === 'daily' ? 'Daily puzzle' : P.n + '×' + P.n + ' puzzle'} solved in ${fmt(G.time)}${G.hints ? ` with ${G.hints} hint${G.hints > 1 ? 's' : ''}` : ''}.`;
+    $('winTitle').textContent = G.hints ? 'Long live the queens!' : ['Long live the queens!', 'A right royal job!', 'Every patch has its Queen Bean!'][(Math.random() * 3) | 0];
     $('winStats').innerHTML = `<div><b>${st.solved}</b><span>SOLVED</span></div><div><b>${st.best[key] != null ? fmt(st.best[key]) : '–'}</b><span>BEST ${P.n}×${P.n}</span></div><div><b>${st.streak}</b><span>DAILY STREAK</span></div>`;
     $('winBtns').innerHTML = S.mode === 'daily' ? `<button class="btn" data-new="7">Try a 7×7</button><button class="btn soft" data-close>Admire it</button>` : `<button class="btn" data-new="${S.mode}">Next puzzle</button><button class="btn soft" data-close>Admire it</button>`;
     $('ovWin').classList.add('show');

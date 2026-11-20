@@ -8,7 +8,7 @@ Play at https://crunchy000.github.io/Games/
 
 | Game | Folder | What it is |
 | --- | --- | --- |
-| Royal Jelly | [`royal-jelly/`](royal-jelly/) | Queen bee logic puzzle: one bee per row, column and colour patch, and no two bees touching. Generated boards from 6×6 to 9×9, each with exactly one answer, plus a daily 8×8, dots, hints, undo and best times. |
+| Royal Jelly | [`royal-jelly/`](royal-jelly/) | Queen Bean logic puzzle: crown one Bean per row, column and colour patch, with no two Beans touching. Generated boards from 6×6 to 9×9, each with exactly one answer, plus a daily 8×8, dots, hints, undo and best times. |
 | Thin Ice | [`thin-ice/`](thin-ice/) | Bear and Bean take turns knocking blocks out of a frozen pond; unsupported blocks drop too. Whoever drops Pip the penguin loses. Three pond sizes, undo, and a computer opponent. |
 | Bean Grab | [`bean-grab/`](bean-grab/) | Two players on one phone laid flat: tap your half to send your hippo chomping at rolling jelly beans. Gold beans are worth 3. Also plays against the computer. |
 | Guess Five | [`guess-five/`](guess-five/) | Five-letter word puzzle in six guesses with a daily word and endless mode, hard mode, high-contrast colours, stats and sharing. British English word list. |
