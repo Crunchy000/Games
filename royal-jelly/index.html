@@ -42,7 +42,7 @@
   .cell::after { content:''; position:absolute; inset:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); pointer-events:none; }
   .cell.clash { background-image:repeating-linear-gradient(45deg, rgba(217,58,58,.38) 0 5px, transparent 5px 10px) !important; }
   .cell .dot { width:22%; height:22%; border-radius:50%; background:rgba(59,38,20,.55); }
-  .cell .dot.auto { background:rgba(59,38,20,.2); }
+  .cell .dot.auto { background:rgba(59,38,20,.32); width:18%; height:18%; }
   .cell svg { width:78%; height:78%; animation:pop .22s cubic-bezier(.3,1.6,.5,1); overflow:visible; }
   .cell.bad svg { filter:drop-shadow(0 0 0 var(--bad)); }
   .cell.bad::before { content:''; position:absolute; inset:3px; border:2.5px solid var(--bad); border-radius:8px; pointer-events:none; }
@@ -112,14 +112,13 @@
   <ul><li>every <b>row</b></li><li>every <b>column</b></li><li>every <b>colour patch</b></li></ul>
   <p>And no two queen bees may touch, not even corner to corner.</p>
   <div class="ex" id="exGrid"></div>
-  <p>Tap a square once for a dot (a reminder that no bee goes there), twice for a queen bee, and again to clear it. Drag across squares to dot lots at once.</p>
+  <p>Tap a square to place a queen bee, and tap her again to take her off. Squares she rules out get dotted for you automatically.</p><p>You can also drag across squares to add your own dots as reminders.</p>
   <p>Every puzzle has exactly one answer, so you never need to guess.</p>
   <div class="row2"><button class="btn" data-close>Let's play</button></div>
 </div></div>
 <div class="ov" id="ovSet"><div class="card">
   <button class="ib x" data-close>✕</button>
   <h2>Settings</h2>
-  <div class="set"><div>Auto dots<small>Faintly dot the squares a queen bee rules out</small></div><button class="sw" id="swAuto"></button></div>
   <div class="set"><div>Show clashes<small>Stripe squares where two bees break a rule</small></div><button class="sw" id="swClash"></button></div>
   <div class="set"><div>Sound</div><button class="sw" id="swSound"></button></div>
 </div></div>
@@ -269,7 +268,7 @@ function render() {
   const a = analyse(), cells = $('board').children;
   for (let i = 0; i < cells.length; i++) {
     const d = cells[i], v = G.cells[i];
-    const want = v === 2 ? 'q' : v === 1 ? 'd' : S.auto && a.ruled.has(i) ? 'a' : '';
+    const want = v === 2 ? 'q' : v === 1 ? 'd' : a.ruled.has(i) ? 'a' : '';
     if (d.dataset.v !== want) { d.dataset.v = want; d.innerHTML = want === 'q' ? BEE : want === 'd' ? '<div class="dot"></div>' : want === 'a' ? '<div class="dot auto"></div>' : ''; }
     d.classList.toggle('clash', S.clash && a.clash.has(i));
     d.classList.toggle('hint', i === hintCell);
@@ -384,7 +383,7 @@ function paint(i) {
 board.addEventListener('pointerup', () => {
   if (!drag) return; const d = drag; drag = null;
   if (d.moved) { if (d.batch.length) { hist.push(d.batch); hintCell = -1; save(); render(); } return; }
-  const v = G.cells[d.start]; setCells([[d.start, (v + 1) % 3]]);
+  setCells([[d.start, G.cells[d.start] === 2 ? 0 : 2]]);
 });
 board.addEventListener('pointercancel', () => { if (drag && drag.batch.length) { hist.push(drag.batch); save(); } drag = null; });
 
@@ -392,7 +391,7 @@ board.addEventListener('pointercancel', () => { if (drag && drag.batch.length) {
 document.querySelectorAll('#seg button').forEach(b => b.addEventListener('click', () => { load(b.dataset.m); }));
 $('bUndo').onclick = undo; $('bHint').onclick = hint; $('bClear').onclick = clearAll;
 const sw = (id, key, inv) => { const e = $(id); const upd = () => e.classList.toggle('on', inv ? !S[key] : !!S[key]); upd(); e.onclick = () => { S[key] = !S[key]; save(); upd(); render(); }; };
-sw('swAuto', 'auto'); sw('swClash', 'clash'); sw('swSound', 'muted', true);
+sw('swClash', 'clash'); sw('swSound', 'muted', true);
 const open = id => $(id).classList.add('show');
 $('bHelp').onclick = () => open('ovHelp'); $('bSet').onclick = () => open('ovSet');
 $('bStats').onclick = () => {
