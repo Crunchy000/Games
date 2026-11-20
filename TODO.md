@@ -11,3 +11,7 @@ word flow
 cut the rope
 
 magic sort with Ilse white color sand in test tubes
+
+pixel.flow color bears eating color.neans
+
+cleaning proggresion with leave sweeping 
