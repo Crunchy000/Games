@@ -42,47 +42,133 @@
   .stars span.on { color:#f5a524; transform:scale(1); }
   .how { text-align:left; font-size:.95rem; }
 </style>
+<style id="pub-kit">
+/* The Bear & Bean pub kit: aged wood buttons, framed boards and the house signs.
+   tools/pub-kit.py copies this into every game so each page stays self-contained. */
+:root {
+  --pk-oak-hi:#e2b27a; --pk-oak:#c18a52; --pk-oak-lo:#94612f;
+  --pk-wal-hi:#5e3b20; --pk-wal:#47291a; --pk-wal-lo:#2f1a0e; --pk-edge:#221208;
+  --pk-cream:#fbefd6; --pk-cream-dim:#dcc5a0; --pk-ink:#2e1a0d; --pk-brass:#e5b65a;
+  --pk-slab:"Rockwell","Roboto Slab","Zilla Slab","Arvo",Georgia,"Times New Roman",serif;
+  --pk-grain:repeating-linear-gradient(177deg, rgba(255,232,196,.07) 0 1px, transparent 1px 4px, rgba(35,15,4,.10) 4px 5px, transparent 5px 9px),
+             repeating-linear-gradient(181deg, transparent 0 13px, rgba(35,15,4,.07) 13px 15px, transparent 15px 23px);
+}
+/* buttons: a plank of light oak with engraved lettering; .alt is dark walnut */
+.pk-btn {
+  position:relative !important; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:0 !important; border-radius:10px !important; padding:12px 26px !important; text-decoration:none !important;
+  font:800 1.05rem/1.1 var(--pk-slab) !important; letter-spacing:.02em; cursor:pointer;
+  color:var(--pk-ink) !important; text-shadow:0 1px 0 rgba(255,236,204,.55) !important;
+  background:var(--pk-grain), radial-gradient(ellipse 16px 5px at 28% 62%, rgba(90,50,18,.35), transparent 75%),
+             linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak) 55%, var(--pk-oak-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,240,215,.55), inset 0 0 0 1px rgba(60,30,8,.45), inset 0 0 10px rgba(60,30,8,.25),
+             0 3px 0 var(--pk-edge), 0 7px 14px rgba(0,0,0,.28) !important;
+  transition:transform .08s, box-shadow .08s;
+}
+.pk-btn::before, .pk-btn::after {
+  content:''; position:absolute; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #fbe3a6, #a8761f 70%); box-shadow:0 1px 0 rgba(0,0,0,.35);
+}
+.pk-btn::before { left:8px; } .pk-btn::after { right:8px; }
+.pk-btn.pk-alt {
+  color:var(--pk-cream) !important; text-shadow:0 1px 0 rgba(0,0,0,.6) !important;
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal) 55%, var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.18), inset 0 0 0 1px rgba(0,0,0,.4), 0 3px 0 var(--pk-edge), 0 7px 14px rgba(0,0,0,.28) !important;
+}
+.pk-btn.pk-small { padding:9px 20px !important; font-size:.9rem !important; }
+.pk-btn:active { transform:translateY(2px); box-shadow:inset 0 0 0 1px rgba(60,30,8,.45), 0 1px 0 var(--pk-edge), 0 2px 5px rgba(0,0,0,.25) !important; }
+.pk-btn:disabled { opacity:.45; cursor:default; }
+/* chips: small wooden toolbar buttons (no nails) */
+.pk-chip {
+  border:0 !important; border-radius:9px !important; font-family:var(--pk-slab) !important; font-weight:800 !important;
+  color:var(--pk-cream) !important; text-shadow:0 1px 0 rgba(0,0,0,.55);
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.18), inset 0 0 0 1px rgba(0,0,0,.4), 0 2px 0 var(--pk-edge) !important;
+}
+.pk-chip.on, .pk-chip[aria-pressed="true"] {
+  color:var(--pk-ink) !important; text-shadow:0 1px 0 rgba(255,236,204,.5);
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak-lo)) !important;
+}
+/* boards: a dark stained panel in an oak frame, with a brass nail in each corner */
+.pk-card {
+  color:var(--pk-cream) !important;
+  border:7px solid transparent !important; border-radius:16px !important;
+  background:
+    radial-gradient(circle at 9px 9px, #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 9px) 9px, #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at 9px calc(100% - 9px), #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    var(--pk-grain) padding-box,
+    radial-gradient(ellipse at 50% 0%, rgba(255,210,150,.12), transparent 60%) padding-box,
+    linear-gradient(180deg, #553219, #3b2112) padding-box,
+    var(--pk-grain) border-box,
+    linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak-lo)) border-box !important;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.45), inset 0 0 24px rgba(0,0,0,.35), 0 0 0 1px var(--pk-edge), 0 18px 40px rgba(0,0,0,.45) !important;
+}
+.pk-card :is(h2, h3) { font-family:var(--pk-slab) !important; color:var(--pk-cream) !important; }
+.pk-card :is(p, li, small, label, dd, dt) { color:var(--pk-cream-dim) !important; }
+.pk-card b, .pk-card strong { color:var(--pk-cream) !important; }
+/* "The Bear & Bean presents", with both landlords' faces */
+.pk-presents { display:flex; align-items:center; justify-content:center; gap:7px; margin:0 0 10px;
+  font:800 .64rem/1 var(--pk-slab); letter-spacing:.16em; text-transform:uppercase; color:var(--pk-brass); }
+.pk-presents img { width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid var(--pk-oak); }
+/* a word from Bear or Bean */
+.pk-says { display:flex; align-items:center; gap:10px; text-align:left; margin:12px auto 6px; padding:8px 12px; max-width:290px;
+  border-radius:12px; background:rgba(0,0,0,.22); box-shadow:inset 0 0 0 1px rgba(255,220,170,.12); }
+.pk-says img { width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:3px solid var(--pk-oak); }
+.pk-says b { display:block; font:800 .66rem/1.2 var(--pk-slab); letter-spacing:.1em; text-transform:uppercase; color:var(--pk-brass) !important; }
+.pk-says span { display:block; font-weight:800; font-size:.98rem; color:var(--pk-cream); }
+/* the way home: a little wooden sign with a house on it */
+.pk-home { color:var(--pk-cream) !important;
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.2), inset 0 0 0 1px rgba(0,0,0,.45), 0 2px 0 var(--pk-edge), 0 4px 10px rgba(0,0,0,.25) !important;
+  border:0 !important; border-radius:11px !important; }
+.pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
+.pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
+</style>
 </head>
 <body>
 <div id="app">
   <canvas id="c"></canvas>
 
-  <div class="ov" id="ovMenu"><div class="panel">
+  <div class="ov" id="ovMenu"><div class="panel pk-card">
+    <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
     <h1>D<span class="d" style="background:#ff6b6b"></span>t L<span class="d" style="background:#4dabf7"></span><span class="d" style="background:#51cf66"></span>p</h1>
     <p>Connect dots of the same colour. Close a loop to clear them all.</p>
     <div class="levels" id="levels"></div>
-    <button class="btn" id="btnPlay">Play</button><button class="btn soft" id="btnTimed">60-second dash</button><br>
-    <button class="btn soft" id="btnHow">How to play</button><a class="btn soft" href="../" style="text-decoration:none;display:inline-block">All games</a>
+    <button class="btn pk-btn" id="btnPlay">Play</button><button class="btn soft pk-btn pk-alt" id="btnTimed">60-second dash</button><br>
+    <button class="btn soft pk-btn pk-alt" id="btnHow">How to play</button><a class="btn soft pk-btn pk-alt" href="../" style="text-decoration:none;display:inline-block">All games</a>
   </div></div>
 
-  <div class="ov" id="ovHow"><div class="panel how">
+  <div class="ov" id="ovHow"><div class="panel how pk-card">
     <h2 style="text-align:center">How to play</h2>
     <p>Drag across neighbouring dots of the <b>same colour</b> (up, down, left or right) to link them. Let go to clear them.</p>
     <p>Drag back over a dot to undo the last link.</p>
     <p>Join back onto your own line to close a <b>loop</b>. A loop clears <b>every</b> dot of that colour on the board, and any dots trapped inside it too.</p>
     <p><b>Levels:</b> collect the dots shown before you run out of moves. Moves left over earn stars.</p>
     <p><b>60-second dash:</b> clear as many dots as you can. Every loop adds 2 seconds.</p>
-    <div style="text-align:center"><button class="btn" id="btnHowOk">Got it</button></div>
+    <div style="text-align:center"><button class="btn pk-btn" id="btnHowOk">Got it</button></div>
   </div></div>
 
-  <div class="ov" id="ovStart"><div class="panel">
+  <div class="ov" id="ovStart"><div class="panel pk-card">
     <h2 id="stTitle">Level 1</h2>
     <p id="stText"></p>
     <div class="goals" id="stGoals"></div>
-    <button class="btn" id="btnGo">Start</button>
+    <button class="btn pk-btn" id="btnGo">Start</button>
   </div></div>
 
-  <div class="ov" id="ovPause"><div class="panel">
+  <div class="ov" id="ovPause"><div class="panel pk-card">
     <h2>Paused</h2>
-    <button class="btn" id="btnResume">Resume</button><br>
-    <button class="btn soft" id="btnRestart">Restart</button><button class="btn soft" id="btnSound">Sound: on</button><br>
-    <button class="btn soft" id="btnMap">Menu</button><a class="btn soft" href="../" style="text-decoration:none;display:inline-block">All games</a>
+    <button class="btn pk-btn" id="btnResume">Resume</button><br>
+    <button class="btn soft pk-btn pk-alt" id="btnRestart">Restart</button><button class="btn soft pk-btn pk-alt" id="btnSound">Sound: on</button><br>
+    <button class="btn soft pk-btn pk-alt" id="btnMap">Menu</button><a class="btn soft pk-btn pk-alt" href="../" style="text-decoration:none;display:inline-block">All games</a>
   </div></div>
 
-  <div class="ov" id="ovEnd"><div class="panel">
+  <div class="ov" id="ovEnd"><div class="panel pk-card">
     <h2 id="endTitle">Level complete</h2>
     <div class="stars" id="endStars"><span>★</span><span>★</span><span>★</span></div>
     <p id="endText"></p>
+    <div class="pk-says" data-lines='["Dot-tastic! Another round?", "Loop-de-loop, lovely!", "So close! One more go?", "Jelly good show!"]'><img src="../icons/bean.png" alt=""><div><b>Bean says</b><span>Dot-tastic! Another round?</span></div></div>
     <div id="endBtns"></div>
   </div></div>
 </div>
@@ -379,8 +465,8 @@ function endLevel(won) {
   $('endTitle').textContent = won ? 'Level complete' : 'Out of moves';
   $('endText').textContent = won ? (moves ? `${moves} move${moves > 1 ? 's' : ''} to spare` : 'Just made it!') : 'So close. Give it another go?';
   setStars(stars);
-  $('endBtns').innerHTML = won ? '<button class="btn" id="eNext">Next level</button><button class="btn soft" id="eAgain">Replay</button><br><button class="btn soft" id="eMenu">Menu</button>'
-                               : '<button class="btn" id="eAgain">Try again</button><button class="btn soft" id="eMenu">Menu</button>';
+  $('endBtns').innerHTML = won ? '<button class="btn pk-btn" id="eNext">Next level</button><button class="btn soft pk-btn pk-alt" id="eAgain">Replay</button><br><button class="btn soft pk-btn pk-alt" id="eMenu">Menu</button>'
+                               : '<button class="btn pk-btn" id="eAgain">Try again</button><button class="btn soft pk-btn pk-alt" id="eMenu">Menu</button>';
   if (won) $('eNext').onclick = () => openStart(L.n + 1);
   $('eAgain').onclick = () => openStart(L.n); $('eMenu').onclick = openMenu;
   setTimeout(() => show('ovEnd'), 400);
@@ -389,7 +475,7 @@ function endTimed() {
   state = 'end'; const nb = score > save.best; if (nb) { save.best = score; persist(); }
   $('endTitle').textContent = "Time's up!"; $('endText').textContent = `${score.toLocaleString('en-GB')} points${nb ? ' · new best!' : ' · best ' + save.best.toLocaleString('en-GB')}`;
   setStars(-1); [0, 4, 7, 12].forEach((s, i) => note(s, .5, .07, i * .1));
-  $('endBtns').innerHTML = '<button class="btn" id="eAgain">Play again</button><button class="btn soft" id="eMenu">Menu</button>';
+  $('endBtns').innerHTML = '<button class="btn pk-btn" id="eAgain">Play again</button><button class="btn soft pk-btn pk-alt" id="eMenu">Menu</button>';
   $('eAgain').onclick = startTimed; $('eMenu').onclick = openMenu; show('ovEnd');
 }
 function setStars(n) {
@@ -411,6 +497,11 @@ openMenu();
 if (/[?&]debug\b/.test(location.search)) window.__dl = { get state() { return state; }, get grid() { return grid; }, get moves() { return moves; }, get L() { return L; }, get score() { return score; }, collected: () => collected, BX, CS, get BY() { return BY; } };
 requestAnimationFrame(frame);
 })();
+</script>
+<script id="pub-kit-says">
+(() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
+  const go = () => { const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.isIntersecting && pick(e.target))) : null; document.querySelectorAll('.pk-says').forEach(el => { pick(el); if (io) io.observe(el); }); };
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
 </script>
 </body>
 </html>

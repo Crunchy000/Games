@@ -8,13 +8,13 @@ Play at https://crunchy000.github.io/Games/
 
 | Game | Folder | What it is |
 | --- | --- | --- |
-| Royal Jelly | [`royal-jelly/`](royal-jelly/) | Queen Bean logic puzzle: crown one Bean per row, column and colour patch, with no two Beans touching. Generated boards from 6×6 to 9×9, each with exactly one answer, plus a daily 8×8, dots, hints, undo and best times. |
+| Queen Bean | [`queen-bean/`](queen-bean/) | Queen Bean logic puzzle: crown one Bean per row, column and colour patch, with no two Beans touching. Generated boards from 6×6 to 9×9, each with exactly one answer, plus a daily 8×8, dots, hints, undo and best times. |
 | Thin Ice | [`thin-ice/`](thin-ice/) | Bear and Bean take turns knocking blocks out of a frozen pond; unsupported blocks drop too. Whoever drops Pip the penguin (on a random inner block each game) loses. Three pond sizes, undo, and a computer opponent. Three pond sizes, undo, and a computer opponent. |
-| Bean Grab | [`bean-grab/`](bean-grab/) | Two players on one phone laid flat: tap your half to send your hippo chomping at rolling jelly beans. Gold beans are worth 3. Also plays against the computer. |
+| Greedy Hippos | [`greedy-hippos/`](greedy-hippos/) | Two players on one phone laid flat: tap your half to send your hippo chomping at rolling jelly beans. Gold beans are worth 3. Also plays against the computer. |
 | Guess Five | [`guess-five/`](guess-five/) | Five-letter word puzzle in six guesses with a daily word and endless mode, hard mode, high-contrast colours, stats and sharing. British English word list. |
 | Word Hive | [`word-hive/`](word-hive/) | Honeycomb word puzzle: make words from seven letters using the centre letter. 200 hives (a new one each day), ranks, hints grid and bonus words. |
 | Sudoku | [`sudoku/`](sudoku/) | Sudoku with puzzles generated on the fly (always one solution), four difficulty levels, notes, hints, undo, mistake checking and best times. |
-| Bean Merge | [`bean-merge/`](bean-merge/) | Sliding merge puzzle on a 4×4 wooden board: matching jelly beans merge and double, up to the golden 2048 bean and beyond. Undo, best score and saved games. |
+| Bean 2048 | [`bean-2048/`](bean-2048/) | Sliding merge puzzle on a 4×4 wooden board: matching jelly beans merge and double, up to the golden 2048 bean and beyond. Undo, best score and saved games. |
 | Stack Drop | [`stack-drop/`](stack-drop/) | Hold to send Bean (the jelly bean) bouncing down a spinning papercraft tower of sweets; let go before the liquorice. Keep going for a sugar rush that breaks through anything. Endless levels, with Bear cheering you on. |
 | Tangle Tails | [`tangle-tails/`](tangle-tails/) | Untangling puzzle: tap snakes to slither them off the board in the direction they face. Blocked snakes bonk and cost a heart, so free them in the right order. Endless solvable levels, hints and star ratings. |
 | Slither Slide | [`slither-slide/`](slither-slide/) | Maze-painting puzzle: swipe a cartoon snake that slides until it hits a wall, painting every tile it crosses. Endless solvable levels, star ratings and six unlockable snakes. |

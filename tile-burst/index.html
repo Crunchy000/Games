@@ -36,11 +36,198 @@
   .rules { text-align:left; font-size:.95rem; }
   .rules li { margin:4px 0; }
 </style>
+<style id="pub-kit">
+/* The Bear & Bean pub kit: aged wood buttons, framed boards and the house signs.
+   tools/pub-kit.py copies this into every game so each page stays self-contained. */
+:root {
+  --pk-oak-hi:#e2b27a; --pk-oak:#c18a52; --pk-oak-lo:#94612f;
+  --pk-wal-hi:#5e3b20; --pk-wal:#47291a; --pk-wal-lo:#2f1a0e; --pk-edge:#221208;
+  --pk-cream:#fbefd6; --pk-cream-dim:#dcc5a0; --pk-ink:#2e1a0d; --pk-brass:#e5b65a;
+  --pk-slab:"Rockwell","Roboto Slab","Zilla Slab","Arvo",Georgia,"Times New Roman",serif;
+  --pk-grain:repeating-linear-gradient(177deg, rgba(255,232,196,.07) 0 1px, transparent 1px 4px, rgba(35,15,4,.10) 4px 5px, transparent 5px 9px),
+             repeating-linear-gradient(181deg, transparent 0 13px, rgba(35,15,4,.07) 13px 15px, transparent 15px 23px);
+}
+/* buttons: a plank of light oak with engraved lettering; .alt is dark walnut */
+.pk-btn {
+  position:relative !important; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:0 !important; border-radius:10px !important; padding:12px 26px !important; text-decoration:none !important;
+  font:800 1.05rem/1.1 var(--pk-slab) !important; letter-spacing:.02em; cursor:pointer;
+  color:var(--pk-ink) !important; text-shadow:0 1px 0 rgba(255,236,204,.55) !important;
+  background:var(--pk-grain), radial-gradient(ellipse 16px 5px at 28% 62%, rgba(90,50,18,.35), transparent 75%),
+             linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak) 55%, var(--pk-oak-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,240,215,.55), inset 0 0 0 1px rgba(60,30,8,.45), inset 0 0 10px rgba(60,30,8,.25),
+             0 3px 0 var(--pk-edge), 0 7px 14px rgba(0,0,0,.28) !important;
+  transition:transform .08s, box-shadow .08s;
+}
+.pk-btn::before, .pk-btn::after {
+  content:''; position:absolute; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #fbe3a6, #a8761f 70%); box-shadow:0 1px 0 rgba(0,0,0,.35);
+}
+.pk-btn::before { left:8px; } .pk-btn::after { right:8px; }
+.pk-btn.pk-alt {
+  color:var(--pk-cream) !important; text-shadow:0 1px 0 rgba(0,0,0,.6) !important;
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal) 55%, var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.18), inset 0 0 0 1px rgba(0,0,0,.4), 0 3px 0 var(--pk-edge), 0 7px 14px rgba(0,0,0,.28) !important;
+}
+.pk-btn.pk-small { padding:9px 20px !important; font-size:.9rem !important; }
+.pk-btn:active { transform:translateY(2px); box-shadow:inset 0 0 0 1px rgba(60,30,8,.45), 0 1px 0 var(--pk-edge), 0 2px 5px rgba(0,0,0,.25) !important; }
+.pk-btn:disabled { opacity:.45; cursor:default; }
+/* chips: small wooden toolbar buttons (no nails) */
+.pk-chip {
+  border:0 !important; border-radius:9px !important; font-family:var(--pk-slab) !important; font-weight:800 !important;
+  color:var(--pk-cream) !important; text-shadow:0 1px 0 rgba(0,0,0,.55);
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.18), inset 0 0 0 1px rgba(0,0,0,.4), 0 2px 0 var(--pk-edge) !important;
+}
+.pk-chip.on, .pk-chip[aria-pressed="true"] {
+  color:var(--pk-ink) !important; text-shadow:0 1px 0 rgba(255,236,204,.5);
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak-lo)) !important;
+}
+/* boards: a dark stained panel in an oak frame, with a brass nail in each corner */
+.pk-card {
+  color:var(--pk-cream) !important;
+  border:7px solid transparent !important; border-radius:16px !important;
+  background:
+    radial-gradient(circle at 9px 9px, #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 9px) 9px, #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at 9px calc(100% - 9px), #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    var(--pk-grain) padding-box,
+    radial-gradient(ellipse at 50% 0%, rgba(255,210,150,.12), transparent 60%) padding-box,
+    linear-gradient(180deg, #553219, #3b2112) padding-box,
+    var(--pk-grain) border-box,
+    linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak-lo)) border-box !important;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.45), inset 0 0 24px rgba(0,0,0,.35), 0 0 0 1px var(--pk-edge), 0 18px 40px rgba(0,0,0,.45) !important;
+}
+.pk-card :is(h2, h3) { font-family:var(--pk-slab) !important; color:var(--pk-cream) !important; }
+.pk-card :is(p, li, small, label, dd, dt) { color:var(--pk-cream-dim) !important; }
+.pk-card b, .pk-card strong { color:var(--pk-cream) !important; }
+/* "The Bear & Bean presents", with both landlords' faces */
+.pk-presents { display:flex; align-items:center; justify-content:center; gap:7px; margin:0 0 10px;
+  font:800 .64rem/1 var(--pk-slab); letter-spacing:.16em; text-transform:uppercase; color:var(--pk-brass); }
+.pk-presents img { width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid var(--pk-oak); }
+/* a word from Bear or Bean */
+.pk-says { display:flex; align-items:center; gap:10px; text-align:left; margin:12px auto 6px; padding:8px 12px; max-width:290px;
+  border-radius:12px; background:rgba(0,0,0,.22); box-shadow:inset 0 0 0 1px rgba(255,220,170,.12); }
+.pk-says img { width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:3px solid var(--pk-oak); }
+.pk-says b { display:block; font:800 .66rem/1.2 var(--pk-slab); letter-spacing:.1em; text-transform:uppercase; color:var(--pk-brass) !important; }
+.pk-says span { display:block; font-weight:800; font-size:.98rem; color:var(--pk-cream); }
+/* the way home: a little wooden sign with a house on it */
+.pk-home { color:var(--pk-cream) !important;
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.2), inset 0 0 0 1px rgba(0,0,0,.45), 0 2px 0 var(--pk-edge), 0 4px 10px rgba(0,0,0,.25) !important;
+  border:0 !important; border-radius:11px !important; }
+.pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
+.pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
+</style>
+<script id="pub-kit-canvas">
+/* The Bear & Bean pub kit for canvas games: the same aged wood, drawn with a 2D context.
+   tools/pub-kit.py copies this into each canvas game that uses it. */
+window.PK = (() => {
+  const OAK = ['#e2b27a', '#c18a52', '#94612f'], WAL = ['#5e3b20', '#47291a', '#2f1a0e'], EDGE = '#221208';
+  const CREAM = '#fbefd6', CREAM_DIM = '#dcc5a0', INK = '#2e1a0d', BRASS = '#e5b65a';
+  const SLAB = '"Rockwell","Roboto Slab","Zilla Slab","Arvo",Georgia,"Times New Roman",serif';
+  function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  // fine grain lines, seeded by position so they stay still between frames
+  function grain(g, x, y, w, h, light) {
+    g.save(); rr(g, x, y, w, h, 2); g.clip();
+    let s = Math.floor(x * 7 + y * 13 + w) >>> 0; const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+    for (let i = 0; i < h / 3.2; i++) {
+      const yy = y + i * 3.2 + rnd() * 2;
+      g.strokeStyle = rnd() < .5 ? `rgba(35,15,4,${.06 + rnd() * .08})` : `rgba(255,232,196,${light ? .08 : .04})`;
+      g.lineWidth = .8 + rnd(); g.beginPath(); g.moveTo(x, yy); g.bezierCurveTo(x + w * .3, yy + rnd() * 2 - 1, x + w * .7, yy + rnd() * 2 - 1, x + w, yy + rnd() * 1.5); g.stroke();
+    }
+    if (w > 60) { const kx = x + w * (.2 + rnd() * .6), ky = y + h * (.35 + rnd() * .3); g.fillStyle = 'rgba(70,35,10,.25)'; g.beginPath(); g.ellipse(kx, ky, 7, 2.4, 0, 0, 6.2832); g.fill(); }
+    g.restore();
+  }
+  function nail(g, x, y, r = 2.4) {
+    const n = g.createRadialGradient(x - r * .3, y - r * .3, .2, x, y, r); n.addColorStop(0, '#fbe3a6'); n.addColorStop(1, '#a8761f');
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.arc(x, y + .8, r, 0, 6.2832); g.fill();
+    g.fillStyle = n; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  }
+  // a plank button centred on (x, y); alt = dark walnut with cream lettering
+  function plank(g, x, y, w, h, label, opt = {}) {
+    const x0 = x - w / 2, y0 = y - h / 2 + (opt.pressed ? 2 : 0), c = opt.alt ? WAL : OAK;
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,.28)'; rr(g, x0, y0 + 5, w, h, 10); g.fill();
+    g.fillStyle = EDGE; rr(g, x0, y0 + (opt.pressed ? 1 : 3), w, h, 10); g.fill();
+    const gr = g.createLinearGradient(0, y0, 0, y0 + h); gr.addColorStop(0, c[0]); gr.addColorStop(.55, c[1]); gr.addColorStop(1, c[2]);
+    g.fillStyle = gr; rr(g, x0, y0, w, h, 10); g.fill();
+    grain(g, x0, y0, w, h, !opt.alt);
+    g.strokeStyle = 'rgba(40,18,4,.5)'; g.lineWidth = 1; rr(g, x0 + .5, y0 + .5, w - 1, h - 1, 9.5); g.stroke();
+    g.strokeStyle = opt.alt ? 'rgba(255,220,170,.18)' : 'rgba(255,240,215,.55)'; g.beginPath(); g.moveTo(x0 + 8, y0 + 1.5); g.lineTo(x0 + w - 8, y0 + 1.5); g.stroke();
+    if (w > 90) { nail(g, x0 + 9, y0 + h / 2, 2.3); nail(g, x0 + w - 9, y0 + h / 2, 2.3); }
+    g.font = `800 ${opt.size || 18}px ${SLAB}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (opt.alt) { g.fillStyle = 'rgba(0,0,0,.6)'; g.fillText(label, x, y0 + h / 2 + 2); g.fillStyle = CREAM; }
+    else { g.fillStyle = 'rgba(255,236,204,.55)'; g.fillText(label, x, y0 + h / 2 + 2); g.fillStyle = INK; }
+    g.fillText(label, x, y0 + h / 2 + 1);
+    g.restore();
+  }
+  // a framed board: dark stained panel inside an oak frame, nails in the corners
+  function board(g, x, y, w, h, opt = {}) {
+    const f = opt.frame || 7;
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,.4)'; rr(g, x + 2, y + 8, w, h, 16); g.fill();
+    const fr = g.createLinearGradient(0, y, 0, y + h); fr.addColorStop(0, OAK[0]); fr.addColorStop(1, OAK[2]);
+    g.fillStyle = fr; rr(g, x, y, w, h, 16); g.fill(); grain(g, x, y, w, h, true);
+    g.fillStyle = EDGE; rr(g, x + f - 1, y + f - 1, w - 2 * f + 2, h - 2 * f + 2, 11); g.fill();
+    const pg = g.createLinearGradient(0, y, 0, y + h); pg.addColorStop(0, '#553219'); pg.addColorStop(1, '#3b2112');
+    g.fillStyle = opt.alpha != null ? `rgba(70,40,22,${opt.alpha})` : pg; rr(g, x + f, y + f, w - 2 * f, h - 2 * f, 10); g.fill();
+    if (opt.alpha == null) grain(g, x + f, y + f, w - 2 * f, h - 2 * f, false);
+    const sh = g.createRadialGradient(x + w / 2, y + f, 4, x + w / 2, y + f, w * .7); sh.addColorStop(0, 'rgba(255,210,150,.12)'); sh.addColorStop(1, 'rgba(255,210,150,0)');
+    g.fillStyle = sh; rr(g, x + f, y + f, w - 2 * f, h - 2 * f, 10); g.fill();
+    for (const [nx, ny] of [[x + f + 6, y + f + 6], [x + w - f - 6, y + f + 6], [x + f + 6, y + h - f - 6], [x + w - f - 6, y + h - f - 6]]) nail(g, nx, ny, 2.2);
+    g.restore();
+  }
+  // a small wooden sign button with an icon drawn by fn(g, cx, cy) in cream
+  function sign(g, x, y, w, h, fn) {
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,.25)'; rr(g, x, y + 3, w, h, 10); g.fill();
+    g.fillStyle = EDGE; rr(g, x, y + 2, w, h, 10); g.fill();
+    const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, WAL[0]); gr.addColorStop(1, WAL[2]);
+    g.fillStyle = gr; rr(g, x, y, w, h, 10); g.fill(); grain(g, x, y, w, h, false);
+    g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 1; rr(g, x + .5, y + .5, w - 1, h - 1, 9.5); g.stroke();
+    g.strokeStyle = CREAM; g.fillStyle = CREAM; g.lineWidth = 2; g.lineJoin = 'round'; g.lineCap = 'round';
+    if (fn) fn(g, x + w / 2, y + h / 2);
+    g.restore();
+  }
+  function house(g, cx, cy) { g.beginPath(); g.moveTo(cx - 8, cy); g.lineTo(cx, cy - 7); g.lineTo(cx + 8, cy); g.moveTo(cx - 5.5, cy - 2); g.lineTo(cx - 5.5, cy + 7); g.lineTo(cx + 5.5, cy + 7); g.lineTo(cx + 5.5, cy - 2); g.stroke(); }
+  function homeSign(g, x, y, w = 38, h = 38) { sign(g, x, y, w, h, house); }
+  // "THE BEAR & BEAN PRESENTS" with both faces
+  function presents(g, x, y, imgs, opt = {}) {
+    const s = opt.size || 10, txt = opt.text || 'THE BEAR & BEAN PRESENTS';
+    g.save(); g.font = `800 ${s}px ${SLAB}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const tw = g.measureText(txt.split('').join(String.fromCharCode(8202))).width, r = s * 1.15;
+    g.fillStyle = opt.color || BRASS; g.fillText(txt.split('').join(String.fromCharCode(8202)), x, y);
+    if (imgs) [[imgs[0], x - tw / 2 - r - 6], [imgs[1], x + tw / 2 + r + 6]].forEach(([im, cx]) => face(g, im, cx, y, r));
+    g.restore();
+  }
+  function face(g, im, cx, cy, r, ring = OAK[1]) {
+    g.save(); g.fillStyle = ring; g.beginPath(); g.arc(cx, cy, r + 2, 0, 6.2832); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill();
+    if (im && im.complete && im.naturalWidth) { g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.clip(); g.drawImage(im, cx - r, cy - r, r * 2, r * 2); }
+    g.restore();
+  }
+  // a word from Bear or Bean: face plus a two-line speech panel
+  function says(g, x, y, w, im, who, line, opt = {}) {
+    g.save(); const h = 54;
+    g.fillStyle = 'rgba(0,0,0,.25)'; rr(g, x, y, w, h, 12); g.fill();
+    g.strokeStyle = 'rgba(255,220,170,.14)'; g.lineWidth = 1; rr(g, x + .5, y + .5, w - 1, h - 1, 12); g.stroke();
+    face(g, im, x + 30, y + h / 2, 19);
+    g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.font = `800 10px ${SLAB}`; g.fillStyle = BRASS; g.fillText(who.toUpperCase() + ' SAYS', x + 58, y + 17);
+    g.font = `800 ${opt.size || 14}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; g.fillStyle = CREAM; g.fillText(line, x + 58, y + 36);
+    g.restore();
+  }
+  return { plank, board, sign, homeSign, house, presents, face, says, grain, nail, rr, SLAB, CREAM, CREAM_DIM, INK, BRASS, OAK, WAL };
+})();
+</script>
 </head>
 <body>
 <div id="app">
   <canvas id="c"></canvas>
-  <div class="ov" id="ovStart"><div class="panel">
+  <div class="ov" id="ovStart"><div class="panel pk-card">
+    <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
     <h1>Tile<br>Burst</h1>
     <ul class="rules">
       <li>Drag the blocks from the tray onto the board.</li>
@@ -48,13 +235,14 @@
       <li>Clear lines on back-to-back turns for a <b>combo</b>.</li>
       <li>The game ends when none of your blocks fit.</li>
     </ul>
-    <button class="btn" id="btnStart">Play</button><br><a href="../" style="display:inline-block;margin-top:12px;font-weight:800;color:inherit;opacity:.7">← All games</a>
+    <button class="btn pk-btn" id="btnStart">Play</button><br><a class="pk-btn pk-alt pk-small" href="../" style="margin-top:12px">All games</a>
   </div></div>
-  <div class="ov" id="ovOver"><div class="panel">
+  <div class="ov" id="ovOver"><div class="panel pk-card">
     <h2>No space left!</h2>
     <p>Score</p><div class="big" id="ovScore">0</div>
     <p id="ovBest"></p>
-    <button class="btn" id="btnAgain">Play again</button><br><a href="../" style="display:inline-block;margin-top:12px;font-weight:800;color:inherit;opacity:.7">← All games</a>
+    <div class="pk-says" data-lines='["Cracking game! Same again?","Pull up a stool and have another go.","Not bad at all. One more round?","That board was packed to the rafters!"]'><img src="../icons/bear.png" alt=""><div><b>Bear says</b><span>Cracking game! Same again?</span></div></div>
+    <button class="btn pk-btn" id="btnAgain">Play again</button><br><a class="pk-btn pk-alt pk-small" href="../" style="margin-top:12px">All games</a>
   </div></div>
 </div>
 <script>
@@ -232,13 +420,7 @@ function computeSnap() {
 }
 
 /* ---------- draw ---------- */
-function homeIcon(cx, cy, col, bg) {   // drawn top-left; tapping it goes back to the arcade
-  ctx.save();
-  if (bg) { ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.fill(); }
-  ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(cx - 8.5, cy + .5); ctx.lineTo(cx, cy - 8); ctx.lineTo(cx + 8.5, cy + .5); ctx.moveTo(cx - 6, cy - 1.5); ctx.lineTo(cx - 6, cy + 8); ctx.lineTo(cx + 6, cy + 8); ctx.lineTo(cx + 6, cy - 1.5); ctx.stroke();
-  ctx.restore();
-}
+function homeIcon(cx, cy) { PK.homeSign(ctx, cx - 19, cy - 19); }   // the wooden sign home; tapping it goes back to the arcade
 function text(t, x, y, size, col, align = 'center', stroke = null, w = 900) {
   ctx.font = `${w} ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle';
   if (stroke) { ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, size / 5); ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); }
@@ -344,6 +526,11 @@ else { board = empty(); tray = [null, null, null]; $('ovStart').classList.add('s
 if (/[?&]debug\b/.test(location.search)) window.__tb = { get state() { return state; }, get score() { return score; }, get board() { return board; }, get tray() { return tray; }, fits, place, BX, CS, get BY() { return BY; }, get TY() { return TY; } };
 requestAnimationFrame(loop);
 })();
+</script>
+<script id="pub-kit-says">
+(() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
+  const go = () => { const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.isIntersecting && pick(e.target))) : null; document.querySelectorAll('.pk-says').forEach(el => { pick(el); if (io) io.observe(el); }); };
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
 </script>
 </body>
 </html>

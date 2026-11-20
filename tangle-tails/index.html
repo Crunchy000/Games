@@ -38,27 +38,114 @@
   .stars span { color:#e4dccb; display:inline-block; transform:scale(.4); transition:transform .4s cubic-bezier(.3,1.8,.5,1), color .2s; }
   .stars span.on { color:#ffc21a; transform:scale(1); text-shadow:0 3px 0 #c98a00; }
 </style>
+<style id="pub-kit">
+/* The Bear & Bean pub kit: aged wood buttons, framed boards and the house signs.
+   tools/pub-kit.py copies this into every game so each page stays self-contained. */
+:root {
+  --pk-oak-hi:#e2b27a; --pk-oak:#c18a52; --pk-oak-lo:#94612f;
+  --pk-wal-hi:#5e3b20; --pk-wal:#47291a; --pk-wal-lo:#2f1a0e; --pk-edge:#221208;
+  --pk-cream:#fbefd6; --pk-cream-dim:#dcc5a0; --pk-ink:#2e1a0d; --pk-brass:#e5b65a;
+  --pk-slab:"Rockwell","Roboto Slab","Zilla Slab","Arvo",Georgia,"Times New Roman",serif;
+  --pk-grain:repeating-linear-gradient(177deg, rgba(255,232,196,.07) 0 1px, transparent 1px 4px, rgba(35,15,4,.10) 4px 5px, transparent 5px 9px),
+             repeating-linear-gradient(181deg, transparent 0 13px, rgba(35,15,4,.07) 13px 15px, transparent 15px 23px);
+}
+/* buttons: a plank of light oak with engraved lettering; .alt is dark walnut */
+.pk-btn {
+  position:relative !important; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:0 !important; border-radius:10px !important; padding:12px 26px !important; text-decoration:none !important;
+  font:800 1.05rem/1.1 var(--pk-slab) !important; letter-spacing:.02em; cursor:pointer;
+  color:var(--pk-ink) !important; text-shadow:0 1px 0 rgba(255,236,204,.55) !important;
+  background:var(--pk-grain), radial-gradient(ellipse 16px 5px at 28% 62%, rgba(90,50,18,.35), transparent 75%),
+             linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak) 55%, var(--pk-oak-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,240,215,.55), inset 0 0 0 1px rgba(60,30,8,.45), inset 0 0 10px rgba(60,30,8,.25),
+             0 3px 0 var(--pk-edge), 0 7px 14px rgba(0,0,0,.28) !important;
+  transition:transform .08s, box-shadow .08s;
+}
+.pk-btn::before, .pk-btn::after {
+  content:''; position:absolute; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #fbe3a6, #a8761f 70%); box-shadow:0 1px 0 rgba(0,0,0,.35);
+}
+.pk-btn::before { left:8px; } .pk-btn::after { right:8px; }
+.pk-btn.pk-alt {
+  color:var(--pk-cream) !important; text-shadow:0 1px 0 rgba(0,0,0,.6) !important;
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal) 55%, var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.18), inset 0 0 0 1px rgba(0,0,0,.4), 0 3px 0 var(--pk-edge), 0 7px 14px rgba(0,0,0,.28) !important;
+}
+.pk-btn.pk-small { padding:9px 20px !important; font-size:.9rem !important; }
+.pk-btn:active { transform:translateY(2px); box-shadow:inset 0 0 0 1px rgba(60,30,8,.45), 0 1px 0 var(--pk-edge), 0 2px 5px rgba(0,0,0,.25) !important; }
+.pk-btn:disabled { opacity:.45; cursor:default; }
+/* chips: small wooden toolbar buttons (no nails) */
+.pk-chip {
+  border:0 !important; border-radius:9px !important; font-family:var(--pk-slab) !important; font-weight:800 !important;
+  color:var(--pk-cream) !important; text-shadow:0 1px 0 rgba(0,0,0,.55);
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.18), inset 0 0 0 1px rgba(0,0,0,.4), 0 2px 0 var(--pk-edge) !important;
+}
+.pk-chip.on, .pk-chip[aria-pressed="true"] {
+  color:var(--pk-ink) !important; text-shadow:0 1px 0 rgba(255,236,204,.5);
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak-lo)) !important;
+}
+/* boards: a dark stained panel in an oak frame, with a brass nail in each corner */
+.pk-card {
+  color:var(--pk-cream) !important;
+  border:7px solid transparent !important; border-radius:16px !important;
+  background:
+    radial-gradient(circle at 9px 9px, #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 9px) 9px, #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at 9px calc(100% - 9px), #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
+    var(--pk-grain) padding-box,
+    radial-gradient(ellipse at 50% 0%, rgba(255,210,150,.12), transparent 60%) padding-box,
+    linear-gradient(180deg, #553219, #3b2112) padding-box,
+    var(--pk-grain) border-box,
+    linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak-lo)) border-box !important;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.45), inset 0 0 24px rgba(0,0,0,.35), 0 0 0 1px var(--pk-edge), 0 18px 40px rgba(0,0,0,.45) !important;
+}
+.pk-card :is(h2, h3) { font-family:var(--pk-slab) !important; color:var(--pk-cream) !important; }
+.pk-card :is(p, li, small, label, dd, dt) { color:var(--pk-cream-dim) !important; }
+.pk-card b, .pk-card strong { color:var(--pk-cream) !important; }
+/* "The Bear & Bean presents", with both landlords' faces */
+.pk-presents { display:flex; align-items:center; justify-content:center; gap:7px; margin:0 0 10px;
+  font:800 .64rem/1 var(--pk-slab); letter-spacing:.16em; text-transform:uppercase; color:var(--pk-brass); }
+.pk-presents img { width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid var(--pk-oak); }
+/* a word from Bear or Bean */
+.pk-says { display:flex; align-items:center; gap:10px; text-align:left; margin:12px auto 6px; padding:8px 12px; max-width:290px;
+  border-radius:12px; background:rgba(0,0,0,.22); box-shadow:inset 0 0 0 1px rgba(255,220,170,.12); }
+.pk-says img { width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:3px solid var(--pk-oak); }
+.pk-says b { display:block; font:800 .66rem/1.2 var(--pk-slab); letter-spacing:.1em; text-transform:uppercase; color:var(--pk-brass) !important; }
+.pk-says span { display:block; font-weight:800; font-size:.98rem; color:var(--pk-cream); }
+/* the way home: a little wooden sign with a house on it */
+.pk-home { color:var(--pk-cream) !important;
+  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,220,170,.2), inset 0 0 0 1px rgba(0,0,0,.45), 0 2px 0 var(--pk-edge), 0 4px 10px rgba(0,0,0,.25) !important;
+  border:0 !important; border-radius:11px !important; }
+.pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
+.pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
+</style>
 </head>
 <body>
 <div id="app">
   <canvas id="c"></canvas>
-  <div class="ov show" id="ovMenu"><div class="card">
+  <div class="ov show" id="ovMenu"><div class="card pk-card">
+    <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
     <h1>Tangle<br><span>Tails</span></h1>
     <p>A pit full of knotted snakes! Tap a snake and it slithers off the way its head is pointing. If another snake is in the way, it bonks and you lose a heart.</p>
     <div class="how"><div><b>👆</b>Tap a snake</div><div><b>🐍</b>Clear the path</div><div><b>❤️</b>3 bonks max</div></div>
-    <button class="btn" id="bPlay">Play</button><br><a class="btn soft" href="../" style="text-decoration:none;display:inline-block">All games</a>
+    <button class="btn pk-btn" id="bPlay">Play</button><br><a class="btn soft pk-btn pk-alt" href="../" style="text-decoration:none;display:inline-block">All games</a>
     <p id="mInfo" style="font-size:.85rem"></p>
   </div></div>
-  <div class="ov" id="ovWin"><div class="card">
+  <div class="ov" id="ovWin"><div class="card pk-card">
     <h2 id="wTitle">Untangled!</h2>
     <div class="stars" id="wStars"><span>★</span><span>★</span><span>★</span></div>
     <p id="wText"></p>
-    <button class="btn" id="bNext">Next level</button><button class="btn soft" id="bReplay">Replay</button>
+    <div class="pk-says" data-lines='["Knots? What knots!", "Lovely untangling, that.", "Steady hands win the day!", "Not a tangle in sight!"]'><img src="../icons/bear.png" alt=""><div><b>Bear says</b><span>Knots? What knots!</span></div></div>
+    <button class="btn pk-btn" id="bNext">Next level</button><button class="btn soft pk-btn pk-alt" id="bReplay">Replay</button>
   </div></div>
-  <div class="ov" id="ovLose"><div class="card">
+  <div class="ov" id="ovLose"><div class="card pk-card">
     <h2>All in a knot!</h2>
     <p>Three bonks and the snakes are sulking. Look for the ones with a clear run to the edge first.</p>
-    <button class="btn" id="bRetry">Try again</button><button class="btn soft" id="bMenu">Menu</button><a class="btn soft" href="../" style="text-decoration:none;display:inline-block">All games</a>
+    <div class="pk-says" data-lines='["Don't worry, have another go!", "Ooh, tricky one!", "Take a breath and try again.", "You'll get it next time!"]'><img src="../icons/bean.png" alt=""><div><b>Bean says</b><span>Don't worry, have another go!</span></div></div>
+    <button class="btn pk-btn" id="bRetry">Try again</button><button class="btn soft pk-btn pk-alt" id="bMenu">Menu</button><a class="btn soft pk-btn pk-alt" href="../" style="text-decoration:none;display:inline-block">All games</a>
   </div></div>
 </div>
 <script>
@@ -402,6 +489,11 @@ if (/[?&]debug\b/.test(location.search)) window.__tt = {
 };
 requestAnimationFrame(frame);
 })();
+</script>
+<script id="pub-kit-says">
+(() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
+  const go = () => { const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.isIntersecting && pick(e.target))) : null; document.querySelectorAll('.pk-says').forEach(el => { pick(el); if (io) io.observe(el); }); };
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
 </script>
 </body>
 </html>
