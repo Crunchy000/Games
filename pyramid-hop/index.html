@@ -84,14 +84,16 @@ function resetPlayer() { p = { r: 0, c: 0, pr: 0, pc: 0, t: 1, hop: false, kind:
 function startGame() { lvl = 1; score = 0; lives = 3; setupLevel(); state = 'play'; beep(400, .2, 'triangle', .07, 400); beep(600, .2, 'triangle', .06, 600, .12); }
 
 /* ---------- input: swipe diagonally / tap toward target ---------- */
-const surf = document.getElementById('app'), ptrs = new Map(), SW = 26;
+// a swipe needs a little travel before it counts, and keeping the finger down needs a longer drag (and a short pause) for another hop
+const surf = document.getElementById('app'), ptrs = new Map(), SW = 36, SW_AGAIN = 64, AGAIN_MS = 220;
 const dirOf = (dx, dy) => dy < 0 ? (dx < 0 ? 0 : 1) : (dx < 0 ? 2 : 3);
 function onDir(d) { if (state === 'title' || (state === 'over' && overT > .8)) { startGame(); return; } move(d); }
 surf.addEventListener('pointerdown', e => { e.preventDefault(); { const r = cv.getBoundingClientRect(), lx = (e.clientX - r.left) * W / r.width, ly = (e.clientY - r.top) * H / r.height; if (lx < 48 && ly < 52 && lx > -20) { location.href = '../'; return; } } try { surf.setPointerCapture(e.pointerId); } catch (_) {} ptrs.set(e.pointerId, { ax: e.clientX, ay: e.clientY, t: performance.now(), moved: false }); });
 surf.addEventListener('pointermove', e => {
   const q = ptrs.get(e.pointerId); if (!q) return;
   const dx = e.clientX - q.ax, dy = e.clientY - q.ay;
-  if (Math.hypot(dx, dy) > SW) { q.moved = true; q.ax = e.clientX; q.ay = e.clientY; onDir(dirOf(dx, dy)); }
+  const now = performance.now();
+  if (Math.hypot(dx, dy) > (q.moved ? SW_AGAIN : SW) && (!q.moved || now - q.last > AGAIN_MS)) { q.moved = true; q.last = now; q.ax = e.clientX; q.ay = e.clientY; onDir(dirOf(dx, dy)); }
 });
 function endPtr(e) {
   const q = ptrs.get(e.pointerId); if (!q) return; ptrs.delete(e.pointerId);
