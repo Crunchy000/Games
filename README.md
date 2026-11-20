@@ -4,7 +4,7 @@
 
 The Bear & Bean Games: just wholesome mini-games that work offline. Totally free, with no ads, no monetisation and no tracking. Made for touch screens; each game lives in its own folder with no build step and is a single self-contained HTML file.
 
-Play at https://crunchy000.github.io/Games/
+Play at https://bearandbean.uk/
 
 | Game | Folder | What it is |
 | --- | --- | --- |
