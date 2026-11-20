@@ -8,6 +8,7 @@ Play at https://bearandbean.uk/
 
 | Game | Folder | What it is |
 | --- | --- | --- |
+| Paw Prints | [`paw-prints/`](paw-prints/) | Easy-mode nonograms with 26 Bear & Bean pixel pictures across a winding five-area map. Slips are put right for you, finished lines auto-cross their gaps and fill with colour, drag to fill along a row or column, hints, gold paws for perfect solves; every puzzle checked to be solvable by logic alone. Shared sound and dark mode. |
 | Sand Sort | [`sand-sort/`](sand-sort/) | Pour coloured sand between test tubes until each holds one colour. Tubes tilt with level sand as they pour; seeded, solver-checked endless levels; mystery sand levels; unlimited undo, one spare tube a level, cork-popping finish, shared sound and dark mode. |
 | Queen Bean | [`queen-bean/`](queen-bean/) | Queen Bean logic puzzle: crown one Bean per row, column and colour patch, with no two Beans touching. Generated boards from 6×6 to 9×9, each with exactly one answer, plus a daily 8×8, dots, hints, undo and best times. |
 | Thin Ice | [`thin-ice/`](thin-ice/) | Bear and Bean take turns knocking blocks out of a frozen pond; unsupported blocks drop too. Whoever drops Pip the penguin (on a random inner block each game) loses. Three pond sizes, undo, and a computer opponent. Three pond sizes, undo, and a computer opponent. |
