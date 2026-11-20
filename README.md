@@ -8,6 +8,7 @@ Play at https://crunchy000.github.io/Games/
 
 | Game | Folder | What it is |
 | --- | --- | --- |
+| Sand Sort | [`sand-sort/`](sand-sort/) | Pour coloured sand between test tubes until each holds one colour. Tubes tilt with level sand as they pour; seeded, solver-checked endless levels; mystery sand levels; unlimited undo, one spare tube a level, cork-popping finish, shared sound and dark mode. |
 | Queen Bean | [`queen-bean/`](queen-bean/) | Queen Bean logic puzzle: crown one Bean per row, column and colour patch, with no two Beans touching. Generated boards from 6×6 to 9×9, each with exactly one answer, plus a daily 8×8, dots, hints, undo and best times. |
 | Thin Ice | [`thin-ice/`](thin-ice/) | Bear and Bean take turns knocking blocks out of a frozen pond; unsupported blocks drop too. Whoever drops Pip the penguin (on a random inner block each game) loses. Three pond sizes, undo, and a computer opponent. Three pond sizes, undo, and a computer opponent. |
 | Greedy Hippos | [`greedy-hippos/`](greedy-hippos/) | Two players on one phone laid flat: tap your half to send your hippo chomping at rolling jelly beans. Gold beans are worth 3. Also plays against the computer. |
@@ -25,7 +26,7 @@ Play at https://crunchy000.github.io/Games/
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
 | Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |
 | Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: make rockets, bombs and rainbow orbs; bring honey pots down to Bear, break liquorice locks, clear sugar cubes and spreading chocolate. Lolly Pop and Free Swap boosters, +5 moves once per level. |
-| Bear vs Bean (Dots and Boxes) | [`dots-and-boxes/`](dots-and-boxes/) | Two-player pass-and-play: Bear and Bean take turns joining dots; close a box to stamp it with a paw print or a bean and go again. Renamable players, win tally, undo. |
+| Dots & Boxes | [`dots-and-boxes/`](dots-and-boxes/) | Two-player pass-and-play: Bear and Bean take turns joining dots; close a box to stamp it with a paw print or a bean and go again. Renamable players, win tally, undo. |
 
 Sound on/off and light/dark mode are house settings: change them in any game and every other game follows.
 

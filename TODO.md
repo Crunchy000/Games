@@ -11,3 +11,7 @@ non-violent.
 - [x] ~~**Bear vs Bean: inspired by Hungry Hippos (2 players):**~~ Done as **Greedy Hippos**.
 - [x] ~~**Bear vs Bean: inspired by Don't Break the Ice (2 players):**~~ Done as **Thin Ice**.
 - [x] ~~**Inspired by LinkedIn Queens:**~~ Done as **Queen Bean** (Queen Beans in colour patches).
+- [ ] **Word Flow:** swipe across a wheel of letters to make words and fill a little crossword.
+- [ ] **Flower Sort:** move flowers between pots until each pot holds three of a kind.
+- [ ] **Finish Sweet Drop (inspired by Cut the Rope):** cut ropes to swing a jelly bean past spikes, using bellows, to collect stars and land it with Bean. Concept art is done; it needs rope physics, around 20–30 levels and a level map.
+- [x] ~~**Inspired by Magic Sort:**~~ Done as **Sand Sort** (coloured sand in test tubes).
