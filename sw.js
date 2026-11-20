@@ -2,7 +2,7 @@
    - install: download every page and icon in one go (the install only succeeds if all of them were saved)
    - fetch: answer from the saved copy straight away, then quietly refresh it in the background
    - activate: delete the copies saved by older versions */
-const VERSION = 'games-6c85382da085';
+const VERSION = 'games-f5a98d2c8072';
 const FILES = [
   './',
   './manifest.webmanifest',
