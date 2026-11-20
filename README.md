@@ -2,13 +2,16 @@
 
 <img src="icons/logo.jpg" alt="The Bear & Bean Games sign" width="220">
 
-The Bear & Bean Games: just wholesome mini-games that work offline. Totally free, with no ads, no monetisation and no tracking. Made for touch screens; each game lives in its own folder with no build step and is a single self-contained HTML file.
+The Bear & Bean Games: just wholesome mini-games that work offline. Totally free, with no ads, no purchases, no tracking and no nonsense. Made for touch screens; each game lives in its own folder with no build step and is a single self-contained HTML file.
 
 Play at https://bearandbean.uk/
 
 | Game | Folder | What it is |
 | --- | --- | --- |
 | Paw Prints | [`paw-prints/`](paw-prints/) | Easy-mode nonograms with 26 Bear & Bean pixel pictures across a winding five-area map. Slips are put right for you, finished lines auto-cross their gaps and fill with colour, drag to fill along a row or column, hints, gold paws for perfect solves; every puzzle checked to be solvable by logic alone. Shared sound and dark mode. |
+| Paw Pairs | [`paw-pairs/`](paw-pairs/) | Ivory tile matching: tap two matching tiles that are free (nothing on top, and an open left or right side) to clear them. Seven stacked layouts from Pebble to Butterfly, dealt backwards so every deal can be cleared; hint, undo, solvable shuffle and best times. |
+| Hue Quilt | [`hue-quilt/`](hue-quilt/) | Colour gradient puzzle: drag or tap to swap the patches of Bear's patchwork quilt until the colours blend smoothly from corner to corner. Buttoned patches are sewn in place; see the finished quilt before it shuffles, and beat par. Gradients blend in OKLab; endless seeded quilts up to 8×11. |
+| Lace Loops | [`lace-loops/`](lace-loops/) | Rotation puzzle: tap to turn bits of sweet lace until every end joins up with nothing dangling. Endless seeded levels in seven flavours, a rainbow ripple when it all connects, hints and undo. |
 | Sand Sort | [`sand-sort/`](sand-sort/) | Pour coloured sand between test tubes until each holds one colour. Tubes tilt with level sand as they pour; seeded, solver-checked endless levels; mystery sand levels; unlimited undo, one spare tube a level, cork-popping finish, shared sound and dark mode. |
 | Queen Bean | [`queen-bean/`](queen-bean/) | Queen Bean logic puzzle: crown one Bean per row, column and colour patch, with no two Beans touching. Generated boards from 6×6 to 9×9, each with exactly one answer, plus a daily 8×8, dots, hints, undo and best times. |
 | Thin Ice | [`thin-ice/`](thin-ice/) | Bear and Bean take turns knocking blocks out of a frozen pond; unsupported blocks drop too. Whoever drops Pip the penguin (on a random inner block each game) loses. Three pond sizes, undo, and a computer opponent. Three pond sizes, undo, and a computer opponent. |
@@ -44,7 +47,7 @@ The root `index.html` is a landing page with a featured carousel and a scrolling
 ## Play offline (install as an app)
 
 The arcade is a Progressive Web App. Open it once in a browser and every game is downloaded in the background, so the whole arcade then works with no connection.
-- **Android (Chrome):** tap **Install app** on the home page, or use the browser menu → *Install app*.
+- **Android (Chrome):** tap **Add shortcut to phone** at the bottom of the home page, or use the browser menu → *Install app*.
 - **iPhone/iPad (Safari):** tap **Share → Add to Home Screen**.
 
 Each game has a home button that returns to the arcade, since an installed app has no browser back button.
