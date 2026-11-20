@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Thin Ice · Bear vs Bean</title>
-<meta name="description" content="A two-player ice game: Bear and Bean take turns knocking blocks out of a frozen pond. Whoever drops Bear in the icy water loses. Play a friend or the computer. Free, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A two-player ice game: Bear and Bean stand on a frozen pond and take turns knocking out blocks or hopping to safety. Sink the other one first, but don't sink yourself. Play a friend or the computer. Free, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://crunchy000.github.io/Games/thin-ice/">
 <style>
   :root {
@@ -87,7 +87,7 @@
   </header>
 
   <div class="opts">
-    <div class="seg" id="segSize" role="group" aria-label="Pond size"><button data-v="2">Small</button><button data-v="3">Medium</button><button data-v="4">Big</button></div>
+    <div class="seg" id="segSize" role="group" aria-label="Pond size"><button data-v="5">Small</button><button data-v="7">Medium</button><button data-v="9">Big</button></div>
     <div class="seg" id="segMode" role="group" aria-label="Opponent"><button data-v="2p">2 players</button><button data-v="cpu">vs CPU</button></div>
   </div>
 
@@ -99,13 +99,13 @@
   <div id="status" role="status" aria-live="polite"></div>
   <div id="left"></div>
 
-  <div class="board-wrap"><canvas id="board" aria-label="Frozen hexagonal pond of ice blocks with Bear standing in the middle"></canvas></div>
+  <div class="board-wrap"><canvas id="board" aria-label="Frozen pond of ice blocks with Bear and Bean standing on it"></canvas></div>
 
   <div class="actions">
     <button class="btn primary" id="newGame">New game</button>
     <button class="btn ghost-btn" id="resetWins">Reset wins</button>
   </div>
-  <p class="hint">Take turns tapping an ice block to knock it out. A block needs three neighbours (the frame counts) and a path to the frame, or it drops too. Whoever drops Bear in the pond loses!<br>Tap a name to rename · Who starts swaps every game</p>
+  <p class="hint">Bear and Bean are both on the ice. Take turns tapping a block to knock it out. A block needs two neighbours (the frame counts) and a path to the frame, or it drops too. Sink the other one first, but don't sink yourself!<br>Instead of knocking, you can tap yourself and hop to a neighbouring block (not on the edge), but not two goes in a row.<br>Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -114,10 +114,10 @@
   const $ = id => document.getElementById(id);
   const DEBUG = /[?&]debug\b/.test(location.search);
   const DEFAULT_NAMES = ['Bear', 'Bean'];
-  let names = DEFAULT_NAMES.slice(), wins = [0, 0], n = 3, mode = '2p', muted = false;
+  let names = DEFAULT_NAMES.slice(), wins = [0, 0], n = 7, mode = '2p', muted = false;
   try {
     const s = JSON.parse(localStorage.getItem('thinice') || '{}');
-    if (s.names) names = s.names; if (s.wins) wins = s.wins; if ([2, 3, 4].includes(s.n)) n = s.n;
+    if (s.names) names = s.names; if (s.wins) wins = s.wins; if ([5, 7, 9].includes(s.n)) n = s.n;
     if (s.mode === 'cpu') mode = 'cpu'; muted = !!s.muted;
   } catch (e) {}
   const save = () => { try { localStorage.setItem('thinice', JSON.stringify({ names, wins, n, mode, muted })); } catch (e) {} };
@@ -147,79 +147,109 @@
   const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
   /* ---------- rules ---------- */
-  // A hexagonal pond of hex blocks (axial coordinates), n rings round the middle.
-  // A block stays up if it links to the frame through other blocks and has at least
-  // three supports: neighbouring blocks, or sides that touch the frame.
-  const KS = 3, DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, -1], [-1, 1]];
-  let CELLS = [], NB = [], EDGE = [], CENTRE = 0;
-  function buildBoard() {
-    CELLS = []; const idx = new Map();
-    for (let r = -n; r <= n; r++) for (let q = -n; q <= n; q++) if (Math.abs(q + r) <= n) { idx.set(q + ',' + r, CELLS.length); CELLS.push([q, r]); }
-    NB = CELLS.map(([q, r]) => DIRS.map(([a, b]) => idx.has((q + a) + ',' + (r + b)) ? idx.get((q + a) + ',' + (r + b)) : -1));
-    EDGE = NB.map(l => l.filter(j => j < 0).length);
-    CENTRE = idx.get('0,0');
-  }
-  const supports = (al, i) => { let k = 0; for (const j of NB[i]) if (j < 0 || al[j]) k++; return k; };
+  // alive: Uint8Array n*n. A block stays up if it touches the frame through other blocks
+  // and has at least two supports (neighbouring blocks, or the frame itself).
+  const supports = (al, r, c) => {
+    let k = 0;
+    for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const rr = r + dr, cc = c + dc; if (rr < 0 || cc < 0 || rr >= n || cc >= n || al[rr * n + cc]) k++; }
+    return k;
+  };
   function settle(al) {
-    const waves = [], N = CELLS.length;
+    const waves = [];
     for (;;) {
-      const reach = new Uint8Array(N), st = [];
-      for (let i = 0; i < N; i++) if (al[i] && EDGE[i]) { reach[i] = 1; st.push(i); }
-      while (st.length) for (const j of NB[st.pop()]) if (j >= 0 && al[j] && !reach[j]) { reach[j] = 1; st.push(j); }
+      const reach = new Uint8Array(n * n), q = [];
+      for (let i = 0; i < n * n; i++) { const r = (i / n) | 0, c = i % n; if (al[i] && (r === 0 || c === 0 || r === n - 1 || c === n - 1)) { reach[i] = 1; q.push(i); } }
+      while (q.length) { const i = q.pop(), r = (i / n) | 0, c = i % n;
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const rr = r + dr, cc = c + dc, j = rr * n + cc; if (rr >= 0 && cc >= 0 && rr < n && cc < n && al[j] && !reach[j]) { reach[j] = 1; q.push(j); } } }
       const drop = [];
-      for (let i = 0; i < N; i++) if (al[i] && (!reach[i] || supports(al, i) < KS)) drop.push(i);
+      for (let i = 0; i < n * n; i++) if (al[i] && (!reach[i] || supports(al, (i / n) | 0, i % n) < 2)) drop.push(i);
       if (!drop.length) return waves;
       for (const i of drop) al[i] = 0;
       waves.push(drop);
     }
   }
-  const P = () => CENTRE;
-  const hexDist = i => { const [q, r] = CELLS[i]; return Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)); };
+  // Bear stands on POS[0] and Bean on POS[1]; nobody can knock out a block someone is standing on.
+  let POS = [0, 0];
+  function placeCharacters() {
+    // a random spot for Bear, and the mirror-image spot for Bean, so neither starts with an easier block
+    const opts = [];
+    for (let r = 1; r < n - 1; r++) for (let c = 1; c < n - 1; c++) {
+      const r2 = n - 1 - r, c2 = n - 1 - c;
+      if (Math.max(Math.abs(r - r2), Math.abs(c - c2)) >= 2) opts.push([r * n + c, r2 * n + c2]);
+    }
+    POS = opts[Math.floor(Math.random() * opts.length)];
+  }
   function apply(al, i) { const a = al.slice(); a[i] = 0; const waves = settle(a); return { al: a, waves: [[i], ...waves] }; }
-  const legal = al => { const out = [], p = P(); for (let i = 0; i < CELLS.length; i++) if (al[i] && i !== p) out.push(i); return out; };
-  const safeMoves = al => { const p = P(), out = []; for (const i of legal(al)) { const r = apply(al, i); if (r.al[p]) out.push({ i, al: r.al }); } return out; };
+  const legal = (al, pos = POS) => { const out = []; for (let i = 0; i < n * n; i++) if (al[i] && i !== pos[0] && i !== pos[1]) out.push(i); return out; };
+  const safeMoves = (al, p = turn) => { const out = []; for (const i of legal(al)) { const r = apply(al, i); if (r.al[POS[p]]) out.push({ i, al: r.al }); } return out; };
+  const outcome = (al, p, pos = POS) => !al[pos[p]] ? 'lose' : !al[pos[1 - p]] ? 'win' : 'ok';
+  // hopping: one step in any direction (diagonals too) onto a free block, never onto the edge row
+  const hopTargets = (al, p, pos = POS) => {
+    const r0 = (pos[p] / n) | 0, c0 = pos[p] % n, out = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const r = r0 + dr, c = c0 + dc, j = r * n + c;
+      if ((dr || dc) && r > 0 && c > 0 && r < n - 1 && c < n - 1 && al[j] && j !== pos[1 - p]) out.push(j); }
+    return out;
+  };
 
   /* ---------- state ---------- */
   let alive, turn = 0, starter = 0, hist = [], over = false, loser = -1, busy = false, lastMsg = '';
-  let falling = [], rings = [], pip = null, hover = -1, cpuTimer = 0;
+  let falling = [], rings = [], chars = [], hover = -1, cpuTimer = 0, bothFell = false, lastHop = [false, false], sel = false, note = '';
   const isCpu = p => mode === 'cpu' && p === 1;
 
   function newGame() {
     clearTimeout(cpuTimer);
-    buildBoard(); alive = new Uint8Array(CELLS.length).fill(1);
+    alive = new Uint8Array(n * n).fill(1); placeCharacters();
     turn = starter; starter = 1 - starter;
     hist = []; over = false; loser = -1; busy = false; falling = []; rings = []; lastMsg = '';
-    pip = { state: 'stand', t: 0, y: 0 };
+    chars = [{ state: 'stand', t: 0 }, { state: 'stand', t: 0 }]; bothFell = false; lastHop = [false, false]; sel = false; note = '';
     layout(); render(); maybeCpu();
   }
 
   function play(i, who = turn) {
-    if (over || busy || !alive[i] || i === P()) return false;
+    if (over || busy || !alive[i] || POS.includes(i)) return false;
     const res = apply(alive, i);
-    const lost = !res.al[P()];
-    hist.push({ prev: alive, player: who });
+    const fell = [!res.al[POS[0]], !res.al[POS[1]]];
+    hist.push({ prev: alive, pos: POS.slice(), lastHop: lastHop.slice(), player: who });
+    lastHop[who] = false; sel = false; note = '';
     alive = res.al;
     // animate the cascade wave by wave
     let total = 0;
+    const delayOf = k => k === 0 ? 0 : .12 + k * .16;
     res.waves.forEach((w, k) => {
-      const delay = k === 0 ? 0 : .12 + k * .16;
-      for (const j of w) falling.push({ i: j, t: -delay, dur: .55, pip: j === P() });
-      if (k === 0) { sCrack(); buzz(10); } else sCrack(delay);
-      sPlop(delay + .3);
+      for (const j of w) falling.push({ i: j, t: -delayOf(k), dur: .55 });
+      for (const c of [0, 1]) if (w.includes(POS[c])) { chars[c].state = 'fall'; chars[c].t = -delayOf(k); }
+      if (k === 0) { sCrack(); buzz(10); } else sCrack(delayOf(k));
+      sPlop(delayOf(k) + .3);
       total += w.length;
     });
     const end = .12 + (res.waves.length - 1) * .16 + .6;
     busy = true;
     lastMsg = total > 1 ? `Crack! ${total} blocks fell` : '';
-    if (lost) {
-      over = true; loser = who; wins[1 - who]++; save();
-      pip.state = 'fall'; pip.t = -(.12 + (res.waves.length - 1) * .16);
+    if (fell[0] || fell[1]) {
+      // sink your own character and you lose, even if the other one goes in too
+      over = true; loser = fell[who] ? who : 1 - who; bothFell = fell[0] && fell[1]; wins[1 - loser]++; save();
       setTimeout(() => { sSplash(); buzz([30, 40, 30]); }, (end - .1) * 1000);
-      setTimeout(() => { [523, 659, 784, 1047].forEach((f, k) => tone(f, .22, 'triangle', .07, k * .09)); confetti(1 - who); }, (end + .9) * 1000);
+      setTimeout(() => { [523, 659, 784, 1047].forEach((f, k) => tone(f, .22, 'triangle', .07, k * .09)); confetti(1 - loser); }, (end + .9) * 1000);
     } else turn = 1 - who;
-    setTimeout(() => { busy = false; render(); maybeCpu(); }, end * 1000);
+    setTimeout(() => { busy = false; checkStuck(); render(); maybeCpu(); }, end * 1000);
     render();
     return true;
+  }
+
+  const canHop = p => !lastHop[p] || !legal(alive).length;
+  function checkStuck() {
+    // nothing left to knock out and nowhere to hop: nobody can fall in, so it's a draw
+    if (!over && !legal(alive).length && !hopTargets(alive, turn).length) { over = true; loser = -1; tone(440, .2, 'sine', .05); tone(554, .25, 'sine', .05, .18); }
+  }
+  function hop(j, who = turn) {
+    if (over || busy || !canHop(who) || !hopTargets(alive, who).includes(j)) return false;
+    hist.push({ prev: alive, pos: POS.slice(), lastHop: lastHop.slice(), player: who });
+    const from = POS[who]; POS = POS.slice(); POS[who] = j; lastHop[who] = true; sel = false; note = ''; lastMsg = '';
+    chars[who].hop = { from, t: 0 };
+    tone(420, .16, 'sine', .06, 0, 360); tone(700, .08, 'triangle', .03, .14); buzz(8);
+    busy = true; turn = 1 - who;
+    setTimeout(() => { busy = false; checkStuck(); render(); maybeCpu(); }, 420);
+    render(); return true;
   }
 
   function undo() {
@@ -228,81 +258,78 @@
     let h;
     do { h = hist.pop(); } while (h && isCpu(h.player) && hist.length);   // vs CPU: go back to your own turn
     if (!h) return;
-    if (over) { wins[1 - loser]--; save(); over = false; loser = -1; }
-    alive = h.prev; turn = h.player; falling = []; rings = []; pip = { state: 'stand', t: 0, y: 0 }; lastMsg = '';
+    if (over) { if (loser >= 0) { wins[1 - loser]--; save(); } over = false; loser = -1; }
+    alive = h.prev; POS = h.pos; lastHop = h.lastHop; turn = h.player; falling = []; rings = []; chars = [{ state: 'stand', t: 0 }, { state: 'stand', t: 0 }]; bothFell = false; sel = false; note = ''; lastMsg = '';
     tone(300, .08, 'sine', .04, 0, -80); render(); maybeCpu();
   }
 
   /* ---------- computer (plays Bean) ---------- */
-  function cpuPick() {
-    const safe = safeMoves(alive);
-    if (!safe.length) { const l = legal(alive); return l[Math.floor(Math.random() * l.length)]; }
-    const far = hexDist;
-    // a move that leaves no safe reply wins outright
-    const scored = safe.map(m => ({ m, opp: safeMoves(m.al) }));
-    const win = scored.filter(s => !s.opp.length);
-    if (win.length) return win[Math.floor(Math.random() * win.length)].m.i;
-    let pool = scored;
-    if (safe.length <= 16) {    // look one step further: avoid moves that hand over a winning reply
-      const ok = scored.filter(s => !s.opp.some(o => safeMoves(o.al).length === 0));
-      if (ok.length) pool = ok;
-    }
-    if (Math.random() < .18) return pool[Math.floor(Math.random() * pool.length)].m.i;   // a friendly wobble now and then
-    pool.sort((a, b) => far(b.m.i) - far(a.m.i) + (Math.random() - .5) * 2.5);
-    return pool[0].m.i;
+  function cpuPick(me = 1) {
+    const op = 1 - me;
+    const knocks = legal(alive).map(i => { const al = apply(alive, i).al; return { type: 'knock', i, al, pos: POS, o: outcome(al, me) }; });
+    const win = knocks.filter(m => m.o === 'win');
+    if (win.length) return win[Math.floor(Math.random() * win.length)];
+    const cands = knocks.filter(m => m.o === 'ok');
+    if (canHop(me)) for (const j of hopTargets(alive, me)) { const pos = POS.slice(); pos[me] = j; cands.push({ type: 'hop', i: j, al: alive, pos, o: 'ok' }); }
+    if (!cands.length) return knocks.length ? knocks[Math.floor(Math.random() * knocks.length)] : null;
+    // how many ways could the other player sink me straight after this?
+    const threats = m => legal(m.al, m.pos).filter(j => outcome(apply(m.al, j).al, op, m.pos) === 'win').length;
+    const sup = (m, p) => supports(m.al, (m.pos[p] / n) | 0, m.pos[p] % n);
+    const scored = cands.map(m => ({ m, t: threats(m) + (m.type === 'hop' ? .5 : 0) }));
+    const best = Math.min(...scored.map(x => x.t));
+    const pool = scored.filter(x => x.t === best);
+    if (Math.random() < .15) return pool[Math.floor(Math.random() * pool.length)].m;   // a friendly wobble now and then
+    // otherwise weaken the ice round the other player and keep my own block sturdy
+    pool.sort((a, b) => (sup(a.m, op) - sup(a.m, me)) - (sup(b.m, op) - sup(b.m, me)) + (Math.random() - .5) * 1.5);
+    return pool[0].m;
   }
   function maybeCpu() {
     clearTimeout(cpuTimer);
     if (over || busy || !isCpu(turn)) return;
-    cpuTimer = setTimeout(() => { if (!over && !busy && isCpu(turn)) { const i = cpuPick(); hover = i; setTimeout(() => { hover = -1; play(i, 1); }, 380); } }, 520);
+    cpuTimer = setTimeout(() => { if (!over && !busy && isCpu(turn)) { const m = cpuPick(); if (!m) { checkStuck(); render(); return; } hover = m.i; setTimeout(() => { hover = -1; m.type === 'hop' ? hop(m.i, 1) : play(m.i, 1); }, 380); } }, 520);
   }
 
   /* ---------- drawing ---------- */
   const cv = $('board'), g = cv.getContext('2d');
-  let W = 360, H = 330, SC = 1, s = 30, OX = 180, OY = 160;
-  const K = .8, TH = 8, R3 = Math.sqrt(3);
+  let W = 360, H = 330, SC = 1, s = 40, ox = 0, oy = 0;
+  const RIM = 16, K = .84, TH = 9;
   function layout() {
     const cw = cv.parentElement.clientWidth - 12;
-    s = (W - 10) / (2 * R3 * (n + .95));
-    const half = 1.5 * s * (n + .95) * K;
-    H = Math.round(half * 2 + TH + 16);
-    OX = W / 2; OY = half + 6;
+    s = (W - RIM * 2) / n;
+    H = Math.round(RIM * 2 + n * s * K + TH + 4);
+    ox = RIM; oy = RIM;
     SC = cw / W; const dpr = Math.min(devicePixelRatio || 1, 3);
     cv.width = Math.round(cw * dpr); cv.height = Math.round(H * SC * dpr);
     cv.style.height = (H * SC) + 'px';
     g.setTransform(SC * dpr, 0, 0, SC * dpr, 0, 0);
   }
-  const cxOf = i => OX + R3 * s * (CELLS[i][0] + CELLS[i][1] / 2), cyOf = i => OY + 1.5 * s * CELLS[i][1] * K;
-  function hexPath(x, y, rad, flat) {   // flat: flat-topped (the frame); otherwise pointy-topped (the blocks)
-    g.beginPath();
-    for (let k = 0; k < 6; k++) { const a = (flat ? 0 : Math.PI / 6) + k * Math.PI / 3; const px = x + Math.cos(a) * rad, py = y + Math.sin(a) * rad * K; k ? g.lineTo(px, py) : g.moveTo(px, py); }
-    g.closePath();
-  }
+  const tx = c => ox + c * s, ty = r => oy + r * s * K;
   function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
   const flakes = Array.from({ length: 26 }, () => ({ x: Math.random() * 360, y: Math.random() * 400, r: .8 + Math.random() * 1.6, v: 6 + Math.random() * 10, ph: Math.random() * 6 }));
 
-  function drawBlock(i, dy = 0, sc = 1, alpha = 1, opts = {}) {
-    const x = cxOf(i), y = cyOf(i) + dy, rad = (s - Math.max(1.2, s * .06)) * sc;
+  function drawBlock(r, c, dy = 0, sc = 1, alpha = 1, opts = {}) {
+    const gap = Math.max(1.5, s * .05), w = (s - gap) * sc, h = (s * K - gap) * sc;
+    const x = tx(c) + gap / 2 + (s - gap) * (1 - sc) / 2, y = ty(r) + gap / 2 + (s * K - gap) * (1 - sc) / 2 + dy;
     g.save(); g.globalAlpha = alpha;
     // side (only seen over holes)
-    hexPath(x, y + TH, rad, false); g.fillStyle = '#5a93b6'; g.fill();
-    hexPath(x, y + TH * .5, rad, false); g.fillStyle = '#6ea9cc'; g.fill();
+    rr(x, y + TH * .6, w, h, Math.min(7, s * .16)); g.fillStyle = '#6ea9cc'; g.fill();
+    rr(x, y + TH, w, h * .6, Math.min(7, s * .16)); g.fillStyle = '#5a93b6'; g.fill();
     // top
-    const gr = g.createLinearGradient(x - rad, y - rad * K, x + rad, y + rad * K);
+    const gr = g.createLinearGradient(x, y, x + w, y + h);
     gr.addColorStop(0, '#f4fbff'); gr.addColorStop(.55, '#cfeafa'); gr.addColorStop(1, '#a9d6f0');
-    hexPath(x, y, rad, false); g.fillStyle = gr; g.fill();
-    g.strokeStyle = 'rgba(80,140,180,.55)'; g.lineWidth = 1; g.lineJoin = 'round'; g.stroke();
+    rr(x, y, w, h, Math.min(7, s * .16)); g.fillStyle = gr; g.fill();
+    g.strokeStyle = 'rgba(80,140,180,.55)'; g.lineWidth = 1; g.stroke();
     // shine
-    g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = Math.max(1.2, s * .07); g.lineCap = 'round';
-    g.beginPath(); g.moveTo(x - rad * .5, y - rad * .3 * K); g.lineTo(x - rad * .05, y - rad * .55 * K); g.stroke();
-    g.beginPath(); g.moveTo(x - rad * .55, y - rad * .02 * K); g.lineTo(x - rad * .35, y - rad * .14 * K); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = Math.max(1.2, s * .05); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x + w * .2, y + h * .22); g.lineTo(x + w * .45, y + h * .22); g.stroke();
+    g.beginPath(); g.moveTo(x + w * .2, y + h * .36); g.lineTo(x + w * .3, y + h * .36); g.stroke();
     if (opts.crack) {   // just enough support left: show a hairline crack
-      g.strokeStyle = 'rgba(60,110,150,.75)'; g.lineWidth = 1.1;
-      g.beginPath(); g.moveTo(x + rad * .25, y - rad * .8 * K); g.lineTo(x + rad * .05, y - rad * .1 * K); g.lineTo(x + rad * .35, y + rad * .25 * K); g.lineTo(x + rad * .15, y + rad * .8 * K); g.stroke();
-      g.beginPath(); g.moveTo(x + rad * .05, y - rad * .1 * K); g.lineTo(x - rad * .4, y + rad * .2 * K); g.stroke();
+      g.strokeStyle = 'rgba(60,110,150,.7)'; g.lineWidth = 1.1;
+      g.beginPath(); g.moveTo(x + w * .62, y + h * .12); g.lineTo(x + w * .52, y + h * .42); g.lineTo(x + w * .7, y + h * .58); g.lineTo(x + w * .58, y + h * .9); g.stroke();
+      g.beginPath(); g.moveTo(x + w * .52, y + h * .42); g.lineTo(x + w * .34, y + h * .55); g.stroke();
     }
-    if (opts.hl) { hexPath(x, y, rad - 2, false); g.strokeStyle = opts.hl; g.lineWidth = 3; g.stroke(); }
+    if (opts.hl) { rr(x + 1, y + 1, w - 2, h - 2, Math.min(6, s * .15)); g.strokeStyle = opts.hl; g.lineWidth = 3; g.stroke(); }
     g.restore();
   }
 
@@ -348,36 +375,75 @@
     g.restore();
   }
 
+  function drawBean(x, y, sz, t, worried, ring) {
+    g.save(); g.translate(x, y);
+    if (ring) g.translate(0, Math.sin(t * 2.2 + 1) * 1.5);
+    else if (worried) g.rotate(Math.sin(t * 5) * .06);
+    const k = sz / 44; g.scale(k, k);
+    if (ring) { g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.ellipse(0, 4, 32, 8, 0, 0, 7); g.fill();
+      g.lineWidth = 9; g.strokeStyle = '#3aa0d8'; g.beginPath(); g.ellipse(0, -2, 23, 8, 0, Math.PI, Math.PI * 2); g.stroke(); }
+    else {
+      g.fillStyle = 'rgba(30,70,100,.25)'; g.beginPath(); g.ellipse(0, 0, 15, 5, 0, 0, 7); g.fill();
+      g.fillStyle = '#c23a78'; g.beginPath(); g.ellipse(-6, -2, 5.5, 3.5, 0, 0, 7); g.ellipse(6, -2, 5.5, 3.5, 0, 0, 7); g.fill();
+    }
+    // jelly bean body: a tall kidney shape
+    g.fillStyle = '#ff5fa2'; g.strokeStyle = '#a82762'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(-3, -50);
+    g.bezierCurveTo(10, -53, 17, -42, 15, -28); g.bezierCurveTo(13, -14, 14, -6, 4, -3); g.bezierCurveTo(-8, 0, -16, -6, -15, -20);
+    g.bezierCurveTo(-14, -30, -8, -32, -11, -40); g.bezierCurveTo(-13, -47, -9, -49, -3, -50); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.ellipse(-8, -22, 2.4, 6, .15, 0, 7); g.fill();
+    // arms
+    const flap = ring ? Math.sin(t * 6) * .5 : worried ? Math.sin(t * 9) * .4 : 0;
+    g.strokeStyle = '#a82762'; g.lineWidth = 3; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(-13, -22); g.lineTo(-19, -14 - (ring ? 12 : 0) - flap * 8); g.moveTo(14, -22); g.lineTo(20, -14 - (ring ? 12 : 0) - flap * 8); g.stroke();
+    // face
+    const ey = worried ? -35 : -35.5;
+    g.fillStyle = '#2a1020'; g.beginPath(); g.arc(-4, ey, worried ? 2.4 : 2.1, 0, 7); g.arc(6, ey, worried ? 2.4 : 2.1, 0, 7); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(-3.3, ey - .8, .8, 0, 7); g.arc(6.7, ey - .8, .8, 0, 7); g.fill();
+    g.strokeStyle = '#2a1020'; g.lineWidth = 1.4;
+    g.beginPath(); if (worried) g.ellipse(1, -29.5, 2, 1.5, 0, 0, 7); else { g.moveTo(-2, -31); g.quadraticCurveTo(1, -28, 4, -31); } g.stroke();
+    if (worried) { g.beginPath(); g.moveTo(-7, -40); g.lineTo(-2, -39); g.moveTo(9, -40); g.lineTo(4, -39); g.stroke(); }
+    g.fillStyle = 'rgba(255,180,210,.9)'; g.beginPath(); g.arc(-8, -31, 2.2, 0, 7); g.arc(10, -31, 2.2, 0, 7); g.fill();
+    // woolly hat and scarf
+    g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(1, -46, 9.5, Math.PI, 0); g.fill();
+    g.fillStyle = '#ffffff'; rr(-9.5, -48, 21, 4.5, 2.2); g.fill(); g.beginPath(); g.arc(1, -56.5, 3, 0, 7); g.fill();
+    g.fillStyle = '#3aa0d8'; rr(-13, -26, 27, 4.5, 2.2); g.fill(); rr(-11, -24, 4.5, 10, 2); g.fill();
+    if (ring) { g.lineWidth = 9; g.strokeStyle = '#4cc0f0'; g.beginPath(); g.ellipse(0, -2, 23, 8, 0, 0, Math.PI); g.stroke();
+      g.strokeStyle = '#fff'; g.setLineDash([6, 10]); g.beginPath(); g.ellipse(0, -2, 23, 8, 0, 0, Math.PI); g.stroke(); g.setLineDash([]); }
+    g.restore();
+  }
+
   let time = 0, lastT = 0;
   function frame(now) {
     const dt = Math.min(.05, (now - lastT) / 1000 || 0); lastT = now; time += dt;
     for (const f of falling) f.t += dt;
-    for (const f of falling) if (f.t >= f.dur && !f.splashed) { f.splashed = true; rings.push({ x: cxOf(f.i), y: cyOf(f.i) + 10, t: 0 }); }
+    for (const f of falling) if (f.t >= f.dur && !f.splashed) { f.splashed = true; rings.push({ x: tx(f.i % n) + s / 2, y: ty((f.i / n) | 0) + s * K / 2 + 8, t: 0 }); }
     falling = falling.filter(f => f.t < f.dur + .05);
     for (const r of rings) r.t += dt; rings = rings.filter(r => r.t < 1.4);
-    if (pip.state === 'fall') { pip.t += dt; if (pip.t > .75) { pip.state = 'swim'; pip.t = 0; rings.push({ x: cxOf(P()), y: cyOf(P()) + 8, t: 0, big: 1 }); } }
-    else pip.t += dt;
+    for (let c = 0; c < 2; c++) { const ch = chars[c]; ch.t += dt; if (ch.hop) { ch.hop.t += dt; if (ch.hop.t > .38) ch.hop = null; }
+      if (ch.state === 'fall' && ch.t > .75) { ch.state = 'swim'; ch.t = 0; rings.push({ x: tx(POS[c] % n) + s / 2, y: ty((POS[c] / n) | 0) + s * K / 2 + 8, t: 0, big: 1 }); } }
     draw();
     requestAnimationFrame(frame);
   }
 
   function draw() {
     g.clearRect(0, 0, W, H);
-    const fr = R3 * s * (n + .95), wr = R3 * s * (n + .62);
-    // hexagonal wooden frame with a snowy top edge
-    hexPath(OX, OY + 7, fr, true); g.fillStyle = '#6e4426'; g.fill();
-    hexPath(OX, OY, fr, true); g.fillStyle = '#a8703f'; g.fill();
-    g.strokeStyle = '#8a5a36'; g.lineWidth = 2; g.lineJoin = 'round'; g.stroke();
+    // frame
+    rr(0, 0, W, H - 2, 16); g.fillStyle = '#8a5a36'; g.fill();
+    rr(2, 2, W - 4, H - 8, 14); g.fillStyle = '#a8703f'; g.fill();
+    g.strokeStyle = 'rgba(80,45,20,.35)'; g.lineWidth = 1;
+    for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(20 + k * 120, 7); g.lineTo(80 + k * 120, 7); g.stroke(); g.beginPath(); g.moveTo(40 + k * 110, H - 9); g.lineTo(95 + k * 110, H - 9); g.stroke(); }
+    // snow on the frame top
     g.fillStyle = '#f4fbff';
-    { const ax = OX + Math.cos(4 * Math.PI / 3) * fr, ay = OY + Math.sin(4 * Math.PI / 3) * fr * K, bx = OX + Math.cos(5 * Math.PI / 3) * fr;
-      g.beginPath(); g.moveTo(ax + 3, ay + 1); for (let x = ax + 3; x < bx - 3; x += 14) g.quadraticCurveTo(x + 7, ay - 4, Math.min(bx - 3, x + 14), ay + 1); g.lineTo(bx - 6, ay + 5); g.lineTo(ax + 6, ay + 5); g.fill(); }
+    g.beginPath(); g.moveTo(8, 6); for (let x = 8; x <= W - 8; x += 18) g.quadraticCurveTo(x + 9, 1 + (x % 36 ? 1 : 3), x + 18, 6); g.lineTo(W - 8, 9); g.lineTo(8, 9); g.fill();
     // water
-    const wg = g.createLinearGradient(0, OY - wr * K, 0, OY + wr * K); wg.addColorStop(0, '#1d5d86'); wg.addColorStop(1, '#123f60');
-    hexPath(OX, OY + 3, wr, true); g.fillStyle = wg; g.fill();
-    g.save(); hexPath(OX, OY + 3, wr, true); g.clip();
+    const wx = ox - 3, wy = oy - 3, ww = n * s + 6, wh = n * s * K + TH + 4;
+    const wg = g.createLinearGradient(0, wy, 0, wy + wh); wg.addColorStop(0, '#1d5d86'); wg.addColorStop(1, '#123f60');
+    rr(wx, wy, ww, wh, 10); g.fillStyle = wg; g.fill();
+    g.save(); rr(wx, wy, ww, wh, 10); g.clip();
     g.strokeStyle = 'rgba(190,230,255,.10)'; g.lineWidth = 1.4;
     for (let k = 0; k < 14; k++) {
-      const px = (k * 71 + time * 6) % (2 * wr + 40) + OX - wr - 20, py = OY - wr * K + ((k * 37) % (2 * wr * K));
+      const px = (k * 71 + time * 6) % (ww + 40) + wx - 20, py = wy + ((k * 37) % wh);
       g.beginPath(); g.ellipse(px, py, 14, 3, 0, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
     }
     for (const r of rings) {
@@ -387,29 +453,37 @@
     }
     g.restore();
     // blocks, back to front
-    const p = P(), danger = !over && alive[p] && supports(alive, p) <= 4;
+    const worried = c => !over && alive[POS[c]] && supports(alive, (POS[c] / n) | 0, POS[c] % n) <= 2;
     const fallBy = new Map(falling.map(f => [f.i, f]));
-    for (let i = 0; i < CELLS.length; i++) {
-      const f = fallBy.get(i);
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const i = r * n + c, f = fallBy.get(i);
       if (f) {
         const q = Math.max(0, f.t) / f.dur;
-        if (f.t < 0) drawBlock(i, Math.sin(time * 26) * .5);   // wobble before it goes
-        else drawBlock(i, q * q * 22, 1 - q * .3, 1 - q);
+        if (f.t < 0) drawBlock(r, c, Math.sin(time * 26) * .5);   // wobble before it goes
+        else drawBlock(r, c, q * q * 22, 1 - q * .3, 1 - q);
       } else if (alive[i]) {
-        const crack = !over && i !== p && supports(alive, i) === KS;
-        const hl = i === hover ? (turn ? '#ff5fa2' : '#e8994a') : null;
-        drawBlock(i, 0, 1, 1, { crack, hl });
+        const crack = !over && supports(alive, r, c) === 2 && !(r === 0 || c === 0 || r === n - 1 || c === n - 1);
+        const hl = i === hover || (sel && (i === POS[turn] || hopTargets(alive, turn).includes(i))) ? (turn ? '#ff5fa2' : '#e8994a') : null;
+        drawBlock(r, c, 0, 1, 1, { crack, hl });
       }
     }
-    // Bear on the ice
-    const px = cxOf(p), py = cyOf(p) + s * .32, bsz = Math.min(52, s * 1.5);
-    if (pip.state === 'stand') drawBear(px, py, bsz, time, danger, false);
-    else if (pip.state === 'fall') {
-      const q = Math.max(0, pip.t) / .75;
-      g.save(); g.globalAlpha = 1 - q * .9; drawBear(px, py + q * q * 26, bsz * (1 - q * .2), time, true, false); g.restore();
-    } else {
-      const up = Math.min(1, pip.t / .6);
-      g.save(); g.globalAlpha = up; drawBear(px, py + 8 + (1 - up) * 10, bsz, time, false, true); g.restore();
+    // Bear and Bean on the ice (back one first)
+    for (const c of [0, 1].sort((a, b) => POS[a] - POS[b])) {
+      let px = tx(POS[c] % n) + s / 2, py = ty((POS[c] / n) | 0) + s * K * .66;
+      const sz = Math.min(46, s * 1.05);
+      if (chars[c].hop) {   // a little jump from the old block to the new one
+        const q = Math.min(1, chars[c].hop.t / .38), f = chars[c].hop.from;
+        px = tx(f % n) + s / 2 + (px - tx(f % n) - s / 2) * q; py = ty((f / n) | 0) + s * K * .66 + (py - ty((f / n) | 0) - s * K * .66) * q - Math.sin(q * Math.PI) * s * .7;
+      }
+      const fig = c ? drawBean : drawBear, ch = chars[c];
+      if (ch.state === 'stand') fig(px, py, sz, time + c * 1.7, worried(c), false);
+      else if (ch.state === 'fall') {
+        const q = Math.max(0, ch.t) / .75;
+        g.save(); g.globalAlpha = 1 - q * .9; fig(px, py + q * q * 26, sz * (1 - q * .2), time, true, false); g.restore();
+      } else {
+        const up = Math.min(1, ch.t / .6);
+        g.save(); g.globalAlpha = up; fig(px, py + 8 + (1 - up) * 10, sz, time, false, true); g.restore();
+      }
     }
     // gentle snowfall
     g.fillStyle = 'rgba(255,255,255,.55)';
@@ -430,31 +504,43 @@
     $('cpuTag').textContent = mode === 'cpu' ? 'computer' : '';
     $('undo').disabled = !hist.length || busy || (mode === 'cpu' && !hist.some(h => !isCpu(h.player)));
     const nm = q => `<span class="p${q}">${esc(names[q])}</span>`;
-    if (over) $('status').innerHTML = `Splash! ${nm(1 - loser)} wins! 🎉`;
+    if (over) $('status').innerHTML = loser < 0 ? `A draw! Nobody fell in` : `Splash! ${nm(1 - loser)} wins! 🎉`;
     else if (isCpu(turn)) $('status').innerHTML = `${nm(1)} is thinking…`;
-    else $('status').innerHTML = `${nm(turn)}'s turn · knock out a block`;
+    else $('status').innerHTML = sel ? `${nm(turn)}: tap a block to hop to` : `${nm(turn)}'s turn · sink ${esc(names[1 - turn])}!`;
     const left = alive ? legal(alive).length : 0;
-    $('left').textContent = over ? `Bear's gone for a swim. Don't worry, he loves it! Tap New game for a rematch`
-      : lastMsg ? `${lastMsg} · ${left} left` : `${left} block${left === 1 ? '' : 's'} left`;
+    $('left').textContent = over ? (loser < 0 ? 'No blocks left to knock out. Tap New game for a rematch' : bothFell ? `Both fell in! ${names[loser]} sank their own block too, so ${names[1 - loser]} wins. Tap New game for a rematch` : `${names[loser]} fell in. Don't worry, a swim is lovely! Tap New game for a rematch`)
+      : note ? note : lastMsg ? `${lastMsg} · ${left} left` : !canHop(turn) && !isCpu(turn) ? `You hopped last go, so knock out a block this time` : `Knock out a block, or tap yourself to hop`;
   }
 
-  function hit(ev) {
+  function hit(ev, chars_ = true) {
     const b = cv.getBoundingClientRect(), x = (ev.clientX - b.left) / SC, y = (ev.clientY - b.top) / SC;
-    const dx = x - OX, dy = (y - OY) / K;
-    const fq = (R3 / 3 * dx - dy / 3) / s, fr = (2 / 3 * dy) / s;
-    let rq = Math.round(fq), rr2 = Math.round(fr), rs = Math.round(-fq - fr);
-    const ddq = Math.abs(rq - fq), ddr = Math.abs(rr2 - fr), dds = Math.abs(rs + fq + fr);
-    if (ddq > ddr && ddq > dds) rq = -rr2 - rs; else if (ddr > dds) rr2 = -rq - rs;
-    const i = CELLS.findIndex(([q, r]) => q === rq && r === rr2);
-    return i >= 0 && alive[i] && i !== P() ? i : -1;
+    if (chars_) for (const c of [turn, 1 - turn]) {   // tapping a character's body counts as tapping their block
+      const cx = tx(POS[c] % n) + s / 2, by = ty((POS[c] / n) | 0) + s * K * .66, sz = Math.min(46, s * 1.05) * 1.3;
+      if (Math.abs(x - cx) < s * .42 && y < by + 4 && y > by - sz) return POS[c];
+    }
+    const c = Math.floor((x - ox) / s), r = Math.floor((y - oy) / (s * K));
+    if (r < 0 || c < 0 || r >= n || c >= n) return -1;
+    const i = r * n + c; return alive[i] ? i : -1;
+  }
+  function tapAt(i) {
+    if (i < 0) { sel = false; render(); return; }
+    if (i === POS[turn]) {
+      if (!canHop(turn)) { note = 'You hopped last go, so knock out a block this time'; sel = false; tone(220, .1, 'sine', .04); }
+      else { sel = !sel; note = ''; tone(sel ? 600 : 400, .06, 'triangle', .04); }
+      render(); return;
+    }
+    if (i === POS[1 - turn]) { note = `You can't knock out the block ${names[1 - turn]} is standing on`; sel = false; render(); return; }
+    if (sel) { if (hopTargets(alive, turn).includes(i)) hop(i); else { sel = false; note = 'Hop cancelled'; render(); } return; }
+    play(i);
   }
   const canTap = () => !over && !busy && !isCpu(turn);
-  cv.addEventListener('pointerdown', ev => { ev.preventDefault(); if (canTap()) hover = hit(ev); });
-  cv.addEventListener('pointermove', ev => { if (canTap() && (ev.pointerType === 'mouse' || ev.buttons)) hover = hit(ev); });
+  const hov = ev => { const i = hit(ev); return i >= 0 && !POS.includes(i) ? i : -1; };
+  cv.addEventListener('pointerdown', ev => { ev.preventDefault(); if (canTap()) hover = hov(ev); });
+  cv.addEventListener('pointermove', ev => { if (canTap() && (ev.pointerType === 'mouse' || ev.buttons)) hover = hov(ev); });
   cv.addEventListener('pointerup', ev => {
     if (!canTap()) return;
-    const i = hit(ev); hover = ev.pointerType === 'mouse' ? i : -1;
-    if (i >= 0) { hover = -1; play(i); }
+    const i = hit(ev, !sel); hover = -1;   // while choosing a hop, the blocks behind your own head are tappable
+    tapAt(i);
   });
   cv.addEventListener('pointerleave', () => { if (canTap()) hover = -1; });
   cv.addEventListener('pointercancel', () => { hover = -1; });
@@ -501,8 +587,8 @@
   }
 
   if (DEBUG) window.__ti = { get alive() { return alive; }, get turn() { return turn; }, get over() { return over; }, get loser() { return loser; }, get busy() { return busy; },
-    play: i => play(i), safeMoves: () => safeMoves(alive), cpuPick, P, get n() { return n; },
-    centre: i => { const b = cv.getBoundingClientRect(); return [b.left + cxOf(i) * SC, b.top + cyOf(i) * SC]; } };
+    play: i => play(i), safeMoves: () => safeMoves(alive), cpuPick, get POS() { return POS; }, get n() { return n; }, outcome: (i, p) => outcome(apply(alive, i).al, p), hop: i => hop(i), get lastHop() { return lastHop; }, hopTargets: p => hopTargets(alive, p),
+    centre: i => { const b = cv.getBoundingClientRect(); return [b.left + (tx(i % n) + s / 2) * SC, b.top + (ty((i / n) | 0) + s * K / 2) * SC]; } };
 
   setSoundIcon(); segs(); newGame(); requestAnimationFrame(frame);
 })();
