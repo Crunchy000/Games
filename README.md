@@ -9,7 +9,7 @@ Play at https://crunchy000.github.io/Games/
 | Game | Folder | What it is |
 | --- | --- | --- |
 | Royal Jelly | [`royal-jelly/`](royal-jelly/) | Queen Bean logic puzzle: crown one Bean per row, column and colour patch, with no two Beans touching. Generated boards from 6×6 to 9×9, each with exactly one answer, plus a daily 8×8, dots, hints, undo and best times. |
-| Thin Ice | [`thin-ice/`](thin-ice/) | Bear and Bean both stand on a frozen pond and take turns knocking out blocks (unsupported blocks drop too) or hopping to a safer block. First to sink the other wins; sink yourself and you lose. Three pond sizes, undo, and a computer opponent. |
+| Thin Ice | [`thin-ice/`](thin-ice/) | Bear and Bean take turns knocking blocks out of a frozen pond; unsupported blocks drop too. Whoever drops Pip the penguin (on a random inner block each game) loses. Three pond sizes, undo, and a computer opponent. Three pond sizes, undo, and a computer opponent. |
 | Bean Grab | [`bean-grab/`](bean-grab/) | Two players on one phone laid flat: tap your half to send your hippo chomping at rolling jelly beans. Gold beans are worth 3. Also plays against the computer. |
 | Guess Five | [`guess-five/`](guess-five/) | Five-letter word puzzle in six guesses with a daily word and endless mode, hard mode, high-contrast colours, stats and sharing. British English word list. |
 | Word Hive | [`word-hive/`](word-hive/) | Honeycomb word puzzle: make words from seven letters using the centre letter. 200 hives (a new one each day), ranks, hints grid and bonus words. |

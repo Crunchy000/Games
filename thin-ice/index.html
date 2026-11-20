@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Thin Ice · Bear vs Bean</title>
-<meta name="description" content="A two-player ice game: Bear and Bean stand on a frozen pond and take turns knocking out blocks or hopping to safety. Sink the other one first, but don't sink yourself. Play a friend or the computer. Free, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A two-player ice game: Bear and Bean take turns knocking blocks out of a frozen pond. Whoever drops Pip the penguin in the water loses. Play a friend or the computer. Free, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://crunchy000.github.io/Games/thin-ice/">
 <style>
   :root {
@@ -99,13 +99,13 @@
   <div id="status" role="status" aria-live="polite"></div>
   <div id="left"></div>
 
-  <div class="board-wrap"><canvas id="board" aria-label="Frozen pond of ice blocks with Bear and Bean standing on it"></canvas></div>
+  <div class="board-wrap"><canvas id="board" aria-label="Frozen pond of ice blocks with Pip the penguin in the middle"></canvas></div>
 
   <div class="actions">
     <button class="btn primary" id="newGame">New game</button>
     <button class="btn ghost-btn" id="resetWins">Reset wins</button>
   </div>
-  <p class="hint">Bear and Bean are both on the ice. Take turns tapping a block to knock it out. A block needs two neighbours (the frame counts) and a path to the frame, or it drops too. Sink the other one first, but don't sink yourself!<br>Instead of knocking, you can tap yourself and hop to a neighbouring block (not on the edge), but not two goes in a row.<br>Tap a name to rename · Who starts swaps every game</p>
+  <p class="hint">Take turns tapping an ice block to knock it out. A block needs two neighbours (the frame counts) and a path to the frame, or it drops too. Pip starts somewhere new each game. Whoever drops Pip in the pond loses!<br>Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -168,88 +168,55 @@
       waves.push(drop);
     }
   }
-  // Bear stands on POS[0] and Bean on POS[1]; nobody can knock out a block someone is standing on.
-  let POS = [0, 0];
-  function placeCharacters() {
-    // a random spot for Bear, and the mirror-image spot for Bean, so neither starts with an easier block
-    const opts = [];
-    for (let r = 1; r < n - 1; r++) for (let c = 1; c < n - 1; c++) {
-      const r2 = n - 1 - r, c2 = n - 1 - c;
-      if (Math.max(Math.abs(r - r2), Math.abs(c - c2)) >= 2) opts.push([r * n + c, r2 * n + c2]);
-    }
-    POS = opts[Math.floor(Math.random() * opts.length)];
-  }
+  // Pip stands on a random block each game, never on the edge row
+  let PIP = 0;
+  const P = () => PIP;
+  function placePip() { const r = 1 + Math.floor(Math.random() * (n - 2)), c = 1 + Math.floor(Math.random() * (n - 2)); PIP = r * n + c; }
   function apply(al, i) { const a = al.slice(); a[i] = 0; const waves = settle(a); return { al: a, waves: [[i], ...waves] }; }
-  const legal = (al, pos = POS) => { const out = []; for (let i = 0; i < n * n; i++) if (al[i] && i !== pos[0] && i !== pos[1]) out.push(i); return out; };
-  const safeMoves = (al, p = turn) => { const out = []; for (const i of legal(al)) { const r = apply(al, i); if (r.al[POS[p]]) out.push({ i, al: r.al }); } return out; };
-  const outcome = (al, p, pos = POS) => !al[pos[p]] ? 'lose' : !al[pos[1 - p]] ? 'win' : 'ok';
-  // hopping: one step in any direction (diagonals too) onto a free block, never onto the edge row
-  const hopTargets = (al, p, pos = POS) => {
-    const r0 = (pos[p] / n) | 0, c0 = pos[p] % n, out = [];
-    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const r = r0 + dr, c = c0 + dc, j = r * n + c;
-      if ((dr || dc) && r > 0 && c > 0 && r < n - 1 && c < n - 1 && al[j] && j !== pos[1 - p]) out.push(j); }
-    return out;
-  };
+  const legal = al => { const out = [], p = P(); for (let i = 0; i < n * n; i++) if (al[i] && i !== p) out.push(i); return out; };
+  const safeMoves = al => { const p = P(), out = []; for (const i of legal(al)) { const r = apply(al, i); if (r.al[p]) out.push({ i, al: r.al }); } return out; };
 
   /* ---------- state ---------- */
   let alive, turn = 0, starter = 0, hist = [], over = false, loser = -1, busy = false, lastMsg = '';
-  let falling = [], rings = [], chars = [], hover = -1, cpuTimer = 0, bothFell = false, lastHop = [false, false], sel = false, note = '';
+  let falling = [], rings = [], pip = null, hover = -1, cpuTimer = 0;
   const isCpu = p => mode === 'cpu' && p === 1;
 
   function newGame() {
     clearTimeout(cpuTimer);
-    alive = new Uint8Array(n * n).fill(1); placeCharacters();
+    alive = new Uint8Array(n * n).fill(1); placePip();
     turn = starter; starter = 1 - starter;
     hist = []; over = false; loser = -1; busy = false; falling = []; rings = []; lastMsg = '';
-    chars = [{ state: 'stand', t: 0 }, { state: 'stand', t: 0 }]; bothFell = false; lastHop = [false, false]; sel = false; note = '';
+    pip = { state: 'stand', t: 0, y: 0 };
     layout(); render(); maybeCpu();
   }
 
   function play(i, who = turn) {
-    if (over || busy || !alive[i] || POS.includes(i)) return false;
+    if (over || busy || !alive[i] || i === P()) return false;
     const res = apply(alive, i);
-    const fell = [!res.al[POS[0]], !res.al[POS[1]]];
-    hist.push({ prev: alive, pos: POS.slice(), lastHop: lastHop.slice(), player: who });
-    lastHop[who] = false; sel = false; note = '';
+    const lost = !res.al[P()];
+    hist.push({ prev: alive, player: who });
     alive = res.al;
     // animate the cascade wave by wave
     let total = 0;
-    const delayOf = k => k === 0 ? 0 : .12 + k * .16;
     res.waves.forEach((w, k) => {
-      for (const j of w) falling.push({ i: j, t: -delayOf(k), dur: .55 });
-      for (const c of [0, 1]) if (w.includes(POS[c])) { chars[c].state = 'fall'; chars[c].t = -delayOf(k); }
-      if (k === 0) { sCrack(); buzz(10); } else sCrack(delayOf(k));
-      sPlop(delayOf(k) + .3);
+      const delay = k === 0 ? 0 : .12 + k * .16;
+      for (const j of w) falling.push({ i: j, t: -delay, dur: .55, pip: j === P() });
+      if (k === 0) { sCrack(); buzz(10); } else sCrack(delay);
+      sPlop(delay + .3);
       total += w.length;
     });
     const end = .12 + (res.waves.length - 1) * .16 + .6;
     busy = true;
     lastMsg = total > 1 ? `Crack! ${total} blocks fell` : '';
-    if (fell[0] || fell[1]) {
-      // sink your own character and you lose, even if the other one goes in too
-      over = true; loser = fell[who] ? who : 1 - who; bothFell = fell[0] && fell[1]; wins[1 - loser]++; save();
+    if (lost) {
+      over = true; loser = who; wins[1 - who]++; save();
+      pip.state = 'fall'; pip.t = -(.12 + (res.waves.length - 1) * .16);
       setTimeout(() => { sSplash(); buzz([30, 40, 30]); }, (end - .1) * 1000);
-      setTimeout(() => { [523, 659, 784, 1047].forEach((f, k) => tone(f, .22, 'triangle', .07, k * .09)); confetti(1 - loser); }, (end + .9) * 1000);
+      setTimeout(() => { [523, 659, 784, 1047].forEach((f, k) => tone(f, .22, 'triangle', .07, k * .09)); confetti(1 - who); }, (end + .9) * 1000);
     } else turn = 1 - who;
-    setTimeout(() => { busy = false; checkStuck(); render(); maybeCpu(); }, end * 1000);
+    setTimeout(() => { busy = false; render(); maybeCpu(); }, end * 1000);
     render();
     return true;
-  }
-
-  const canHop = p => !lastHop[p] || !legal(alive).length;
-  function checkStuck() {
-    // nothing left to knock out and nowhere to hop: nobody can fall in, so it's a draw
-    if (!over && !legal(alive).length && !hopTargets(alive, turn).length) { over = true; loser = -1; tone(440, .2, 'sine', .05); tone(554, .25, 'sine', .05, .18); }
-  }
-  function hop(j, who = turn) {
-    if (over || busy || !canHop(who) || !hopTargets(alive, who).includes(j)) return false;
-    hist.push({ prev: alive, pos: POS.slice(), lastHop: lastHop.slice(), player: who });
-    const from = POS[who]; POS = POS.slice(); POS[who] = j; lastHop[who] = true; sel = false; note = ''; lastMsg = '';
-    chars[who].hop = { from, t: 0 };
-    tone(420, .16, 'sine', .06, 0, 360); tone(700, .08, 'triangle', .03, .14); buzz(8);
-    busy = true; turn = 1 - who;
-    setTimeout(() => { busy = false; checkStuck(); render(); maybeCpu(); }, 420);
-    render(); return true;
   }
 
   function undo() {
@@ -258,35 +225,34 @@
     let h;
     do { h = hist.pop(); } while (h && isCpu(h.player) && hist.length);   // vs CPU: go back to your own turn
     if (!h) return;
-    if (over) { if (loser >= 0) { wins[1 - loser]--; save(); } over = false; loser = -1; }
-    alive = h.prev; POS = h.pos; lastHop = h.lastHop; turn = h.player; falling = []; rings = []; chars = [{ state: 'stand', t: 0 }, { state: 'stand', t: 0 }]; bothFell = false; sel = false; note = ''; lastMsg = '';
+    if (over) { wins[1 - loser]--; save(); over = false; loser = -1; }
+    alive = h.prev; turn = h.player; falling = []; rings = []; pip = { state: 'stand', t: 0, y: 0 }; lastMsg = '';
     tone(300, .08, 'sine', .04, 0, -80); render(); maybeCpu();
   }
 
   /* ---------- computer (plays Bean) ---------- */
-  function cpuPick(me = 1) {
-    const op = 1 - me;
-    const knocks = legal(alive).map(i => { const al = apply(alive, i).al; return { type: 'knock', i, al, pos: POS, o: outcome(al, me) }; });
-    const win = knocks.filter(m => m.o === 'win');
-    if (win.length) return win[Math.floor(Math.random() * win.length)];
-    const cands = knocks.filter(m => m.o === 'ok');
-    if (canHop(me)) for (const j of hopTargets(alive, me)) { const pos = POS.slice(); pos[me] = j; cands.push({ type: 'hop', i: j, al: alive, pos, o: 'ok' }); }
-    if (!cands.length) return knocks.length ? knocks[Math.floor(Math.random() * knocks.length)] : null;
-    // how many ways could the other player sink me straight after this?
-    const threats = m => legal(m.al, m.pos).filter(j => outcome(apply(m.al, j).al, op, m.pos) === 'win').length;
-    const sup = (m, p) => supports(m.al, (m.pos[p] / n) | 0, m.pos[p] % n);
-    const scored = cands.map(m => ({ m, t: threats(m) + (m.type === 'hop' ? .5 : 0) }));
-    const best = Math.min(...scored.map(x => x.t));
-    const pool = scored.filter(x => x.t === best);
-    if (Math.random() < .15) return pool[Math.floor(Math.random() * pool.length)].m;   // a friendly wobble now and then
-    // otherwise weaken the ice round the other player and keep my own block sturdy
-    pool.sort((a, b) => (sup(a.m, op) - sup(a.m, me)) - (sup(b.m, op) - sup(b.m, me)) + (Math.random() - .5) * 1.5);
-    return pool[0].m;
+  function cpuPick() {
+    const safe = safeMoves(alive);
+    if (!safe.length) { const l = legal(alive); return l[Math.floor(Math.random() * l.length)]; }
+    const pr = (P() / n) | 0, pc = P() % n;
+    const far = i => Math.abs(((i / n) | 0) - pr) + Math.abs(i % n - pc);
+    // a move that leaves no safe reply wins outright
+    const scored = safe.map(m => ({ m, opp: safeMoves(m.al) }));
+    const win = scored.filter(s => !s.opp.length);
+    if (win.length) return win[Math.floor(Math.random() * win.length)].m.i;
+    let pool = scored;
+    if (safe.length <= 16) {    // look one step further: avoid moves that hand over a winning reply
+      const ok = scored.filter(s => !s.opp.some(o => safeMoves(o.al).length === 0));
+      if (ok.length) pool = ok;
+    }
+    if (Math.random() < .18) return pool[Math.floor(Math.random() * pool.length)].m.i;   // a friendly wobble now and then
+    pool.sort((a, b) => far(b.m.i) - far(a.m.i) + (Math.random() - .5) * 2.5);
+    return pool[0].m.i;
   }
   function maybeCpu() {
     clearTimeout(cpuTimer);
     if (over || busy || !isCpu(turn)) return;
-    cpuTimer = setTimeout(() => { if (!over && !busy && isCpu(turn)) { const m = cpuPick(); if (!m) { checkStuck(); render(); return; } hover = m.i; setTimeout(() => { hover = -1; m.type === 'hop' ? hop(m.i, 1) : play(m.i, 1); }, 380); } }, 520);
+    cpuTimer = setTimeout(() => { if (!over && !busy && isCpu(turn)) { const i = cpuPick(); hover = i; setTimeout(() => { hover = -1; play(i, 1); }, 380); } }, 520);
   }
 
   /* ---------- drawing ---------- */
@@ -333,83 +299,68 @@
     g.restore();
   }
 
-  function drawBear(x, y, sz, t, worried, ring) {
+  function drawPip(x, y, sz, t, worried, ring) {
     g.save(); g.translate(x, y);
     if (ring) g.translate(0, Math.sin(t * 2.2) * 1.5);
-    else if (worried) g.rotate(Math.sin(t * 5) * .06);
-    const k = sz / 44; g.scale(k, k);
-    const fur = '#9b5e2e', dark = '#6e3f1c', light = '#e8b98a';
-    if (ring) { g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.ellipse(0, 4, 32, 8, 0, 0, 7); g.fill();
-      g.lineWidth = 9; g.strokeStyle = '#e8664a'; g.beginPath(); g.ellipse(0, -2, 23, 8, 0, Math.PI, Math.PI * 2); g.stroke(); }
-    else {
-      g.fillStyle = 'rgba(30,70,100,.25)'; g.beginPath(); g.ellipse(0, 0, 16, 5, 0, 0, 7); g.fill();
-      g.fillStyle = dark; g.beginPath(); g.ellipse(-7, -2, 6.5, 4, 0, 0, 7); g.ellipse(7, -2, 6.5, 4, 0, 0, 7); g.fill();
+    else g.rotate(worried ? Math.sin(t * 5) * .07 : Math.sin(t * 1.6) * .03);   // a gentle waddle, a wobble when worried
+    const k = sz / 40; g.scale(k, k);
+    const navy = '#1f2d40', blink = !worried && (t % 3.6) > 3.45;
+    if (ring) {   // rubber ring: back half first
+      g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.ellipse(0, 4, 31, 8, 0, 0, 7); g.fill();
+      g.lineWidth = 9; g.strokeStyle = '#e8664a'; g.beginPath(); g.ellipse(0, -2, 22, 8, 0, Math.PI, Math.PI * 2); g.stroke();
+    } else {
+      g.fillStyle = 'rgba(30,70,100,.28)'; g.beginPath(); g.ellipse(0, 0, 16, 5, 0, 0, 7); g.fill();
+      // orange feet with little toes
+      g.fillStyle = '#ff9f1c';
+      for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(sd * 6.5, -1, 6.5, 3.2, sd * .12, 0, 7); g.fill(); }
+      g.strokeStyle = '#d9770b'; g.lineWidth = .9;
+      for (const sd of [-1, 1]) for (const tx2 of [-2.2, 0, 2.2]) { g.beginPath(); g.moveTo(sd * 6.5 + tx2, .4); g.lineTo(sd * 6.5 + tx2 * 1.25, 2); g.stroke(); }
     }
-    // body and tummy
-    g.fillStyle = fur; g.beginPath(); g.ellipse(0, -17, 14, 16, 0, 0, 7); g.fill();
-    g.fillStyle = light; g.beginPath(); g.ellipse(0, -14, 9, 11, 0, 0, 7); g.fill();
-    // arms (flap about when worried, wave from the ring)
-    const flap = ring ? Math.sin(t * 6) * .5 : worried ? Math.sin(t * 9) * .4 : 0;
-    g.fillStyle = fur;
-    g.save(); g.translate(-12, -24); g.rotate(.5 + flap + (ring ? 1.6 : 0)); g.beginPath(); g.ellipse(0, 7, 4.5, 9, 0, 0, 7); g.fill(); g.restore();
-    g.save(); g.translate(12, -24); g.rotate(-.5 - flap - (ring ? 1.6 : 0)); g.beginPath(); g.ellipse(0, 7, 4.5, 9, 0, 0, 7); g.fill(); g.restore();
+    // body
+    const bg = g.createLinearGradient(-15, -40, 15, 0); bg.addColorStop(0, '#34496a'); bg.addColorStop(1, '#141e2c');
+    g.fillStyle = bg; g.beginPath(); g.ellipse(0, -19, 15, 19.5, 0, 0, 7); g.fill();
+    const wg = g.createRadialGradient(-3, -20, 2, 0, -15, 15); wg.addColorStop(0, '#ffffff'); wg.addColorStop(1, '#e3edf5');
+    g.fillStyle = wg; g.beginPath(); g.ellipse(0, -15.5, 10.5, 14.5, 0, 0, 7); g.fill();
+    // flippers: flap when worried, wave from the ring
+    const flap = ring ? Math.sin(t * 6) * .5 : worried ? Math.sin(t * 9) * .45 : Math.sin(t * 1.6) * .05;
+    g.fillStyle = navy;
+    for (const sd of [-1, 1]) { g.save(); g.translate(sd * 13, -24); g.rotate(sd * (-.35 - (sd > 0 && ring ? 1.9 : 0)) - sd * flap); g.beginPath(); g.ellipse(0, 8, 4, 10.5, 0, 0, 7); g.fill(); g.restore(); }
     // head
-    g.beginPath(); g.arc(-10, -46, 5.5, 0, 7); g.arc(10, -46, 5.5, 0, 7); g.fill();
-    g.fillStyle = '#d99a6c'; g.beginPath(); g.arc(-10, -46, 2.8, 0, 7); g.arc(10, -46, 2.8, 0, 7); g.fill();
-    g.fillStyle = fur; g.beginPath(); g.arc(0, -38, 12.5, 0, 7); g.fill();
-    g.fillStyle = light; g.beginPath(); g.ellipse(0, -34, 6.5, 5, 0, 0, 7); g.fill();
-    g.fillStyle = '#2a1a10'; g.beginPath(); g.ellipse(0, -36.5, 2.6, 1.9, 0, 0, 7); g.fill();
-    g.strokeStyle = '#2a1a10'; g.lineWidth = 1.3; g.lineCap = 'round';
-    g.beginPath(); if (worried) { g.ellipse(0, -31.5, 2, 1.4, 0, 0, 7); } else { g.moveTo(-2.5, -33); g.quadraticCurveTo(0, -30.5, 2.5, -33); } g.stroke();
-    const ey = worried ? -41 : -41.5;
-    g.fillStyle = '#2a1a10'; g.beginPath(); g.arc(-5, ey, worried ? 2.3 : 1.9, 0, 7); g.arc(5, ey, worried ? 2.3 : 1.9, 0, 7); g.fill();
-    g.fillStyle = '#fff'; g.beginPath(); g.arc(-4.4, ey - .7, .7, 0, 7); g.arc(5.6, ey - .7, .7, 0, 7); g.fill();
-    if (worried) { g.strokeStyle = '#2a1a10'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(-8, -46); g.lineTo(-3, -44.5); g.moveTo(8, -46); g.lineTo(3, -44.5); g.stroke(); }
-    g.fillStyle = 'rgba(255,120,140,.45)'; g.beginPath(); g.arc(-8.5, -36, 2.2, 0, 7); g.arc(8.5, -36, 2.2, 0, 7); g.fill();
-    // woolly hat and scarf
-    g.fillStyle = '#8fd8ff'; g.beginPath(); g.arc(0, -45, 10, Math.PI, 0); g.fill();
-    g.fillStyle = '#ffffff'; rr(-11, -47, 22, 4.5, 2.2); g.fill(); g.beginPath(); g.arc(0, -56, 3.2, 0, 7); g.fill();
-    g.fillStyle = '#ff5fa2'; rr(-11, -28, 22, 5, 2.5); g.fill(); rr(5, -26, 5, 11, 2); g.fill();
-    if (ring) { g.lineWidth = 9; g.strokeStyle = '#ff7a59'; g.beginPath(); g.ellipse(0, -2, 23, 8, 0, 0, Math.PI); g.stroke();
-      g.strokeStyle = '#fff'; g.setLineDash([6, 10]); g.beginPath(); g.ellipse(0, -2, 23, 8, 0, 0, Math.PI); g.stroke(); g.setLineDash([]); }
-    g.restore();
-  }
-
-  function drawBean(x, y, sz, t, worried, ring) {
-    g.save(); g.translate(x, y);
-    if (ring) g.translate(0, Math.sin(t * 2.2 + 1) * 1.5);
-    else if (worried) g.rotate(Math.sin(t * 5) * .06);
-    const k = sz / 44; g.scale(k, k);
-    if (ring) { g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.ellipse(0, 4, 32, 8, 0, 0, 7); g.fill();
-      g.lineWidth = 9; g.strokeStyle = '#3aa0d8'; g.beginPath(); g.ellipse(0, -2, 23, 8, 0, Math.PI, Math.PI * 2); g.stroke(); }
+    g.fillStyle = bg; g.beginPath(); g.arc(0, -37, 12.5, 0, 7); g.fill();
+    // heart-shaped white face
+    g.fillStyle = '#fff'; g.beginPath(); g.ellipse(-4.6, -37, 5.6, 6.6, .15, 0, 7); g.ellipse(4.6, -37, 5.6, 6.6, -.15, 0, 7); g.ellipse(0, -32.5, 6.5, 4.8, 0, 0, 7); g.fill();
+    // eyes
+    const ey = -37.5, er = worried ? 2.6 : 2.2;
+    if (blink) { g.strokeStyle = navy; g.lineWidth = 1.5; g.lineCap = 'round'; g.beginPath(); g.moveTo(-6.5, ey); g.quadraticCurveTo(-4.3, ey + 1.6, -2.1, ey); g.moveTo(2.1, ey); g.quadraticCurveTo(4.3, ey + 1.6, 6.5, ey); g.stroke(); }
     else {
-      g.fillStyle = 'rgba(30,70,100,.25)'; g.beginPath(); g.ellipse(0, 0, 15, 5, 0, 0, 7); g.fill();
-      g.fillStyle = '#c23a78'; g.beginPath(); g.ellipse(-6, -2, 5.5, 3.5, 0, 0, 7); g.ellipse(6, -2, 5.5, 3.5, 0, 0, 7); g.fill();
+      g.fillStyle = '#16202e'; g.beginPath(); g.ellipse(-4.3, ey, er, er * 1.2, 0, 0, 7); g.ellipse(4.3, ey, er, er * 1.2, 0, 0, 7); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(-3.5, ey - 1.1, .95, 0, 7); g.arc(5.1, ey - 1.1, .95, 0, 7); g.arc(-4.9, ey + .9, .45, 0, 7); g.arc(3.7, ey + .9, .45, 0, 7); g.fill();
     }
-    // jelly bean body: a tall kidney shape
-    g.fillStyle = '#ff5fa2'; g.strokeStyle = '#a82762'; g.lineWidth = 1.6;
-    g.beginPath(); g.moveTo(-3, -50);
-    g.bezierCurveTo(10, -53, 17, -42, 15, -28); g.bezierCurveTo(13, -14, 14, -6, 4, -3); g.bezierCurveTo(-8, 0, -16, -6, -15, -20);
-    g.bezierCurveTo(-14, -30, -8, -32, -11, -40); g.bezierCurveTo(-13, -47, -9, -49, -3, -50); g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.ellipse(-8, -22, 2.4, 6, .15, 0, 7); g.fill();
-    // arms
-    const flap = ring ? Math.sin(t * 6) * .5 : worried ? Math.sin(t * 9) * .4 : 0;
-    g.strokeStyle = '#a82762'; g.lineWidth = 3; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(-13, -22); g.lineTo(-19, -14 - (ring ? 12 : 0) - flap * 8); g.moveTo(14, -22); g.lineTo(20, -14 - (ring ? 12 : 0) - flap * 8); g.stroke();
-    // face
-    const ey = worried ? -35 : -35.5;
-    g.fillStyle = '#2a1020'; g.beginPath(); g.arc(-4, ey, worried ? 2.4 : 2.1, 0, 7); g.arc(6, ey, worried ? 2.4 : 2.1, 0, 7); g.fill();
-    g.fillStyle = '#fff'; g.beginPath(); g.arc(-3.3, ey - .8, .8, 0, 7); g.arc(6.7, ey - .8, .8, 0, 7); g.fill();
-    g.strokeStyle = '#2a1020'; g.lineWidth = 1.4;
-    g.beginPath(); if (worried) g.ellipse(1, -29.5, 2, 1.5, 0, 0, 7); else { g.moveTo(-2, -31); g.quadraticCurveTo(1, -28, 4, -31); } g.stroke();
-    if (worried) { g.beginPath(); g.moveTo(-7, -40); g.lineTo(-2, -39); g.moveTo(9, -40); g.lineTo(4, -39); g.stroke(); }
-    g.fillStyle = 'rgba(255,180,210,.9)'; g.beginPath(); g.arc(-8, -31, 2.2, 0, 7); g.arc(10, -31, 2.2, 0, 7); g.fill();
-    // woolly hat and scarf
-    g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(1, -46, 9.5, Math.PI, 0); g.fill();
-    g.fillStyle = '#ffffff'; rr(-9.5, -48, 21, 4.5, 2.2); g.fill(); g.beginPath(); g.arc(1, -56.5, 3, 0, 7); g.fill();
-    g.fillStyle = '#3aa0d8'; rr(-13, -26, 27, 4.5, 2.2); g.fill(); rr(-11, -24, 4.5, 10, 2); g.fill();
-    if (ring) { g.lineWidth = 9; g.strokeStyle = '#4cc0f0'; g.beginPath(); g.ellipse(0, -2, 23, 8, 0, 0, Math.PI); g.stroke();
-      g.strokeStyle = '#fff'; g.setLineDash([6, 10]); g.beginPath(); g.ellipse(0, -2, 23, 8, 0, 0, Math.PI); g.stroke(); g.setLineDash([]); }
+    if (worried) { g.strokeStyle = navy; g.lineWidth = 1.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-7.5, -43); g.lineTo(-2.8, -41.8); g.moveTo(7.5, -43); g.lineTo(2.8, -41.8); g.stroke();
+      g.fillStyle = '#8fd8ff'; g.beginPath(); g.moveTo(12, -41); g.quadraticCurveTo(14.5, -37, 12, -35.5); g.quadraticCurveTo(9.5, -37, 12, -41); g.fill(); }
+    // cheeks and beak
+    g.fillStyle = 'rgba(255,130,150,.6)'; g.beginPath(); g.ellipse(-7.6, -32.5, 2.3, 1.5, 0, 0, 7); g.ellipse(7.6, -32.5, 2.3, 1.5, 0, 0, 7); g.fill();
+    g.fillStyle = '#ffae2b'; g.beginPath(); g.moveTo(-3.6, -33.6); g.quadraticCurveTo(0, -35.4, 3.6, -33.6); g.quadraticCurveTo(1.2, -30.6, 0, -29.8); g.quadraticCurveTo(-1.2, -30.6, -3.6, -33.6); g.fill();
+    g.fillStyle = '#e07d0c'; g.beginPath(); g.moveTo(-2.4, -31.8); g.quadraticCurveTo(0, -30.6, 2.4, -31.8); g.quadraticCurveTo(.8, -29.9, 0, -29.6); g.quadraticCurveTo(-.8, -29.9, -2.4, -31.8); g.fill();
+    // striped scarf
+    g.fillStyle = '#e8994a'; rr(-12, -27.5, 24, 5.5, 2.7); g.fill();
+    g.fillStyle = '#fff3d6'; for (const sx of [-7, -1, 5]) g.fillRect(sx, -27.5, 2, 5.5);
+    g.save(); g.translate(6, -24); g.rotate(ring ? -.2 : .12 + Math.sin(t * 2) * .05);
+    g.fillStyle = '#e8994a'; rr(-2.6, 0, 5.4, 12, 2.2); g.fill(); g.fillStyle = '#fff3d6'; g.fillRect(-2.6, 4, 5.4, 1.8); g.fillRect(-2.6, 8, 5.4, 1.8);
+    g.strokeStyle = '#e8994a'; g.lineWidth = 1.1; for (const fx of [-1.6, 0, 1.6]) { g.beginPath(); g.moveTo(fx, 12); g.lineTo(fx, 14.2); g.stroke(); }
+    g.restore();
+    // woolly bobble hat
+    g.save(); g.translate(0, -46); g.rotate(-.08);
+    g.fillStyle = '#ff5fa2'; g.beginPath(); g.moveTo(-10.5, 2); g.quadraticCurveTo(-10, -9, 0, -9.5); g.quadraticCurveTo(10, -9, 10.5, 2); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(160,30,90,.45)'; g.lineWidth = 1; for (const hx of [-5, 0, 5]) { g.beginPath(); g.moveTo(hx, 1); g.lineTo(hx * .7, -8); g.stroke(); }
+    g.fillStyle = '#ffffff'; rr(-11.5, -.5, 23, 5, 2.5); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(0, -11, 3.6, 0, 7); g.fill();
+    g.fillStyle = 'rgba(200,220,240,.8)'; g.beginPath(); g.arc(1, -10, 1.6, 0, 7); g.fill();
+    g.restore();
+    if (ring) {   // front half of the ring, with stripes
+      g.lineWidth = 9; g.strokeStyle = '#ff7a59'; g.beginPath(); g.ellipse(0, -2, 22, 8, 0, 0, Math.PI); g.stroke();
+      g.strokeStyle = '#fff'; g.setLineDash([6, 10]); g.beginPath(); g.ellipse(0, -2, 22, 8, 0, 0, Math.PI); g.stroke(); g.setLineDash([]);
+    }
     g.restore();
   }
 
@@ -420,8 +371,8 @@
     for (const f of falling) if (f.t >= f.dur && !f.splashed) { f.splashed = true; rings.push({ x: tx(f.i % n) + s / 2, y: ty((f.i / n) | 0) + s * K / 2 + 8, t: 0 }); }
     falling = falling.filter(f => f.t < f.dur + .05);
     for (const r of rings) r.t += dt; rings = rings.filter(r => r.t < 1.4);
-    for (let c = 0; c < 2; c++) { const ch = chars[c]; ch.t += dt; if (ch.hop) { ch.hop.t += dt; if (ch.hop.t > .38) ch.hop = null; }
-      if (ch.state === 'fall' && ch.t > .75) { ch.state = 'swim'; ch.t = 0; rings.push({ x: tx(POS[c] % n) + s / 2, y: ty((POS[c] / n) | 0) + s * K / 2 + 8, t: 0, big: 1 }); } }
+    if (pip.state === 'fall') { pip.t += dt; if (pip.t > .75) { pip.state = 'swim'; pip.t = 0; rings.push({ x: tx(P() % n) + s / 2, y: ty((P() / n) | 0) + s * K / 2 + 8, t: 0, big: 1 }); } }
+    else pip.t += dt;
     draw();
     requestAnimationFrame(frame);
   }
@@ -453,7 +404,7 @@
     }
     g.restore();
     // blocks, back to front
-    const worried = c => !over && alive[POS[c]] && supports(alive, (POS[c] / n) | 0, POS[c] % n) <= 2;
+    const p = P(), danger = !over && alive[p] && supports(alive, (p / n) | 0, p % n) <= 2;
     const fallBy = new Map(falling.map(f => [f.i, f]));
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
       const i = r * n + c, f = fallBy.get(i);
@@ -462,28 +413,20 @@
         if (f.t < 0) drawBlock(r, c, Math.sin(time * 26) * .5);   // wobble before it goes
         else drawBlock(r, c, q * q * 22, 1 - q * .3, 1 - q);
       } else if (alive[i]) {
-        const crack = !over && supports(alive, r, c) === 2 && !(r === 0 || c === 0 || r === n - 1 || c === n - 1);
-        const hl = i === hover || (sel && (i === POS[turn] || hopTargets(alive, turn).includes(i))) ? (turn ? '#ff5fa2' : '#e8994a') : null;
+        const crack = !over && i !== p && supports(alive, r, c) === 2 && !(r === 0 || c === 0 || r === n - 1 || c === n - 1);
+        const hl = i === hover ? (turn ? '#ff5fa2' : '#e8994a') : null;
         drawBlock(r, c, 0, 1, 1, { crack, hl });
       }
     }
-    // Bear and Bean on the ice (back one first)
-    for (const c of [0, 1].sort((a, b) => POS[a] - POS[b])) {
-      let px = tx(POS[c] % n) + s / 2, py = ty((POS[c] / n) | 0) + s * K * .66;
-      const sz = Math.min(46, s * 1.05);
-      if (chars[c].hop) {   // a little jump from the old block to the new one
-        const q = Math.min(1, chars[c].hop.t / .38), f = chars[c].hop.from;
-        px = tx(f % n) + s / 2 + (px - tx(f % n) - s / 2) * q; py = ty((f / n) | 0) + s * K * .66 + (py - ty((f / n) | 0) - s * K * .66) * q - Math.sin(q * Math.PI) * s * .7;
-      }
-      const fig = c ? drawBean : drawBear, ch = chars[c];
-      if (ch.state === 'stand') fig(px, py, sz, time + c * 1.7, worried(c), false);
-      else if (ch.state === 'fall') {
-        const q = Math.max(0, ch.t) / .75;
-        g.save(); g.globalAlpha = 1 - q * .9; fig(px, py + q * q * 26, sz * (1 - q * .2), time, true, false); g.restore();
-      } else {
-        const up = Math.min(1, ch.t / .6);
-        g.save(); g.globalAlpha = up; fig(px, py + 8 + (1 - up) * 10, sz, time, false, true); g.restore();
-      }
+    // Pip
+    const pr = (p / n) | 0, pc = p % n, px = tx(pc) + s / 2, py = ty(pr) + s * K * .62, psz = Math.min(52, s * 1.1);
+    if (pip.state === 'stand') drawPip(px, py, psz, time, danger, false);
+    else if (pip.state === 'fall') {
+      const q = Math.max(0, pip.t) / .75;
+      g.save(); g.globalAlpha = 1 - q * .9; drawPip(px, py + q * q * 26, psz * (1 - q * .2), time, true, false); g.restore();
+    } else {
+      const up = Math.min(1, pip.t / .6);
+      g.save(); g.globalAlpha = up; drawPip(px, py + 6 + (1 - up) * 10, psz, time, false, true); g.restore();
     }
     // gentle snowfall
     g.fillStyle = 'rgba(255,255,255,.55)';
@@ -504,43 +447,29 @@
     $('cpuTag').textContent = mode === 'cpu' ? 'computer' : '';
     $('undo').disabled = !hist.length || busy || (mode === 'cpu' && !hist.some(h => !isCpu(h.player)));
     const nm = q => `<span class="p${q}">${esc(names[q])}</span>`;
-    if (over) $('status').innerHTML = loser < 0 ? `A draw! Nobody fell in` : `Splash! ${nm(1 - loser)} wins! 🎉`;
+    if (over) $('status').innerHTML = `Splash! ${nm(1 - loser)} wins! 🎉`;
     else if (isCpu(turn)) $('status').innerHTML = `${nm(1)} is thinking…`;
-    else $('status').innerHTML = sel ? `${nm(turn)}: tap a block to hop to` : `${nm(turn)}'s turn · sink ${esc(names[1 - turn])}!`;
+    else $('status').innerHTML = `${nm(turn)}'s turn · knock out a block`;
     const left = alive ? legal(alive).length : 0;
-    $('left').textContent = over ? (loser < 0 ? 'No blocks left to knock out. Tap New game for a rematch' : bothFell ? `Both fell in! ${names[loser]} sank their own block too, so ${names[1 - loser]} wins. Tap New game for a rematch` : `${names[loser]} fell in. Don't worry, a swim is lovely! Tap New game for a rematch`)
-      : note ? note : lastMsg ? `${lastMsg} · ${left} left` : !canHop(turn) && !isCpu(turn) ? `You hopped last go, so knock out a block this time` : `Knock out a block, or tap yourself to hop`;
+    $('left').textContent = over ? `${names[loser]} dropped Pip in the pond. He's fine, he loves a swim! Tap New game for a rematch`
+      : lastMsg ? `${lastMsg} · ${left} left` : `${left} block${left === 1 ? '' : 's'} left`;
   }
 
-  function hit(ev, chars_ = true) {
+  function hit(ev) {
     const b = cv.getBoundingClientRect(), x = (ev.clientX - b.left) / SC, y = (ev.clientY - b.top) / SC;
-    if (chars_) for (const c of [turn, 1 - turn]) {   // tapping a character's body counts as tapping their block
-      const cx = tx(POS[c] % n) + s / 2, by = ty((POS[c] / n) | 0) + s * K * .66, sz = Math.min(46, s * 1.05) * 1.3;
-      if (Math.abs(x - cx) < s * .42 && y < by + 4 && y > by - sz) return POS[c];
-    }
+    { const px = tx(P() % n) + s / 2, py = ty((P() / n) | 0) + s * K * .62, h = Math.min(52, s * 1.1) * 1.45;
+      if (Math.abs(x - px) < Math.min(52, s * 1.1) * .4 && y < py + 2 && y > py - h) return -1; }
     const c = Math.floor((x - ox) / s), r = Math.floor((y - oy) / (s * K));
     if (r < 0 || c < 0 || r >= n || c >= n) return -1;
-    const i = r * n + c; return alive[i] ? i : -1;
-  }
-  function tapAt(i) {
-    if (i < 0) { sel = false; render(); return; }
-    if (i === POS[turn]) {
-      if (!canHop(turn)) { note = 'You hopped last go, so knock out a block this time'; sel = false; tone(220, .1, 'sine', .04); }
-      else { sel = !sel; note = ''; tone(sel ? 600 : 400, .06, 'triangle', .04); }
-      render(); return;
-    }
-    if (i === POS[1 - turn]) { note = `You can't knock out the block ${names[1 - turn]} is standing on`; sel = false; render(); return; }
-    if (sel) { if (hopTargets(alive, turn).includes(i)) hop(i); else { sel = false; note = 'Hop cancelled'; render(); } return; }
-    play(i);
+    const i = r * n + c; return alive[i] && i !== P() ? i : -1;
   }
   const canTap = () => !over && !busy && !isCpu(turn);
-  const hov = ev => { const i = hit(ev); return i >= 0 && !POS.includes(i) ? i : -1; };
-  cv.addEventListener('pointerdown', ev => { ev.preventDefault(); if (canTap()) hover = hov(ev); });
-  cv.addEventListener('pointermove', ev => { if (canTap() && (ev.pointerType === 'mouse' || ev.buttons)) hover = hov(ev); });
+  cv.addEventListener('pointerdown', ev => { ev.preventDefault(); if (canTap()) hover = hit(ev); });
+  cv.addEventListener('pointermove', ev => { if (canTap() && (ev.pointerType === 'mouse' || ev.buttons)) hover = hit(ev); });
   cv.addEventListener('pointerup', ev => {
     if (!canTap()) return;
-    const i = hit(ev, !sel); hover = -1;   // while choosing a hop, the blocks behind your own head are tappable
-    tapAt(i);
+    const i = hit(ev); hover = ev.pointerType === 'mouse' ? i : -1;
+    if (i >= 0) { hover = -1; play(i); }
   });
   cv.addEventListener('pointerleave', () => { if (canTap()) hover = -1; });
   cv.addEventListener('pointercancel', () => { hover = -1; });
@@ -587,7 +516,7 @@
   }
 
   if (DEBUG) window.__ti = { get alive() { return alive; }, get turn() { return turn; }, get over() { return over; }, get loser() { return loser; }, get busy() { return busy; },
-    play: i => play(i), safeMoves: () => safeMoves(alive), cpuPick, get POS() { return POS; }, get n() { return n; }, outcome: (i, p) => outcome(apply(alive, i).al, p), hop: i => hop(i), get lastHop() { return lastHop; }, hopTargets: p => hopTargets(alive, p),
+    play: i => play(i), safeMoves: () => safeMoves(alive), cpuPick, P, get n() { return n; },
     centre: i => { const b = cv.getBoundingClientRect(); return [b.left + (tx(i % n) + s / 2) * SC, b.top + (ty((i / n) | 0) + s * K / 2) * SC]; } };
 
   setSoundIcon(); segs(); newGame(); requestAnimationFrame(frame);
