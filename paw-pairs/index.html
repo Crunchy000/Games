@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#e6ebdc">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
+<title>Paw Pairs</title>
+<meta name="description" content="A calm ivory tile matching game: tap two matching tiles that are free to clear them, until the whole stack is gone. Every deal can be cleared. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<link rel="canonical" href="https://bearandbean.uk/paw-pairs/">
+<style>
+  :root { --bg:#e6ebdc; --ink:#33402c; --muted:#7b8a6e; --panel:#d6dfca; --accent:#c8643b; }
+  body.dark { --bg:#121610; --ink:#eef0e2; --muted:#a3b091; --panel:#232b1e; --accent:#e58a5e; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; user-select:none; -webkit-user-select:none;
+    color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); }
+  body { background:radial-gradient(700px 460px at 50% 30%, #f3f6ec, transparent 72%), var(--bg); }
+  body.dark { background:radial-gradient(700px 460px at 50% 30%, rgba(160,190,120,.12), transparent 72%), var(--bg); }
+  #cv { position:fixed; left:0; top:0; width:100%; height:100%; display:block; z-index:0; }
+  #app { position:relative; z-index:1; height:100vh; height:var(--app-h, 100dvh); display:flex; flex-direction:column; align-items:center; max-width:640px; margin:0 auto; padding:0 10px; pointer-events:none; }
+  #app > * { pointer-events:auto; }
+  header { width:100%; display:grid; grid-template-columns:auto 1fr auto; align-items:center; padding:calc(8px + env(safe-area-inset-top)) 0 2px; flex:none; }
+  header .grp { display:flex; gap:2px; }
+  header h1 { margin:0; text-align:center; font-size:clamp(1.15rem, 5.8vw, 1.45rem); font-weight:900; letter-spacing:-.01em; white-space:nowrap; }
+  header h1 span { color:var(--accent); }
+  .ib { width:40px; height:40px; border:0; border-radius:12px; background:transparent; color:var(--ink); display:grid; place-items:center; cursor:pointer; padding:0; font:inherit; }
+  .ib svg { width:23px; height:23px; }
+  .info { width:100%; display:flex; align-items:center; gap:8px; padding:4px 6px 0; flex:none; }
+  .info .lvl { font-weight:900; font-size:1.15rem; }
+  .info .lvl small { font-weight:800; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-right:4px; }
+  .tag { font-size:.7rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:4px 9px; border-radius:999px; background:var(--panel); color:var(--muted); white-space:nowrap; }
+  .info .left { margin-left:auto; font-weight:800; font-size:.9rem; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #stage { flex:1 1 0; min-height:0; width:100%; touch-action:none; cursor:pointer; }
+  .tools { position:relative; z-index:2; display:flex; gap:8px; justify-content:center; padding:6px 0 calc(12px + env(safe-area-inset-bottom)); flex:none; }
+  .tool { border:0; background:var(--panel); color:var(--ink); font:inherit; font-weight:800; font-size:.9rem; padding:10px 16px; border-radius:14px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .note { min-height:1.4em; font-size:.85rem; font-weight:700; color:var(--muted); text-align:center; opacity:0; transition:opacity .2s; flex:none; }
+  .note.show { opacity:1; }
+  .ov { position:fixed; inset:0; background:rgba(30,35,20,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  .ov.show { display:flex; animation:fade .25s ease; }
+  @keyframes fade { from { opacity:0; } }
+  .card { position:relative; width:min(360px, 100%); max-height:92dvh; overflow:auto; padding:20px 20px 18px; text-align:center; }
+  .card h2 { margin:2px 0 8px; font-size:1.5rem; font-weight:900; }
+  .card p { margin:6px 0; line-height:1.45; font-size:.95rem; }
+  .card ul { text-align:left; margin:8px 0; padding-left:20px; line-height:1.45; font-size:.93rem; }
+  .card .x { position:absolute; right:8px; top:8px; font-size:1.1rem; }
+  .card .ex { display:block; margin:10px auto 4px; width:220px; height:auto; }
+  .row2 { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+  .btn { border:0; border-radius:14px; padding:12px 22px; font:inherit; font-weight:900; font-size:1rem; cursor:pointer; }
+  .big { font-size:2.1rem; font-weight:900; margin:2px 0 0; color:var(--accent); font-variant-numeric:tabular-nums; }
+</style>
+<style id="pub-kit">
+/* The Bear & Bean house style: soft clay. Muted terracotta and sage, soft cream cards, rounded shapes.
+   tools/pub-kit.py copies this into every game so each page stays self-contained. */
+:root {
+  --pk-clay:#c8643b; --pk-clay-hi:#d57650; --pk-clay-lo:#a94f2c; --pk-clay-text:#b5532e;
+  --pk-sage:#dce3d3; --pk-sage-hi:#e6ecdf; --pk-sage-ink:#3f4e35;
+  --pk-sand:#ede4d6; --pk-card:#f7f1e7; --pk-card-2:#efe5d6;
+  --pk-ink:#3b2e22; --pk-ink-2:#6e6152; --pk-ink-3:#8e7f6c; --pk-on-clay:#fff5ec;
+  /* older names kept so game styles that borrowed them still work */
+  --pk-cream:var(--pk-ink); --pk-cream-dim:var(--pk-ink-2); --pk-brass:var(--pk-clay-text); --pk-oak:#e8d9c4;
+  --pk-slab:"ui-rounded","SF Pro Rounded","Nunito","Varela Round","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+}
+/* buttons: terracotta for the main action, .pk-alt is sage */
+.pk-btn {
+  position:relative !important; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:0 !important; border-radius:16px !important; padding:12px 26px !important; text-decoration:none !important;
+  font:700 1.02rem/1.15 var(--pk-slab) !important; letter-spacing:.01em; cursor:pointer;
+  color:var(--pk-on-clay) !important; text-shadow:none !important;
+  background:var(--pk-clay) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 2px 0 var(--pk-clay-lo), 0 8px 18px rgba(120,55,25,.18) !important;
+  transition:transform .08s, box-shadow .08s, background .15s;
+}
+.pk-btn:hover { background:var(--pk-clay-hi) !important; }
+.pk-btn.pk-alt { color:var(--pk-sage-ink) !important; background:var(--pk-sage) !important; box-shadow:0 2px 0 #c3ccb8, 0 6px 14px rgba(60,75,45,.12) !important; }
+.pk-btn.pk-alt:hover { background:var(--pk-sage-hi) !important; }
+.pk-btn.pk-small { padding:9px 20px !important; font-size:.9rem !important; border-radius:14px !important; }
+.pk-btn:active { transform:translateY(2px); box-shadow:0 0 0 transparent, 0 3px 8px rgba(120,55,25,.15) !important; }
+.pk-btn:disabled { opacity:.45; cursor:default; }
+/* chips: small rounded toolbar buttons */
+.pk-chip {
+  border:0 !important; border-radius:12px !important; font-family:var(--pk-slab) !important; font-weight:700 !important;
+  color:var(--pk-ink) !important; text-shadow:none !important; background:#fffaf3 !important;
+  box-shadow:inset 0 0 0 1px rgba(90,60,30,.16), 0 2px 5px rgba(90,60,30,.12) !important;
+}
+.pk-chip.on, .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; }
+.pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
+/* dark mode: chips become soft lamplit panels so they never vanish into the background */
+body.dark .pk-chip { color:#f3e6cc !important; background:rgba(255,240,220,.12) !important; box-shadow:inset 0 0 0 1px rgba(255,240,220,.1) !important; }
+body.dark .pk-chip.on, body.dark .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; box-shadow:none !important; }
+/* ...except inside the cream cards, which stay light in both modes */
+body.dark .pk-card .pk-chip { color:var(--pk-ink) !important; background:#fffaf3 !important; box-shadow:inset 0 0 0 1px rgba(90,60,30,.16), 0 2px 5px rgba(90,60,30,.12) !important; }
+body.dark .pk-card .pk-chip.on, body.dark .pk-card .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; }
+.pk-chip:disabled { opacity:1 !important; cursor:default; color:rgba(59,46,34,.38) !important; box-shadow:inset 0 0 0 1px rgba(90,60,30,.12) !important; }
+body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow:inset 0 0 0 1px rgba(255,240,220,.08) !important; }
+/* cards: soft cream, generously rounded, gently lifted */
+.pk-card {
+  color:var(--pk-ink) !important; background:var(--pk-card) !important;
+  border:0 !important; border-radius:24px !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 20px 44px rgba(50,30,12,.28), 0 2px 6px rgba(50,30,12,.12) !important;
+}
+.pk-card :is(h2, h3) { font-family:var(--pk-slab) !important; color:var(--pk-ink) !important; letter-spacing:-.01em; }
+.pk-card :is(p, li, small, label, dd, dt) { color:var(--pk-ink-2) !important; }
+.pk-card b, .pk-card strong { color:var(--pk-ink) !important; }
+.pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-ink-2) !important; }
+/* "The Bear & Bean presents", with both landlords' faces */
+.pk-presents { display:flex; align-items:center; justify-content:center; gap:7px; margin:0 0 10px;
+  font:700 .66rem/1 var(--pk-slab); letter-spacing:.14em; text-transform:uppercase; color:var(--pk-ink-3); }
+.pk-presents img { width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid #fff; box-shadow:0 1px 3px rgba(60,35,15,.25); }
+/* a word from Bear or Bean */
+.pk-says { display:flex; align-items:center; gap:10px; text-align:left; margin:12px auto 6px; padding:9px 12px; max-width:290px;
+  border-radius:16px; background:var(--pk-card-2); }
+.pk-says img { width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:2px solid #fff; box-shadow:0 1px 4px rgba(60,35,15,.25); }
+.pk-says b { display:block; font:700 .66rem/1.2 var(--pk-slab); letter-spacing:.1em; text-transform:uppercase; color:var(--pk-clay-text) !important; }
+.pk-says span { display:block; font-weight:700; font-size:.98rem; color:var(--pk-ink); }
+/* header buttons: a soft tinted square in whatever colour the game's header uses */
+.pk-home { background:color-mix(in srgb, currentColor 11%, transparent) !important; border:0 !important; border-radius:13px !important; box-shadow:none !important; }
+.pk-home:active { background:color-mix(in srgb, currentColor 20%, transparent) !important; }
+</style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="app">
+  <header>
+    <div class="grp">
+      <button class="ib pk-home" aria-label="All games" onclick="location.href='../'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg></button>
+      <button class="ib pk-home" id="bHelp" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.3a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
+    </div>
+    <h1>Paw <span>Pairs</span></h1>
+    <div class="grp">
+      <button class="ib pk-home" id="bTheme" aria-label="Dark mode"></button>
+      <button class="ib pk-home" id="bSound" aria-label="Sound"></button>
+    </div>
+  </header>
+  <div class="info">
+    <div class="lvl"><small>Deal</small><span id="lvl">1</span></div>
+    <span class="tag" id="tag">Pebble</span>
+    <div class="left" id="left">20 tiles · 0:00</div>
+  </div>
+  <div id="stage" aria-label="A stack of ivory tiles. Tap two matching free tiles to clear them."></div>
+  <div class="note" id="note" role="status" aria-live="polite"></div>
+  <div class="tools">
+    <button class="tool pk-chip" id="bUndo" aria-label="Undo">↶ Undo</button>
+    <button class="tool pk-chip" id="bHint" aria-label="Hint">✦ Hint</button>
+    <button class="tool pk-chip" id="bShuffle" aria-label="Shuffle the tiles">⤨ Shuffle</button>
+  </div>
+</div>
+
+<div class="ov" id="ovHelp"><div class="card pk-card">
+  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
+  <button class="ib x" data-close aria-label="Close">✕</button>
+  <h2>How to play</h2>
+  <svg class="ex" viewBox="0 0 220 100" aria-hidden="true">
+    <g transform="translate(26 18)">
+      <rect x="5" y="5" width="40" height="52" rx="7" fill="#b9603c"/><rect x="2.5" y="2.5" width="40" height="52" rx="7" fill="#e3d6bd"/><rect x="0" y="0" width="40" height="52" rx="7" fill="#fbf6ea" stroke="#c8643b" stroke-width="3"/>
+      <g fill="#e8578a" transform="translate(20 26)"><ellipse cx="0" cy="4.5" rx="7" ry="6"/><circle cx="-9" cy="-3" r="3"/><circle cx="-3.5" cy="-8.5" r="3.2"/><circle cx="3.5" cy="-8.5" r="3.2"/><circle cx="9" cy="-3" r="3"/></g>
+    </g>
+    <g transform="translate(90 18)">
+      <rect x="5" y="5" width="40" height="52" rx="7" fill="#b9603c"/><rect x="2.5" y="2.5" width="40" height="52" rx="7" fill="#e3d6bd"/><rect x="0" y="0" width="40" height="52" rx="7" fill="#fbf6ea"/>
+      <path d="M20 40c-14-8-12-20-5-20 3 0 5 3 5 3s2-3 5-3c7 0 9 12-5 20z" fill="#e2433a"/>
+    </g>
+    <g transform="translate(146 10)">
+      <rect x="5" y="5" width="40" height="52" rx="7" fill="#b9603c"/><rect x="2.5" y="2.5" width="40" height="52" rx="7" fill="#e3d6bd"/><rect x="0" y="0" width="40" height="52" rx="7" fill="#fbf6ea" stroke="#c8643b" stroke-width="3"/>
+      <g fill="#e8578a" transform="translate(20 26)"><ellipse cx="0" cy="4.5" rx="7" ry="6"/><circle cx="-9" cy="-3" r="3"/><circle cx="-3.5" cy="-8.5" r="3.2"/><circle cx="3.5" cy="-8.5" r="3.2"/><circle cx="9" cy="-3" r="3"/></g>
+    </g>
+    <path d="M70 84 C 110 100, 150 100, 170 76" fill="none" stroke="#c8643b" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="4 5"/>
+  </svg>
+  <ul>
+    <li>Tap two <b>matching</b> tiles to clear them.</li>
+    <li>A tile can only be picked when it is <b>free</b>: nothing on top of it, and an open side on the <b>left or right</b>. Blocked tiles look a little shaded.</li>
+    <li>Clear every tile to finish the deal. Every deal can be cleared.</li>
+  </ul>
+  <p>Stuck? Undo, ask for a hint, or shuffle the tiles that are left.</p>
+  <div class="row2"><button class="btn pk-btn" data-close>Let's match</button></div>
+</div></div>
+
+<div class="ov" id="ovWin"><div class="card pk-card">
+  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean<img src="../icons/bean.png" alt=""></div>
+  <h2 id="winTitle">All cleared!</h2>
+  <p class="big" id="winTime">0:00</p>
+  <p id="winSub" style="margin-top:0">time</p>
+  <div class="pk-says" data-lines='["Paws-itively brilliant!", "Not a tile left. Tidy table, happy Bear!", "You have the memory of an elephant. A very cuddly one.", "Purr-fect pairing!", "That was the fur-st class matching.", "Bean is doing a little victory wiggle."]'><img src="../icons/bear.png" alt=""><div><b>Bear says</b><span>Paws-itively brilliant!</span></div></div>
+  <div class="row2"><button class="btn pk-btn" id="bNext">Next deal</button></div>
+</div></div>
+
+<div class="ov" id="ovStuck"><div class="card pk-card">
+  <button class="ib x" data-close aria-label="Close">✕</button>
+  <h2>No pairs left</h2>
+  <p>None of the free tiles match. Shuffle what's left (it can always be cleared), or undo a few moves.</p>
+  <div class="pk-says" data-lines='["Even I get my paws in a tangle sometimes.", "Give them a good shuffle, I say!", "Hmm, no pairs. Time for a shuffle?"]'><img src="../icons/bean.png" alt=""><div><b>Bean says</b><span>Give them a good shuffle, I say!</span></div></div>
+  <div class="row2"><button class="btn pk-btn" id="bStuckShuffle">⤨ Shuffle</button><button class="btn pk-btn pk-alt" id="bStuckUndo">↶ Undo</button></div>
+</div></div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+
+let S = { level: 1, muted: false, seenHelp: false, cur: null, best: {} };
+try { const s = JSON.parse(localStorage.getItem('pawpairs') || 'null'); if (s) S = Object.assign(S, s); } catch (e) {}
+if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
+const save = () => { S.cur = cur; try { localStorage.setItem('pawpairs', JSON.stringify(S)); } catch (e) {} };
+
+/* ---------- theme: follows the phone until you pick one, shared by every game ---------- */
+const sysDark = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+const isDark = () => BB.theme ? BB.theme === 'dark' : !!(sysDark && sysDark.matches);
+function applyTheme() {
+  document.body.classList.toggle('dark', isDark());
+  document.querySelector('meta[name=theme-color]').setAttribute('content', isDark() ? '#121610' : '#e6ebdc');
+  const b = $('bTheme'); b.setAttribute('aria-label', isDark() ? 'Light mode' : 'Dark mode');
+  b.innerHTML = isDark() ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>'
+                         : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+  dirty = true;
+}
+if (sysDark && sysDark.addEventListener) sysDark.addEventListener('change', () => { if (!BB.theme) applyTheme(); });
+
+/* ---------- sound: ivory clicks, all synthesised ---------- */
+let ac = null;
+function audio() { if (ac) { if (ac.state === 'suspended') ac.resume(); return; } try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+function tone(f, d, type = 'sine', vol = .05, delay = 0, slide = 0) {
+  if (!ac || S.muted) return; const o = ac.createOscillator(), gn = ac.createGain(), t = ac.currentTime + delay;
+  o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
+  gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vol, t + .003); gn.gain.exponentialRampToValueAtTime(.001, t + d);
+  o.connect(gn); gn.connect(ac.destination); o.start(t); o.stop(t + d + .02);
+}
+const clack = (delay = 0, f = 2400) => { tone(f, .035, 'square', .018, delay); tone(f * .52, .06, 'triangle', .04, delay); };
+const sPick = () => clack(0, 2600);
+const sMatch = () => { clack(0, 2200); clack(.06, 2900); [0, 4, 7].forEach((s, i) => tone(784 * Math.pow(2, s / 12), .18, 'sine', .03, .1 + i * .05)); };
+const sNope = () => tone(170, .12, 'triangle', .05, 0, -40);
+const sShuffle = () => { for (let i = 0; i < 10; i++) clack(i * .045, 1800 + Math.random() * 1400); };
+const sWin = () => [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .3, 'triangle', .05, i * .08));
+const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+/* ---------- layouts: tiles in half-tile steps (x, y) and layers (z) ---------- */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rect = (x, y, c, r, z) => { const o = []; for (let j = 0; j < r; j++) for (let i = 0; i < c; i++) o.push([x + i * 2, y + j * 2, z]); return o; };
+const LAYOUTS = [
+  { name: 'Pebble', t: () => [...rect(0, 0, 4, 4, 0), ...rect(2, 2, 2, 2, 1)] },
+  { name: 'Cub', t: () => [...rect(0, 0, 4, 5, 0), ...rect(1, 1, 3, 4, 1), ...rect(2, 3, 2, 2, 2)] },
+  { name: 'Paw print', t: () => [
+    ...rect(0, 4, 1, 2, 0), ...rect(4, 0, 1, 2, 0), ...rect(8, 0, 1, 2, 0), ...rect(12, 4, 1, 2, 0), ...rect(2, 10, 5, 4, 0),
+    [0, 5, 1], [4, 1, 1], [8, 1, 1], [12, 5, 1], ...rect(3, 11, 4, 3, 1), ...rect(4, 12, 3, 2, 2)] },
+  { name: 'Tower', t: () => [...rect(0, 0, 6, 6, 0), ...rect(2, 2, 4, 4, 1), ...rect(4, 4, 2, 2, 2), [5, 5, 3], [-2, 5, 0], [12, 5, 0]] },
+  { name: 'Butterfly', t: () => [
+    ...rect(0, 0, 3, 4, 0), ...rect(8, 0, 3, 4, 0), ...rect(1, 9, 2, 3, 0), ...rect(9, 9, 2, 3, 0), ...rect(6, 2, 1, 8, 0),
+    ...rect(1, 1, 2, 3, 1), ...rect(9, 1, 2, 3, 1), ...rect(6, 4, 1, 5, 1), ...rect(2, 2, 1, 2, 2), ...rect(10, 2, 1, 2, 2), ...rect(6, 6, 1, 2, 2)] },
+  { name: 'Turtle', t: () => [...rect(0, 0, 6, 6, 0), [-2, 5, 0], [12, 5, 0], ...rect(1, 1, 5, 5, 1), ...rect(2, 2, 4, 4, 2), [5, 5, 3]] },
+  { name: 'Honey pot', t: () => [...rect(2, 0, 4, 1, 0), ...rect(0, 2, 6, 6, 0), ...rect(1, 3, 5, 5, 1), ...rect(2, 4, 4, 4, 2), ...rect(4, 1, 2, 1, 1), [5, 6, 3]] },
+];
+function layoutFor(L) {
+  const r = rng(L * 2654435 + 11), i = L <= LAYOUTS.length ? L - 1 : 2 + Math.floor(r() * (LAYOUTS.length - 2));
+  let t = LAYOUTS[i].t(); if (t.length % 2) t = t.slice(0, -1);
+  const tiles = t.map(([x, y, z], id) => ({ id, x, y, z }));
+  return { name: LAYOUTS[i].name, tiles };
+}
+// a tile is free when nothing sits on it and its left or right side is open
+function freeFn(tiles, alive) {
+  return i => {
+    const a = tiles[i]; let L = false, R = false;
+    for (let j = 0; j < tiles.length; j++) {
+      if (j === i || !alive[j]) continue; const b = tiles[j];
+      if (Math.abs(b.y - a.y) >= 2) continue;
+      if (b.z === a.z + 1 && Math.abs(b.x - a.x) < 2) return false;
+      if (b.z === a.z) { if (b.x === a.x - 2) L = true; else if (b.x === a.x + 2) R = true; }
+      if (L && R) return false;
+    }
+    return true;
+  };
+}
+// deal backwards: keep lifting two free tiles off and give them the same face, so the deal can always be cleared
+function removalOrder(tiles, alive0, r) {
+  for (let tries = 0; tries < 200; tries++) {
+    const alive = alive0.slice(), free = freeFn(tiles, alive), pairs = [];
+    let left = alive.filter(Boolean).length, ok = true;
+    while (left > 0) {
+      const f = []; alive.forEach((a, i) => { if (a && free(i)) f.push(i); });
+      if (f.length < 2) { ok = false; break; }
+      // prefer lifting from the top of the stack, so the real deal opens up naturally
+      f.sort((p, q) => tiles[q].z - tiles[p].z + (r() - .5) * 1.6);
+      const a = f[0], b = f[1 + Math.floor(r() * Math.min(f.length - 1, 4))];
+      alive[a] = alive[b] = false; pairs.push([a, b]); left -= 2;
+    }
+    if (ok) return pairs;
+  }
+  return null;
+}
+const NSYM = 24;
+function deal(L) {
+  const lay = layoutFor(L), r = rng(L * 7919 + 3), n = lay.tiles.length;
+  const pairs = removalOrder(lay.tiles, lay.tiles.map(() => true), r);
+  const order = Array.from({ length: NSYM }, (_, i) => i); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  const kinds = Math.min(NSYM, Math.max(5, Math.ceil(pairs.length / 2)));
+  const faces = pairs.map((_, k) => order[k % kinds]); for (let i = faces.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [faces[i], faces[j]] = [faces[j], faces[i]]; }
+  const sym = new Array(n); pairs.forEach(([a, b], k) => { sym[a] = sym[b] = faces[k]; });
+  return { lay, sym };
+}
+
+/* ---------- game state ---------- */
+let lay = null, cur = null, sel = null, gone = {}, wig = {}, hintAt = 0, hintPair = null, parts = [], dirty = true, lastTick = 0, winTimer = 0, appearAt = 0;
+const alive = () => cur.sym.map((_, i) => !cur.gone[i]);
+const isFree = i => freeFn(lay.tiles, alive())(i);
+const left = () => cur.gone.filter(g => !g).length;
+function startLevel(L, restore) {
+  const d = deal(L); lay = d.lay; sel = null; gone = {}; wig = {}; hintPair = null; parts = []; clearTimeout(winTimer);
+  cur = restore && restore.sym && restore.sym.length === lay.tiles.length ? Object.assign({ hist: [], shuffles: 0, hints: 0, time: 0 }, restore, { level: L })
+    : { level: L, sym: d.sym, gone: d.sym.map(() => false), hist: [], time: 0, shuffles: 0, hints: 0, done: false };
+  if (!restore) appearAt = performance.now();
+  S.level = L; save(); layout(); render(); dirty = true;
+}
+function pairsAvailable() {
+  const al = alive(), free = freeFn(lay.tiles, al), by = {};
+  for (let i = 0; i < al.length; i++) if (al[i] && free(i)) { const s = cur.sym[i]; if (by[s] !== undefined) return [by[s], i]; by[s] = i; }
+  return null;
+}
+function tap(i) {
+  if (i === null) { if (sel !== null) { sel = null; dirty = true; } return; }
+  if (!isFree(i)) { wig[i] = performance.now(); sNope(); note(blockedWhy(i)); dirty = true; return; }
+  if (sel === null) { sel = i; sPick(); buzz(5); }
+  else if (sel === i) { sel = null; clack(0, 1700); }
+  else if (cur.sym[sel] === cur.sym[i]) match(sel, i);
+  else { sel = i; sPick(); buzz(5); }
+  dirty = true;
+}
+function blockedWhy(i) {
+  const a = lay.tiles[i], al = alive();
+  return lay.tiles.some((b, j) => al[j] && b.z === a.z + 1 && Math.abs(b.x - a.x) < 2 && Math.abs(b.y - a.y) < 2) ? 'Something is sitting on that tile' : 'That tile is blocked on both sides';
+}
+function match(a, b) {
+  const now = performance.now();
+  cur.gone[a] = cur.gone[b] = true; cur.hist.push([a, b]); sel = null; hintPair = null;
+  gone[a] = { t0: now, to: b }; gone[b] = { t0: now, to: a };
+  sMatch(); buzz([8, 30, 8]);
+  const pa = centre(a), pb = centre(b), mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
+  for (let k = 0; k < 7; k++) parts.push({ x: mx + (Math.random() - .5) * 30, y: my + (Math.random() - .5) * 20, vx: (Math.random() - .5) * 1.4, vy: -.8 - Math.random() * 1.4, r: 3 + Math.random() * 3, life: 1, rot: (Math.random() - .5) * 1.2 });
+  if (!left()) { cur.done = true; const L = cur.level; if (!S.best[L] || cur.time < S.best[L]) S.best[L] = cur.time; winTimer = setTimeout(showWin, 700); }
+  else setTimeout(checkStuck, 450);
+  save(); render();
+}
+function checkStuck() { if (cur.done || overlayOpen() || pairsAvailable()) return; tone(300, .25, 'triangle', .04, 0, -80); open('ovStuck'); }
+function undo() {
+  if (cur.done) return;
+  if (!cur.hist.length) { note('Nothing to undo yet'); return; }
+  const [a, b] = cur.hist.pop(); cur.gone[a] = cur.gone[b] = false; delete gone[a]; delete gone[b]; sel = null; hintPair = null;
+  closeAll(); clack(0, 1900); clack(.05, 1500); save(); render(); dirty = true;
+}
+function hint() {
+  if (cur.done) return;
+  const p = pairsAvailable(); if (!p) { checkStuck(); return; }
+  hintPair = p; hintAt = performance.now(); sel = null; cur.hints++; tone(880, .12, 'sine', .03); tone(1320, .14, 'sine', .025, .08); save(); dirty = true;
+}
+function shuffle() {
+  if (cur.done) return;
+  // re-deal the faces still on the table, again backwards, so the rest can always be cleared
+  const al = alive(), r = rng((Date.now() & 0xffffff) + cur.shuffles * 31);
+  const pairs = removalOrder(lay.tiles, al, r); if (!pairs) { note('Those tiles cannot be shuffled'); return; }
+  const count = {}; al.forEach((a, i) => { if (a) count[cur.sym[i]] = (count[cur.sym[i]] || 0) + 1; });
+  const faces = []; Object.keys(count).forEach(s => { for (let k = 0; k < count[s] / 2; k++) faces.push(+s); });
+  for (let i = faces.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [faces[i], faces[j]] = [faces[j], faces[i]]; }
+  pairs.forEach(([a, b], k) => { cur.sym[a] = cur.sym[b] = faces[k]; });
+  cur.shuffles++; cur.hist = []; sel = null; hintPair = null; appearAt = performance.now();
+  closeAll(); sShuffle(); buzz(15); save(); render(); dirty = true;
+}
+function nextLevel() { closeAll(); startLevel(cur.level + 1); sShuffle(); }
+
+/* ---------- layout: fit the whole stack on the phone ---------- */
+const cv = $('cv'), g = cv.getContext('2d'), stage = $('stage');
+let W = 360, H = 640, dpr = 1, tw = 40, th = 52, dep = 5, X0 = 0, Y0 = 0, B = null, faces = [];
+const ASPECT = 1.3;
+function fitApp() { const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight) || innerHeight; document.documentElement.style.setProperty('--app-h', h + 'px'); return h; }
+function layout() {
+  dpr = Math.min(3, window.devicePixelRatio || 1); W = innerWidth; H = Math.max(innerHeight, fitApp());
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const r = stage.getBoundingClientRect(), w = (r.width || W) - 8, h = Math.max(160, r.height) - 12, T = lay.tiles;
+  const minX = Math.min(...T.map(t => t.x)), maxX = Math.max(...T.map(t => t.x)) + 2, minY = Math.min(...T.map(t => t.y)), maxY = Math.max(...T.map(t => t.y)) + 2, maxZ = Math.max(...T.map(t => t.z));
+  // tile width tw, height tw*ASPECT, each layer lifts by dep = tw*.13 up and left
+  const k = .13, cols = (maxX - minX) / 2, rows = (maxY - minY) / 2;
+  tw = Math.min(76, w / (cols + k * (maxZ + 1)), h / (rows * ASPECT + k * (maxZ + 1)));
+  th = tw * ASPECT; dep = tw * k;
+  const bw = cols * tw + dep * (maxZ + 1), bh = rows * th + dep * (maxZ + 1);
+  X0 = r.left + ((r.width || W) - bw) / 2 + dep * maxZ - minX / 2 * tw; Y0 = r.top + (Math.max(160, r.height) - bh) / 2 + dep * maxZ - minY / 2 * th;
+  B = { minX, minY, maxZ };
+  buildFaces(); dirty = true;
+}
+const pos = i => { const t = lay.tiles[i]; return { x: X0 + t.x / 2 * tw - t.z * dep, y: Y0 + t.y / 2 * th - t.z * dep }; };
+const centre = i => { const p = pos(i); return { x: p.x + (tw - dep) / 2, y: p.y + (th - dep) / 2 }; };
+function tileAt(x, y) {
+  let best = null;
+  lay.tiles.forEach((t, i) => {
+    if (cur.gone[i]) return; const p = pos(i);
+    if (x < p.x || y < p.y || x > p.x + tw || y > p.y + th) return;
+    if (best === null || t.z > lay.tiles[best].z || (t.z === lay.tiles[best].z && (t.y > lay.tiles[best].y || t.x > lay.tiles[best].x))) best = i;
+  });
+  return best;
+}
+
+/* ---------- the faces: little drawings on each tile, painted once per size ---------- */
+const bearImg = new Image(), beanImg = new Image(); bearImg.src = '../icons/bear.png'; beanImg.src = '../icons/bean.png';
+bearImg.onload = beanImg.onload = () => { if (lay) { buildFaces(); dirty = true; } };
+function paw(x, col) { x.fillStyle = col; x.beginPath(); x.ellipse(0, .36, .42, .35, 0, 0, TAU); x.fill(); [[-.58, -.12, .17], [-.22, -.5, .19], [.22, -.5, .19], [.58, -.12, .17]].forEach(([a, b, r]) => { x.beginPath(); x.ellipse(a, b, r, r * 1.18, a * .5, 0, TAU); x.fill(); }); }
+function shine(x, cx, cy, rx, ry, a = .5) { x.fillStyle = `rgba(255,255,255,${a})`; x.beginPath(); x.ellipse(cx, cy, rx, ry, -.5, 0, TAU); x.fill(); }
+const SYM = [
+  x => paw(x, '#7a4a2a'),
+  x => paw(x, '#e8578a'),
+  x => paw(x, '#3a74d0'),
+  x => { x.fillStyle = '#e2433a'; x.beginPath(); x.moveTo(0, .78); x.bezierCurveTo(-1.05, .05, -.6, -.9, 0, -.38); x.bezierCurveTo(.6, -.9, 1.05, .05, 0, .78); x.fill(); shine(x, -.4, -.28, .17, .1); },
+  x => { x.fillStyle = '#f0b323'; x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .38 : .88; x.lineTo(Math.cos(a) * r, Math.sin(a) * r + .05); } x.closePath(); x.fill(); x.strokeStyle = '#c7880f'; x.lineWidth = .06; x.lineJoin = 'round'; x.stroke(); },
+  x => { x.fillStyle = '#6b5fd3'; x.beginPath(); x.arc(0, 0, .74, 0, TAU); x.fill(); x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.arc(.36, -.22, .62, 0, TAU); x.fill(); x.globalCompositeOperation = 'source-over'; },
+  x => { x.strokeStyle = '#f08a24'; x.lineWidth = .13; x.lineCap = 'round'; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; x.beginPath(); x.moveTo(Math.cos(a) * .6, Math.sin(a) * .6); x.lineTo(Math.cos(a) * .86, Math.sin(a) * .86); x.stroke(); } x.fillStyle = '#f7a21b'; x.beginPath(); x.arc(0, 0, .44, 0, TAU); x.fill(); shine(x, -.15, -.15, .14, .09); },
+  x => { x.fillStyle = '#ff7eb6'; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * TAU / 5; x.beginPath(); x.arc(Math.cos(a) * .44, Math.sin(a) * .44, .33, 0, TAU); x.fill(); } x.fillStyle = '#ffd23f'; x.beginPath(); x.arc(0, 0, .24, 0, TAU); x.fill(); },
+  x => { x.fillStyle = '#3f9e4a'; x.beginPath(); x.moveTo(-.68, .68); x.bezierCurveTo(-.85, -.4, .2, -.88, .78, -.78); x.bezierCurveTo(.78, .1, .1, .88, -.68, .68); x.fill(); x.strokeStyle = '#a9dc8e'; x.lineWidth = .07; x.lineCap = 'round'; x.beginPath(); x.moveTo(-.62, .62); x.quadraticCurveTo(0, 0, .6, -.62); x.stroke(); },
+  x => { x.fillStyle = '#c98a4b'; x.beginPath(); x.moveTo(-.48, -.1); x.quadraticCurveTo(-.5, .55, 0, .82); x.quadraticCurveTo(.5, .55, .48, -.1); x.fill(); x.fillStyle = '#7a4f2a'; x.beginPath(); x.ellipse(0, -.18, .62, .3, 0, Math.PI, 0); x.lineTo(.62, -.1); x.quadraticCurveTo(0, .05, -.62, -.1); x.fill(); x.strokeStyle = '#5a3a1c'; x.lineWidth = .1; x.lineCap = 'round'; x.beginPath(); x.moveTo(0, -.45); x.quadraticCurveTo(.05, -.65, .2, -.75); x.stroke(); shine(x, -.2, .2, .1, .16, .35); },
+  x => { x.strokeStyle = '#4c8a2e'; x.lineWidth = .08; x.lineCap = 'round'; x.beginPath(); x.moveTo(-.36, .25); x.quadraticCurveTo(-.25, -.4, .1, -.75); x.moveTo(.34, .35); x.quadraticCurveTo(.3, -.3, .1, -.75); x.stroke(); [[-.38, .42], [.34, .52]].forEach(([a, b]) => { x.fillStyle = '#e02f3a'; x.beginPath(); x.arc(a, b, .32, 0, TAU); x.fill(); shine(x, a - .1, b - .1, .09, .06); }); x.fillStyle = '#5fae3a'; x.beginPath(); x.ellipse(.36, -.62, .26, .11, -.4, 0, TAU); x.fill(); },
+  x => { x.fillStyle = '#e0a030'; x.beginPath(); x.ellipse(0, .22, .64, .58, 0, 0, TAU); x.fill(); x.fillStyle = '#f4d38a'; x.beginPath(); x.ellipse(0, .25, .36, .2, 0, 0, TAU); x.fill(); x.fillStyle = '#9c6420'; x.beginPath(); x.roundRect ? x.roundRect(-.46, -.52, .92, .2, .06) : x.rect(-.46, -.52, .92, .2); x.fill(); x.fillStyle = '#f6c343'; x.beginPath(); x.moveTo(-.4, -.33); x.lineTo(.4, -.33); x.quadraticCurveTo(.3, -.15, .1, -.2); x.quadraticCurveTo(-.1, .15, -.2, -.18); x.quadraticCurveTo(-.35, -.18, -.4, -.33); x.fill(); },
+  x => { x.fillStyle = '#1fa3a8'; x.beginPath(); x.ellipse(-.12, 0, .56, .36, 0, 0, TAU); x.fill(); x.beginPath(); x.moveTo(.32, 0); x.lineTo(.84, -.38); x.lineTo(.78, 0); x.lineTo(.84, .38); x.closePath(); x.fill(); x.fillStyle = '#fff'; x.beginPath(); x.arc(-.42, -.08, .1, 0, TAU); x.fill(); x.fillStyle = '#123'; x.beginPath(); x.arc(-.44, -.08, .05, 0, TAU); x.fill(); },
+  x => { x.save(); x.rotate(-.6); x.fillStyle = '#f3e6c8'; x.strokeStyle = '#a8875a'; x.lineWidth = .07; x.beginPath(); [[-.6, -.16], [-.6, .16], [.6, -.16], [.6, .16]].forEach(([a, b]) => { x.moveTo(a + .2, b); x.arc(a, b, .2, 0, TAU); }); x.rect(-.6, -.14, 1.2, .28); x.stroke(); x.fill(); x.restore(); },
+  x => { x.save(); x.scale(.23, .23); x.fillStyle = '#9b5de5'; const p = new Path2D('M-3.6 0C-3.8 -3.3 0.3 -2.7 0.6 -1.4C1.5 -3.2 3.9 -2.4 3.6 0C3.8 2.8 -3.6 3.2 -3.6 0Z'); x.fill(p); x.restore(); shine(x, -.4, -.22, .2, .09, .6); },
+  x => { x.fillStyle = '#f3e6c8'; x.beginPath(); x.moveTo(-.22, -.05); x.lineTo(-.26, .72); x.lineTo(.26, .72); x.lineTo(.22, -.05); x.fill(); x.fillStyle = '#e2433a'; x.beginPath(); x.ellipse(0, -.05, .78, .62, 0, Math.PI, 0); x.quadraticCurveTo(0, .12, -.78, -.05); x.fill(); x.fillStyle = '#fff'; [[-.35, -.3, .12], [.12, -.45, .1], [.42, -.18, .09]].forEach(([a, b, r]) => { x.beginPath(); x.arc(a, b, r, 0, TAU); x.fill(); }); },
+  x => { x.fillStyle = '#3aa0e8'; x.beginPath(); x.moveTo(0, -.86); x.quadraticCurveTo(.62, -.05, .55, .3); x.arc(0, .3, .55, 0, Math.PI); x.quadraticCurveTo(-.62, -.05, 0, -.86); x.fill(); shine(x, -.2, .2, .1, .18); },
+  x => { x.strokeStyle = '#4aa8de'; x.lineWidth = .11; x.lineCap = 'round'; for (let i = 0; i < 6; i++) { x.save(); x.rotate(i * Math.PI / 3); x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -.82); x.moveTo(-.2, -.6); x.lineTo(0, -.45); x.lineTo(.2, -.6); x.stroke(); x.restore(); } },
+  x => { x.strokeStyle = '#2e7d4a'; x.lineWidth = .09; x.lineCap = 'round'; x.beginPath(); x.moveTo(0, .1); x.quadraticCurveTo(.1, .5, .35, .82); x.stroke(); x.fillStyle = '#2e9e5b'; [[0, -.4], [-.38, .05], [.38, .05]].forEach(([a, b]) => { x.beginPath(); x.arc(a, b, .32, 0, TAU); x.fill(); }); },
+  x => { x.strokeStyle = '#4c9a2a'; x.lineWidth = .1; x.lineCap = 'round'; x.beginPath(); x.moveTo(0, -.4); x.lineTo(-.25, -.85); x.moveTo(0, -.4); x.lineTo(0, -.9); x.moveTo(0, -.4); x.lineTo(.25, -.85); x.stroke(); x.fillStyle = '#f28a1e'; x.beginPath(); x.moveTo(-.32, -.42); x.quadraticCurveTo(0, -.55, .32, -.42); x.quadraticCurveTo(.15, .5, 0, .88); x.quadraticCurveTo(-.15, .5, -.32, -.42); x.fill(); x.strokeStyle = '#c8640e'; x.lineWidth = .05; x.beginPath(); x.moveTo(-.18, -.1); x.lineTo(0, -.1); x.moveTo(.05, .2); x.lineTo(.16, .2); x.stroke(); },
+  x => face(x, bearImg, '#e8994a'),
+  x => face(x, beanImg, '#ff5fa2'),
+  x => { x.fillStyle = '#e8b923'; x.beginPath(); x.moveTo(-.66, .44); x.bezierCurveTo(-.5, .3, -.58, -.68, 0, -.68); x.bezierCurveTo(.58, -.68, .5, .3, .66, .44); x.closePath(); x.fill(); x.fillStyle = '#b8860b'; x.beginPath(); x.arc(0, .58, .14, 0, TAU); x.fill(); x.beginPath(); x.arc(0, -.74, .09, 0, TAU); x.fill(); shine(x, -.25, -.2, .09, .2, .45); },
+  x => { x.fillStyle = '#c99561'; x.beginPath(); x.moveTo(-.5, .05); x.lineTo(.5, .05); x.lineTo(.36, .78); x.lineTo(-.36, .78); x.closePath(); x.fill(); x.strokeStyle = '#a8743e'; x.lineWidth = .06; x.beginPath(); for (let i = -2; i <= 2; i++) { x.moveTo(i * .18, .1); x.lineTo(i * .14, .75); } x.stroke(); x.fillStyle = '#ffb3d1'; [[-.3, -.05, .28], [.3, -.05, .28], [0, -.25, .34]].forEach(([a, b, r]) => { x.beginPath(); x.arc(a, b, r, 0, TAU); x.fill(); }); x.fillStyle = '#e02f3a'; x.beginPath(); x.arc(0, -.62, .14, 0, TAU); x.fill(); },
+];
+function face(x, img, ring) {
+  x.fillStyle = ring; x.beginPath(); x.arc(0, 0, .86, 0, TAU); x.fill();
+  x.save(); x.beginPath(); x.arc(0, 0, .76, 0, TAU); x.clip(); x.fillStyle = '#fff'; x.fill(); if (img.complete && img.naturalWidth) x.drawImage(img, -.76, -.76, 1.52, 1.52); x.restore();
+}
+function buildFaces() {
+  const s = Math.max(8, Math.round((tw - dep) * .78 * dpr));
+  faces = SYM.map(fn => { const c = document.createElement('canvas'); c.width = c.height = s; const x = c.getContext('2d'); x.translate(s / 2, s / 2); x.scale(s / 2.05, s / 2.05); fn(x); return c; });
+}
+
+/* ---------- drawing ---------- */
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const ease = t => 1 - Math.pow(1 - t, 3);
+function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function tile(i, x, y, opt) {
+  const fw = tw - dep, fh = th - dep, r = Math.max(3, tw * .13), dark = isDark();
+  if (opt.shadow) { g.save(); g.shadowColor = dark ? 'rgba(0,0,0,.5)' : 'rgba(40,50,25,.28)'; g.shadowBlur = tw * .25; g.shadowOffsetY = tw * .08; rr(x + dep, y + dep, fw, fh, r); g.fillStyle = '#b9603c'; g.fill(); g.restore(); }
+  rr(x + dep, y + dep, fw, fh, r); g.fillStyle = '#b05a37'; g.fill();          // terracotta back
+  rr(x + dep * .45, y + dep * .45, fw, fh, r); g.fillStyle = '#e3d6bd'; g.fill(); // ivory edge
+  rr(x, y, fw, fh, r);
+  const gr = g.createLinearGradient(x, y, x + fw, y + fh); gr.addColorStop(0, opt.sel ? '#fff1c9' : '#fffcf3'); gr.addColorStop(1, opt.sel ? '#f8dd96' : '#f1e8d4'); g.fillStyle = gr; g.fill();
+  g.lineWidth = 1; g.strokeStyle = 'rgba(150,120,80,.35)'; g.stroke();
+  const f = faces[cur.sym[i]]; if (f) { const s = f.width / dpr; g.drawImage(f, x + (fw - s) / 2, y + (fh - s) / 2, s, s); }
+  if (opt.blocked) { rr(x, y, fw, fh, r); g.fillStyle = dark ? 'rgba(20,25,15,.3)' : 'rgba(70,60,40,.16)'; g.fill(); }
+  if (opt.ring) { rr(x - 1.5, y - 1.5, fw + 3, fh + 3, r + 1.5); g.lineWidth = 3; g.strokeStyle = opt.ring; g.stroke(); }
+}
+function draw(now) {
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  if (!lay) return;
+  const al = alive(), free = freeFn(lay.tiles, al);
+  const order = lay.tiles.map((t, i) => i).sort((a, b) => { const A = lay.tiles[a], Bt = lay.tiles[b]; return A.z - Bt.z || A.y - Bt.y || A.x - Bt.x; });
+  const hk = hintPair ? (now - hintAt) / 2400 : 1, ring = 'rgba(200,100,59,.95)';
+  const inK = clamp((now - appearAt) / 700);
+  order.forEach(i => {
+    if (cur.gone[i] && !gone[i]) return;
+    let { x, y } = pos(i);
+    if (gone[i]) {   // matched tiles slide together, pop and fade
+      const k = (now - gone[i].t0) / 380; if (k >= 1) { delete gone[i]; return; }
+      const o = pos(gone[i].to), e = ease(clamp(k));
+      g.save(); g.globalAlpha = 1 - e * e; const s = 1 + .15 * Math.sin(Math.PI * k);
+      x += (o.x - x) * e * .5; y += (o.y - y) * e * .5 - 20 * e;
+      g.translate(x + tw / 2, y + th / 2); g.scale(s, s); g.translate(-x - tw / 2, -y - th / 2);
+      tile(i, x, y, {}); g.restore(); return;
+    }
+    const t = lay.tiles[i], w = wig[i] ? (now - wig[i]) / 1000 : 9; if (w < .32) x += Math.sin(w * 42) * 3 * (1 - w / .32);
+    if (inK < 1) { const d = clamp(inK * 1.6 - (t.z * .15 + (t.y + t.x) * .012)); y -= (1 - ease(d)) * 30; g.globalAlpha = clamp(d * 1.4); }
+    const isHint = hintPair && hk < 1 && (hintPair[0] === i || hintPair[1] === i) && Math.sin(hk * 18) > -.3;
+    tile(i, x, y - (sel === i ? 3 : 0), { shadow: t.z === 0, sel: sel === i, blocked: !free(i), ring: sel === i ? ring : isHint ? (isDark() ? '#ffe08a' : '#e2a93a') : null });
+    g.globalAlpha = 1;
+  });
+  if (hintPair && hk >= 1) hintPair = null;
+  // little paw prints float up from each match
+  parts = parts.filter(p => p.life > 0);
+  parts.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= .02; g.save(); g.globalAlpha = clamp(p.life); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(p.r, p.r); paw(g, isDark() ? '#f3c7d8' : '#e8578a'); g.restore(); });
+}
+
+/* ---------- loop ---------- */
+function frame(now) {
+  requestAnimationFrame(frame);
+  // the clock runs while the deal is on screen and no card is open
+  if (cur && !cur.done && !overlayOpen() && !document.hidden && lastTick) { cur.time += Math.min(1000, now - lastTick); if (Math.floor(cur.time / 1000) !== Math.floor((cur.time - (now - lastTick)) / 1000)) { render(); if (Math.floor(cur.time / 1000) % 5 === 0) save(); } }
+  lastTick = now;
+  const moving = Object.keys(gone).length > 0 || parts.length > 0 || (hintPair && now - hintAt < 2500) || Object.values(wig).some(t => now - t < 340) || now - appearAt < 900;
+  if (!moving && !dirty) return;
+  dirty = !!moving; draw(now);
+}
+
+/* ---------- notes and screens ---------- */
+let noteT = 0;
+function note(t) { const n = $('note'); n.textContent = t; n.classList.add('show'); clearTimeout(noteT); noteT = setTimeout(() => n.classList.remove('show'), 1600); }
+const overlayOpen = () => !!document.querySelector('.ov.show');
+const open = id => $(id).classList.add('show');
+const closeAll = () => document.querySelectorAll('.ov').forEach(o => o.classList.remove('show'));
+const fmt = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function showWin() {
+  if (!cur.done) return;
+  sWin(); buzz([20, 40, 60]);
+  $('winTitle').textContent = `Deal ${cur.level} cleared!`;
+  $('winTime').textContent = fmt(cur.time);
+  const best = S.best[cur.level], bits = [];
+  if (best < cur.time) bits.push('best ' + fmt(best)); else if (best === cur.time) bits.push('a new best');
+  if (cur.shuffles) bits.push(cur.shuffles + (cur.shuffles === 1 ? ' shuffle' : ' shuffles'));
+  $('winSub').textContent = bits.join(' · ') || 'time';
+  open('ovWin');
+}
+function render() {
+  $('lvl').textContent = cur.level; $('tag').textContent = lay.name;
+  $('left').textContent = `${left()} tiles · ${fmt(cur.time)}`;
+  $('bSound').setAttribute('aria-label', S.muted ? 'Sound off' : 'Sound on');
+  $('bSound').innerHTML = S.muted ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4zM22 9l-6 6M16 9l6 6"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+}
+
+/* ---------- input ---------- */
+const down = e => { audio(); if (overlayOpen() || cur.done) return; tap(tileAt(e.clientX, e.clientY)); };
+stage.addEventListener('pointerdown', down);
+cv.addEventListener('pointerdown', down);
+addEventListener('keydown', e => {
+  if (overlayOpen()) { if (e.key === 'Escape') closeAll(); return; }
+  audio(); const k = e.key.toLowerCase();
+  if (k === 'z' || k === 'u') undo(); else if (k === 'h') hint(); else if (k === 's') shuffle();
+});
+$('bUndo').onclick = $('bStuckUndo').onclick = () => { audio(); undo(); };
+$('bHint').onclick = () => { audio(); hint(); };
+$('bShuffle').onclick = $('bStuckShuffle').onclick = () => { audio(); shuffle(); };
+$('bNext').onclick = () => { audio(); nextLevel(); };
+$('bHelp').onclick = () => open('ovHelp');
+$('bSound').onclick = () => { S.muted = !S.muted; BB.muted = S.muted; save(); render(); audio(); tone(660, .08, 'triangle'); };
+$('bTheme').onclick = () => { BB.theme = isDark() ? 'light' : 'dark'; applyTheme(); };
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { closeAll(); if (!S.seenHelp) { S.seenHelp = true; save(); } }));
+document.querySelectorAll('.ov').forEach(o => o.addEventListener('pointerdown', e => { if (e.target === o && o.id !== 'ovWin') { closeAll(); S.seenHelp = true; save(); } }));
+addEventListener('resize', () => { if (lay) layout(); });
+if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (lay) layout(); });
+addEventListener('orientationchange', () => setTimeout(() => { if (lay) layout(); }, 250));
+addEventListener('visibilitychange', () => { if (cur) save(); });
+
+/* ---------- start ---------- */
+applyTheme();
+const saved = S.cur && S.cur.level === S.level && S.cur.sym ? S.cur : null;
+startLevel(S.level || 1, saved);
+if (cur.done) setTimeout(showWin, 300);
+if (!S.seenHelp) open('ovHelp');
+requestAnimationFrame(frame);
+
+if (/[?&]debug\b/.test(location.search)) window.__pp = {
+  get cur() { return cur; }, get lay() { return lay; }, tap, undo, hint, shuffle, startLevel, deal, layoutFor, pairsAvailable, isFree, centre, LAYOUTS,
+  solve: () => { let p; while ((p = pairsAvailable())) { tap(p[0]); tap(p[1]); } return left(); },
+};
+})();
+</script>
+<script id="pub-kit-says">
+(() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
+  const go = () => { const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.isIntersecting && pick(e.target))) : null; document.querySelectorAll('.pk-says').forEach(el => { pick(el); if (io) io.observe(el); }); };
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
+</script>
+</body>
+</html>
