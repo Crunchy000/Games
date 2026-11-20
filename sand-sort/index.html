@@ -204,8 +204,8 @@ window.BB = (() => {
 'use strict';
 const $ = id => document.getElementById(id);
 const CAP = 4, LIFT = 16;
-// twelve sands, picked to stay apart from each other
-const SANDS = ['#e2533f', '#f08c2e', '#f4c53f', '#9cc63b', '#3f9d5b', '#2bb3a3', '#4aa6e0', '#3c5fc6', '#8b5cc9', '#ee7fb3', '#8a5a3b', '#4b4a57'];
+// twelve sands, each a clearly different hue or shade; early levels use the boldest first
+const SANDS = ['#e8322a', '#ffd21a', '#2a52d8', '#1f8a3e', '#9440d8', '#ff8a12', '#ff5cb8', '#1ccfe0', '#f7f2e8', '#2a2730', '#7b4421', '#a8e03a'];
 const MYSTERY = '#b3a594';
 
 let S = { level: 1, muted: false, seenHelp: false, cur: null, best: {} };
@@ -293,7 +293,7 @@ function solve(start, limit = 60000) {
 const asStrings = tubes => tubes.map(t => t.map(c => String.fromCharCode(97 + c)).join(''));
 function makeLevel(L) {
   const k = coloursFor(L), r = rng(L * 7919 + 104729);
-  const perm = SANDS.map((_, i) => i); for (let i = perm.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
+  const perm = SANDS.map((_, i) => i).slice(0, k); for (let i = perm.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
   let last = null;
   for (let tries = 0; tries < 400; tries++) {
     const u = []; for (let c = 0; c < k; c++) for (let j = 0; j < CAP; j++) u.push(c);
@@ -395,15 +395,21 @@ let W = 360, H = 640, dpr = 1, wi = 30, Hi = 150, U = 30, sp = 60, pos = [], rac
 function layout() {
   dpr = Math.min(3, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-  const r = stage.getBoundingClientRect(), n = cur.tubes.length;
-  const rows = n <= (r.width > 470 ? 8 : 6) ? 1 : 2, first = Math.ceil(n / rows), per = rows === 1 ? [n] : [first, n - first];
-  sp = Math.min(74, (r.width - 12) / per[0]);
-  let ow = Math.min(48, sp * .66); wi = ow - 5;
-  const gapRow = 34, base = 24;
-  Hi = Math.min(wi * 5.1, (r.height - 40 - (rows - 1) * gapRow) / rows - base);
-  if (Hi < wi * 3.2) { wi = Math.max(16, Hi / 3.2); }
+  const r = stage.getBoundingClientRect(), n = cur.tubes.length, gapRow = 40, base = 24;
+  // try one, two or three shelves and keep whichever gives the biggest tubes
+  let best = null;
+  for (let rows = 1; rows <= 3; rows++) {
+    if (rows > 1 && n < rows * 2) break;
+    const first = Math.ceil(n / rows), per = []; let left = n; for (let k = 0; k < rows; k++) { const c = Math.min(first, left); per.push(c); left -= c; }
+    const spc = Math.min(86, (r.width - 12) / first); let w = Math.min(58, spc * .7) - 5;
+    let h = Math.min(w * 5.3, (r.height - 36 - (rows - 1) * gapRow) / rows - base);
+    if (h < w * 3.4) w = Math.max(14, h / 3.4);
+    const score = Math.min(w, 44) * Math.min(h, 230) * (rows === 1 ? 1.2 : 1);   // big enough tubes, on as few shelves as possible
+    if (!best || score > best.score) best = { rows, per, spc, w, h, score };
+  }
+  const { rows, per } = best; sp = best.spc; wi = best.w; Hi = best.h;
   U = (Hi - wi * .5) / CAP;
-  const block = rows * (Hi + base) + (rows - 1) * gapRow, y0 = r.top + Math.max(20, (r.height - block) * .62);
+  const block = rows * (Hi + base) + (rows - 1) * gapRow, y0 = r.top + Math.max(18, (r.height - block) * .5);
   pos = []; racks = []; let k = 0;
   per.forEach((cnt, row) => {
     const yMid = y0 + row * (Hi + base + gapRow) + Hi / 2 + 6, x0 = r.left + r.width / 2 - (cnt - 1) * sp / 2;
@@ -428,7 +434,7 @@ function grain(base, seed) {
   const s = Math.round(56 * dpr), c = document.createElement('canvas'); c.width = c.height = s; const x = c.getContext('2d'), r = rng(seed);
   x.fillStyle = base; x.fillRect(0, 0, s, s);
   for (let i = 0; i < 560; i++) {
-    const lt = r() < .5; x.fillStyle = lt ? `rgba(255,255,255,${.1 + r() * .22})` : `rgba(40,20,0,${.08 + r() * .2})`;
+    const lt = r() < .5, pale = base === '#f7f2e8'; x.fillStyle = lt && !pale ? `rgba(255,255,255,${.08 + r() * .16})` : `rgba(40,20,0,${(pale ? .1 : .07) + r() * (pale ? .16 : .16)})`;
     x.beginPath(); x.arc(r() * s, r() * s, (.45 + r() * .8) * dpr, 0, 7); x.fill();
   }
   return c;
