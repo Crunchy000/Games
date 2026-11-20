@@ -100,6 +100,14 @@
 }
 .pk-chip.on, .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; }
 .pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
+/* dark mode: chips become soft lamplit panels so they never vanish into the background */
+body.dark .pk-chip { color:#f3e6cc !important; background:rgba(255,240,220,.12) !important; box-shadow:inset 0 0 0 1px rgba(255,240,220,.1) !important; }
+body.dark .pk-chip.on, body.dark .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; box-shadow:none !important; }
+/* ...except inside the cream cards, which stay light in both modes */
+body.dark .pk-card .pk-chip { color:var(--pk-ink) !important; background:var(--pk-card-2) !important; box-shadow:0 1px 0 rgba(90,60,30,.12) !important; }
+body.dark .pk-card .pk-chip.on, body.dark .pk-card .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; }
+.pk-chip:disabled { opacity:.45; cursor:default; }
+body.dark .pk-chip:disabled { opacity:.5; }
 /* cards: soft cream, generously rounded, gently lifted */
 .pk-card {
   color:var(--pk-ink) !important; background:var(--pk-card) !important;
