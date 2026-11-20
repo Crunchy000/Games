@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Pyramid Hop</title>
-<meta name="description" content="Hop a hedgehog round a jungle pyramid to light every cube (a second hop puts it out) while snakes slither up from the bottom. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="Hop a hedgehog round a jungle pyramid to light every cube while snakes slither up from the bottom. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://bearandbean.uk/pyramid-hop/">
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -151,7 +151,7 @@ const doneCount = () => cubes.reduce((a, row) => a + row.filter(s => s === targe
 
 function setupLevel() {
   pal = PALS[(lvl - 1) % 3]; bgCache = null;
-  mode = lvl % 2 === 1 ? { steps: 1 } : { steps: 2 };   // every level: hop on a lit cube again and its light goes out
+  mode = lvl % 2 === 1 ? { steps: 1 } : { steps: 2 };   // even levels need two hops to fully light a cube; once lit it stays lit
   cubes = Array.from({ length: N }, (_, r) => Array(r + 1).fill(0));
   cfx = Array.from({ length: N }, (_, r) => Array(r + 1).fill(0));
   rescues = 0;
@@ -217,7 +217,7 @@ function landPlayer() {
   const at = P(p.r, p.c);
   if (p.kind === 'cube') {
     p.sq = 1; const s = cubes[p.r][p.c]; let changed = false;
-    if (s >= target()) { cubes[p.r][p.c] = 0; changed = true; toast('LIGHTS OUT', at.x, at.y - 34, '#cfd8dc', 10); beep(300, .18, 'sine', .04, -140); }
+    if (s >= target()) { /* already lit: it stays lit */ }
     else { cubes[p.r][p.c]++; changed = true; score += 25; toast('+25', at.x, at.y - 34, '#fff', 10); }
     if (changed) {
       cfx[p.r][p.c] = 1; const nc = topColor(p.r, p.c, cubes[p.r][p.c]);
@@ -731,7 +731,7 @@ function draw() {
   if (state === 'title') {
     ctx.fillStyle = 'rgba(5,22,12,.35)'; ctx.fillRect(0, 0, W, H); PK.presents(ctx, CX, H * .13 - 44, [IMG.bear, IMG.bean], { size: 9, color: '#f6ead2' }); logo(H * .13);
     const y = H * .13 + 92; panel(y, 132);
-    text('Light every cube, but a second hop puts it out!', CX, y + 20, 12, PK.INK, 'center', null, 800);
+    text('Hop on every cube to light up the whole pyramid!', CX, y + 20, 12, PK.INK, 'center', null, 800);
     const rows = [['c', 'Snakes slither up from the bottom'], ['k', 'Orange ones chase you: dodge them!'], ['g', 'Grab a berry, then chase the snakes off!'], ['pad', 'Hop off? The toucan always catches you']];
     rows.forEach(([k, t], i) => {
       const ry = y + 46 + i * 22;
