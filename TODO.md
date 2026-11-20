@@ -4,14 +4,6 @@ Ideas for future games. Each one will be an original take with its own name, cha
 built to the same rules as the rest of the arcade: one self-contained file, touch-first, works offline and
 non-violent.
 
-slitherlink use dots or boxes graphic 
+fix bear and bean game to Dors and boxes
 
-word flow
-
-cut the rope
-
-magic sort with Ilse white color sand in test tubes
-
-pixel.flow color bears eating color.neans
-
-cleaning proggresion with leave sweeping 
+magic sort game using test rube and isle white color sands 
