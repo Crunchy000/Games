@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#2b1a3d">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
+<title>Bean Grab · Bear vs Bean</title>
+<meta name="description" content="Two hungry hippos, one bowl of jelly beans. Lay the phone flat between you, tap your half to chomp, and grab the most beans to win. Play a friend or the computer. Free, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<link rel="canonical" href="https://crunchy000.github.io/Games/bean-grab/">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#2b1a3d; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  canvas { display:block; width:100vw; height:100dvh; touch-action:none; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Bean Grab: two hippos chomping jelly beans"></canvas>
+<script>
+(() => {
+  'use strict';
+  const cv = document.getElementById('c'), g = cv.getContext('2d');
+  const DEBUG = /[?&]debug\b/.test(location.search), FAST = DEBUG && /[?&]fast\b/.test(location.search) ? 3 : 1;
+  const W = 360; let H = 640, SC = 1, DPR = 1;
+  const COL = ['#e8994a', '#ff5fa2'], NAMES = ['Bear', 'Bean'];
+  const imgs = [new Image(), new Image()]; imgs[0].src = '../icons/bear.png'; imgs[1].src = '../icons/bean.png';
+  let save = { wins: [0, 0], muted: false };
+  try { save = Object.assign(save, JSON.parse(localStorage.getItem('beangrab') || '{}')); } catch (e) {}
+  const store = () => { try { localStorage.setItem('beangrab', JSON.stringify(save)); } catch (e) {} };
+
+  function resize() {
+    DPR = Math.min(devicePixelRatio || 1, 3);
+    const vw = innerWidth, vh = (window.visualViewport ? visualViewport.height : innerHeight);
+    SC = vw / W; H = Math.max(520, Math.round(vh / SC));
+    cv.width = Math.round(vw * DPR); cv.height = Math.round(H * SC * DPR); cv.style.height = (H * SC) + 'px';
+  }
+  addEventListener('resize', resize); resize();
+
+  /* ---------- sound ---------- */
+  let ac = null;
+  const audio = () => { if (save.muted) return null; try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; } return ac; };
+  function tone(f, d = .1, type = 'sine', vol = .05, delay = 0, slide = 0) {
+    const a = audio(); if (!a) return;
+    const o = a.createOscillator(), gn = a.createGain(), t = a.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
+    gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vol, t + .008); gn.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(gn); gn.connect(a.destination); o.start(t); o.stop(t + d + .02);
+  }
+  const sChomp = p => tone(p ? 190 : 160, .09, 'square', .035, 0, -70);
+  const sGulp = (k, gold) => gold ? [0, 4, 7].forEach((s, i) => tone(880 * Math.pow(2, s / 12), .14, 'triangle', .05, .04 + i * .06)) : tone(520 + k * 60, .08, 'sine', .06, .03, 160);
+  const sPour = () => tone(700 + Math.random() * 300, .05, 'triangle', .02);
+
+  /* ---------- state ---------- */
+  const TOTAL = 60, R = 7.5;
+  const BEANCOLS = ['#ff4d6d', '#ff9f1c', '#ffd23f', '#7bd389', '#9b5de5', '#ff7eb6', '#f7f7ff', '#4cc9f0'];
+  let state = 'menu', mode = '2p', time = 0, beans = [], released = 0, pourT = 0, score = [0, 0], cd = 0, endT = 0, popups = [], winner = -1;
+  const top = () => 66, bot = () => H - 66, mid = () => H / 2;
+  const jar = () => ({ x: W / 2, y: H / 2, r: 24 });
+  const hippos = [0, 1].map(p => ({ p, st: 'idle', t: 0, tx: 0, ty: 0, hx: 0, hy: 0, cool: 0, think: 1 }));
+  const base = p => ({ x: W / 2, y: p === 0 ? H - 30 : 30 });
+  const isCpu = p => mode === 'cpu' && p === 1;
+
+  function start(m) {
+    mode = m; state = 'count'; cd = 3; beans = []; released = 0; pourT = 0; score = [0, 0]; popups = []; winner = -1;
+    for (const h of hippos) { const b = base(h.p); Object.assign(h, { st: 'idle', t: 0, hx: b.x, hy: b.y, cool: 0, think: .8 }); }
+    tone(440, .12, 'triangle', .05);
+  }
+  function pour(n) {
+    const j = jar();
+    for (let k = 0; k < n && released < TOTAL; k++, released++) {
+      const a = Math.random() * Math.PI * 2, sp = 120 + Math.random() * 120;
+      beans.push({ x: j.x + Math.cos(a) * (j.r + R + 1), y: j.y + Math.sin(a) * (j.r + R + 1), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        rot: Math.random() * 6, vr: (Math.random() - .5) * 4, c: BEANCOLS[(Math.random() * BEANCOLS.length) | 0], gold: released % 12 === 6 });
+    }
+    sPour();
+  }
+
+  /* ---------- hippos ---------- */
+  function lunge(p, x, y) {
+    const h = hippos[p]; if (state !== 'play' || h.st !== 'idle' || h.cool > 0) return;
+    const b = base(p);
+    // stay in your own half (a touch over the line so middle beans are fair game)
+    y = p === 0 ? Math.max(mid() - 14, Math.min(bot() + 10, y)) : Math.min(mid() + 14, Math.max(top() - 10, y));
+    x = Math.max(20, Math.min(W - 20, x));
+    h.tx = x; h.ty = y; h.st = 'out'; h.t = 0; h.dur = .1 + Math.hypot(x - b.x, y - b.y) / 1900;
+    sChomp(p);
+  }
+  function snap(h) {
+    let got = 0, k = 0;
+    beans = beans.filter(bn => {
+      if (Math.hypot(bn.x - h.hx, bn.y - h.hy) < 27) {
+        const v = bn.gold ? 3 : 1; score[h.p] += v; got += v; sGulp(k++, bn.gold);
+        popups.push({ x: h.hx, y: h.hy, p: h.p, t: 0, txt: '+' + v, gold: bn.gold });
+        return false;
+      }
+      return true;
+    });
+    if (got && !isCpu(h.p)) { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} }
+  }
+  function updHippo(h, dt) {
+    const b = base(h.p);
+    h.cool = Math.max(0, h.cool - dt);
+    if (h.st === 'out') { h.t += dt; const q = Math.min(1, h.t / h.dur), e = 1 - (1 - q) * (1 - q);
+      h.hx = b.x + (h.tx - b.x) * e; h.hy = b.y + (h.ty - b.y) * e; if (q >= 1) { h.st = 'snap'; h.t = 0; snap(h); } }
+    else if (h.st === 'snap') { h.t += dt; if (h.t > .07) { h.st = 'back'; h.t = 0; h.fx = h.hx; h.fy = h.hy; } }
+    else if (h.st === 'back') { h.t += dt; const q = Math.min(1, h.t / (h.dur * 1.3 + .05)), e = q * q;
+      h.hx = h.fx + (b.x - h.fx) * e; h.hy = h.fy + (b.y - h.fy) * e; if (q >= 1) { h.st = 'idle'; h.cool = .12; } }
+    else { h.hx = b.x; h.hy = b.y; }
+    if (isCpu(h.p) && state === 'play' && h.st === 'idle' && h.cool <= 0) {
+      h.think -= dt;
+      if (h.think <= 0) {
+        const mine = beans.filter(bn => bn.y < mid() + 10);
+        if (mine.length) {
+          mine.sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y));
+          const t = mine[Math.random() < .7 ? 0 : (Math.random() * mine.length) | 0], lead = .16;
+          lunge(1, t.x + t.vx * lead + (Math.random() - .5) * 30, t.y + t.vy * lead + (Math.random() - .5) * 30);
+        }
+        h.think = .35 + Math.random() * .45;
+      }
+    }
+  }
+
+  /* ---------- beans ---------- */
+  function updBeans(dt) {
+    const j = jar(), x0 = 10 + R, x1 = W - 10 - R, y0 = top() + R - 6, y1 = bot() - R + 6;
+    for (const b of beans) {
+      b.vx += (Math.random() - .5) * 90 * dt; b.vy += (Math.random() - .5) * 90 * dt;   // they never quite sit still
+      const sp = Math.hypot(b.vx, b.vy); if (sp < 26) { b.vx *= 26 / (sp || 1); b.vy *= 26 / (sp || 1); }
+      if (sp > 340) { b.vx *= 340 / sp; b.vy *= 340 / sp; }
+      b.vx *= Math.pow(.6, dt); b.vy *= Math.pow(.6, dt);
+      b.x += b.vx * dt; b.y += b.vy * dt; b.rot += b.vr * dt;
+      if (b.x < x0) { b.x = x0; b.vx = Math.abs(b.vx) * .8; } if (b.x > x1) { b.x = x1; b.vx = -Math.abs(b.vx) * .8; }
+      if (b.y < y0) { b.y = y0; b.vy = Math.abs(b.vy) * .8; } if (b.y > y1) { b.y = y1; b.vy = -Math.abs(b.vy) * .8; }
+      const dx = b.x - j.x, dy = b.y - j.y, d = Math.hypot(dx, dy), m = j.r + R;
+      if (d < m) { const nx = dx / (d || 1), ny = dy / (d || 1); b.x = j.x + nx * m; b.y = j.y + ny * m; const dot = b.vx * nx + b.vy * ny; if (dot < 0) { b.vx -= 1.8 * dot * nx; b.vy -= 1.8 * dot * ny; } }
+    }
+    for (let a = 0; a < beans.length; a++) for (let c = a + 1; c < beans.length; c++) {
+      const A = beans[a], B = beans[c], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy;
+      if (d2 < 4 * R * R && d2 > 0) { const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, o = (2 * R - d) / 2;
+        A.x -= nx * o; A.y -= ny * o; B.x += nx * o; B.y += ny * o;
+        const rv = (B.vx - A.vx) * nx + (B.vy - A.vy) * ny; if (rv < 0) { A.vx += rv * nx; A.vy += rv * ny; B.vx -= rv * nx; B.vy -= rv * ny; } }
+    }
+  }
+
+  /* ---------- drawing ---------- */
+  function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  function text(t, x, y, size, col, flip = false, weight = 900, align = 'center') {
+    g.save(); g.translate(x, y); if (flip) g.rotate(Math.PI);
+    g.font = `${weight} ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; g.textAlign = align; g.textBaseline = 'middle'; g.fillStyle = col; g.fillText(t, 0, 0); g.restore();
+  }
+  function drawBean(b) {
+    g.save(); g.translate(b.x, b.y); g.rotate(b.rot);
+    g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(1.5, 2.5, R * 1.25, R * .8, 0, 0, 7); g.fill();
+    g.fillStyle = b.gold ? '#ffcf3a' : b.c;
+    g.beginPath(); g.moveTo(-R * 1.2, 0); g.bezierCurveTo(-R * 1.25, -R * 1.1, R * .1, -R * .9, R * .2, -R * .45); g.bezierCurveTo(R * .5, -R * 1.05, R * 1.3, -R * .8, R * 1.2, 0);
+    g.bezierCurveTo(R * 1.25, R * .95, -R * 1.2, R * 1.05, -R * 1.2, 0); g.fill();
+    if (b.gold) { g.strokeStyle = '#b8860b'; g.lineWidth = 1.2; g.stroke(); }
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.beginPath(); g.ellipse(-R * .45, -R * .35, R * .38, R * .17, -.3, 0, 7); g.fill();
+    if (b.gold) { g.fillStyle = '#fff8d0'; g.beginPath(); g.moveTo(R * .5, -R * .1); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, rr2 = k % 2 ? 1.2 : 3.4; g.lineTo(R * .5 + Math.cos(a) * rr2, Math.sin(a) * rr2 - R * .1); } g.fill(); }
+    g.restore();
+  }
+  function drawHippo(h) {
+    const b = base(h.p), col = COL[h.p], dark = h.p ? '#c23a78' : '#b9692a';
+    const ang = Math.atan2(h.hy - b.y, h.hx - b.x) + Math.PI / 2;
+    // spring neck
+    const dx = h.hx - b.x, dy = h.hy - b.y, len = Math.hypot(dx, dy);
+    if (len > 6) {
+      const nx = -dy / len, ny = dx / len, segs = Math.max(2, Math.round(len / 9));
+      g.strokeStyle = dark; g.lineWidth = 5; g.lineJoin = 'round'; g.beginPath(); g.moveTo(b.x, b.y);
+      for (let k = 1; k < segs; k++) { const q = k / segs, w = (k % 2 ? 1 : -1) * 9; g.lineTo(b.x + dx * q + nx * w, b.y + dy * q + ny * w); }
+      g.lineTo(h.hx, h.hy); g.stroke();
+    }
+    g.save(); g.translate(h.hx, h.hy); g.rotate(ang); g.scale(1.18, 1.18);
+    const open = h.st === 'out' ? Math.min(1, h.t / Math.max(.05, h.dur * .6)) : 0, gape = open * 12;
+    // ears (with pink insides) and round head
+    g.fillStyle = col; g.beginPath(); g.ellipse(-17, 15, 7, 8, -.5, 0, 7); g.ellipse(17, 15, 7, 8, .5, 0, 7); g.fill();
+    g.fillStyle = '#ffc2d6'; g.beginPath(); g.ellipse(-17, 15, 3.5, 4.5, -.5, 0, 7); g.ellipse(17, 15, 3.5, 4.5, .5, 0, 7); g.fill();
+    g.fillStyle = col; g.beginPath(); g.ellipse(0, 6, 22, 19, 0, 0, 7); g.fill();
+    // wide open mouth with two little teeth
+    if (gape > .5) {
+      g.fillStyle = '#6b1d3a'; g.beginPath(); g.ellipse(0, -10 - gape * .5, 22, 6 + gape * .7, 0, 0, 7); g.fill();
+      g.fillStyle = '#ff8fb1'; g.beginPath(); g.ellipse(0, -8 - gape * .3, 10, 3 + gape * .25, 0, 0, 7); g.fill();
+      g.fillStyle = '#fff'; rr(-15, -12 - gape * .9, 5, 6, 1.5); g.fill(); rr(10, -12 - gape * .9, 5, 6, 1.5); g.fill();
+    }
+    // big wide snout
+    g.fillStyle = col; g.beginPath(); g.ellipse(0, -13 - gape, 25, 14, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.ellipse(-9, -18 - gape, 8, 3.5, -.2, 0, 7); g.fill();
+    g.fillStyle = dark; g.beginPath(); g.ellipse(-8, -17 - gape, 3.4, 2.4, -.3, 0, 7); g.ellipse(8, -17 - gape, 3.4, 2.4, .3, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,140,170,.55)'; g.beginPath(); g.ellipse(-17, -8 - gape, 4, 2.6, 0, 0, 7); g.ellipse(17, -8 - gape, 4, 2.6, 0, 0, 7); g.fill();
+    // eyes on top of the head, looking where it's going
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(-8, 5, 6, 0, 7); g.arc(8, 5, 6, 0, 7); g.fill();
+    g.fillStyle = '#2a1b2f'; g.beginPath(); g.arc(-8, 3, 3.2, 0, 7); g.arc(8, 3, 3.2, 0, 7); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(-7, 2, 1.1, 0, 7); g.arc(9, 2, 1.1, 0, 7); g.fill();
+    g.restore();
+  }
+  function drawNest(p) {
+    const b = base(p), y = p === 0 ? H : 0;
+    g.fillStyle = p ? 'rgba(255,95,162,.16)' : 'rgba(232,153,74,.16)';
+    g.beginPath(); g.ellipse(W / 2, y, 70, 46, 0, 0, 7); g.fill();
+    // avatar and score in the corner, readable for that player
+    const ax = p === 0 ? 34 : W - 34, ay = p === 0 ? H - 28 : 28;
+    g.save(); g.beginPath(); g.arc(ax, ay, 18, 0, 7); g.fillStyle = COL[p]; g.fill(); g.clip();
+    if (imgs[p].complete && imgs[p].naturalWidth) { g.translate(ax, ay); if (p) g.rotate(Math.PI); g.drawImage(imgs[p], -16, -16, 32, 32); }
+    g.restore();
+    text(String(score[p]), p === 0 ? 62 : W - 62, ay, 26, COL[p], p === 1, 900, 'left');
+    if (isCpu(p)) text('CPU', p === 0 ? 62 : W - 62, ay + (p ? 17 : -17), 10, 'rgba(255,255,255,.55)', p === 1, 800, 'left');
+  }
+  function drawJar() {
+    const j = jar();
+    g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(j.x + 2, j.y + 4, j.r, j.r * .9, 0, 0, 7); g.fill();
+    const gr = g.createRadialGradient(j.x - 8, j.y - 8, 2, j.x, j.y, j.r); gr.addColorStop(0, '#fff'); gr.addColorStop(1, '#d9c8ef');
+    g.fillStyle = gr; g.beginPath(); g.arc(j.x, j.y, j.r, 0, 7); g.fill();
+    g.strokeStyle = '#a58bc9'; g.lineWidth = 2; g.stroke();
+    const left = TOTAL - released;
+    for (let k = 0; k < Math.min(9, left); k++) { const a = k * 2.4, d = 4 + (k % 3) * 5; drawBean({ x: j.x + Math.cos(a) * d, y: j.y + Math.sin(a) * d, rot: a, c: BEANCOLS[k % 8], gold: false }); }
+  }
+  // corner buttons sit outside the bowl so a frantic chomp never hits them
+  const HOME = () => [W - 28, H - 28], SOUND = () => [28, 28];
+  function drawHome() {
+    const [x, y] = HOME();
+    g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.arc(x, y, 17, 0, 7); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 2; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x - 8, y - 1); g.lineTo(x, y - 8); g.lineTo(x + 8, y - 1); g.moveTo(x - 6, y - 3); g.lineTo(x - 6, y + 7); g.lineTo(x + 6, y + 7); g.lineTo(x + 6, y - 3); g.stroke();
+  }
+  function drawSound() {
+    const [x, y] = SOUND();
+    g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.arc(x, y, 17, 0, 7); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(x - 8, y - 3); g.lineTo(x - 4, y - 3); g.lineTo(x + 1, y - 8); g.lineTo(x + 1, y + 8); g.lineTo(x - 4, y + 3); g.lineTo(x - 8, y + 3); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 2;
+    if (save.muted) { g.beginPath(); g.moveTo(x + 4, y - 4); g.lineTo(x + 10, y + 4); g.moveTo(x + 10, y - 4); g.lineTo(x + 4, y + 4); g.stroke(); }
+    else { g.beginPath(); g.arc(x + 2, y, 6, -.8, .8); g.stroke(); }
+  }
+  function button(label, x, y, w, h, col, flip = false) {
+    g.save(); g.translate(x, y); if (flip) g.rotate(Math.PI);
+    g.fillStyle = 'rgba(0,0,0,.25)'; rr(-w / 2, -h / 2 + 4, w, h, h / 2); g.fill();
+    g.fillStyle = col; rr(-w / 2, -h / 2, w, h, h / 2); g.fill(); g.restore();
+    text(label, x, y + 1, 18, '#24152f', flip);
+  }
+  const btns = () => state === 'menu' ? [
+      { id: '2p', x: W / 2, y: H / 2 + 70, w: 220, h: 50, label: '2 players', col: '#ffe08a' },
+      { id: 'cpu', x: W / 2, y: H / 2 + 132, w: 220, h: 50, label: 'vs Computer', col: '#c9b6ff' }]
+    : state === 'over' ? [
+      { id: 'again', x: W / 2, y: H / 2 + 70, w: 200, h: 50, label: 'Rematch', col: '#ffe08a' },
+      { id: 'menu', x: W / 2, y: H / 2 + 132, w: 200, h: 50, label: 'Menu', col: '#c9b6ff' }] : [];
+
+  function draw() {
+    g.setTransform(SC * DPR, 0, 0, SC * DPR, 0, 0);
+    // table: soft felt with two halves
+    const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#4a2346'); bg.addColorStop(.5, '#3a2550'); bg.addColorStop(1, '#4a2b26');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,95,162,.08)'; g.fillRect(0, 0, W, H / 2);
+    g.fillStyle = 'rgba(232,153,74,.08)'; g.fillRect(0, H / 2, W, H / 2);
+    // bowl rim
+    g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 3; rr(6, top() - 12, W - 12, bot() - top() + 24, 28); g.stroke();
+    g.setLineDash([6, 8]); g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 2; g.beginPath(); g.moveTo(46, H / 2); g.lineTo(W - 46, H / 2); g.stroke(); g.setLineDash([]);
+    drawNest(0); drawNest(1);
+    if (state === 'menu') { drawMenu(); return; }
+    drawJar();
+    for (const b of beans) drawBean(b);
+    drawHippo(hippos[1]); drawHippo(hippos[0]);
+    for (const u of popups) { const q = u.t / .8; g.globalAlpha = 1 - q; text(u.txt, u.x, u.y + (u.p ? 1 : -1) * (14 + q * 26), u.gold ? 22 : 17, u.gold ? '#ffd23f' : '#fff', u.p === 1); g.globalAlpha = 1; }
+    drawHome(); drawSound();
+    if (state === 'count') {
+      const nmb = Math.ceil(cd), q = cd - Math.floor(cd);
+      g.globalAlpha = Math.min(1, q * 3);
+      text(nmb > 0 ? String(nmb) : 'Chomp!', W / 2, H / 2 + 70, 48, '#fff'); text(nmb > 0 ? String(nmb) : 'Chomp!', W / 2, H / 2 - 70, 48, '#fff', true);
+      g.globalAlpha = 1;
+    }
+    if (state === 'over') drawOver();
+  }
+  function drawMenu() {
+    drawHome();
+    g.fillStyle = 'rgba(20,10,30,.35)'; rr(30, H / 2 - 200, W - 60, 380, 26); g.fill();
+    text('Bean', W / 2 - 5, H / 2 - 150, 40, '#ff5fa2', false, 900, 'right'); text('Grab', W / 2 + 5, H / 2 - 150, 40, '#e8994a', false, 900, 'left');
+    text('BEAR VS BEAN', W / 2, H / 2 - 116, 12, 'rgba(255,255,255,.6)', false, 800);
+    const lines = ['Lay the phone flat between you.', 'Tap your half to send your hippo', 'chomping. Gold beans are worth 3.', 'Most beans wins!'];
+    lines.forEach((l, k) => text(l, W / 2, H / 2 - 80 + k * 21, 14, 'rgba(255,255,255,.85)', false, 600));
+    text(`Wins  Bear ${save.wins[0]} · Bean ${save.wins[1]}`, W / 2, H / 2 + 22, 13, 'rgba(255,255,255,.55)', false, 700);
+    for (const b of btns()) button(b.label, b.x, b.y, b.w, b.h, b.col);
+    drawSound();
+    // decorative beans
+    for (let k = 0; k < 7; k++) drawBean({ x: 60 + k * 40, y: H / 2 - 186 + Math.sin(time * 1.5 + k) * 3, rot: k * .9, c: BEANCOLS[k], gold: k === 3 });
+  }
+  function drawOver() {
+    g.fillStyle = 'rgba(20,10,30,.55)'; g.fillRect(0, 0, W, H);
+    const tie = winner < 0, sc = `${Math.max(...score)}–${Math.min(...score)}`;
+    // a message for each player, the right way up for them
+    for (const p of [0, 1]) {
+      const flip = p === 1, y = p === 0 ? H / 2 + 200 : H / 2 - 200;
+      const msg = tie ? `A tie, ${sc}!` : winner === p ? `You win ${sc}! 🎉` : `So close, ${sc}`;
+      text(msg, W / 2, y, 24, tie ? '#fff' : COL[winner === p ? p : 1 - p], flip);
+    }
+    text(tie ? 'Equal tummies' : `${NAMES[winner]}'s hippo is stuffed`, W / 2, H / 2 + 24, 16, 'rgba(255,255,255,.75)', false, 700);
+    for (const b of btns()) button(b.label, b.x, b.y, b.w, b.h, b.col);
+  }
+
+  /* ---------- loop ---------- */
+  let last = 0;
+  function frame(now) {
+    let dt = Math.min(.05, (now - last) / 1000 || 0); last = now; dt *= FAST; time += dt;
+    if (state === 'count') { cd -= dt; if (Math.ceil(cd) !== Math.ceil(cd + dt) && cd > 0) tone(520, .08, 'triangle', .04);
+      if (cd <= -.5) { state = 'play'; pour(14); pourT = 1; tone(880, .15, 'triangle', .05); } }
+    if (state === 'play' || state === 'count' || state === 'over') {
+      if (state === 'play') { pourT -= dt; if (pourT <= 0 && released < TOTAL) { pour(3); pourT = 1.1; } }
+      updBeans(dt); for (const h of hippos) updHippo(h, dt);
+      for (const u of popups) u.t += dt; popups = popups.filter(u => u.t < .8);
+      if (state === 'play' && released >= TOTAL && !beans.length && hippos.every(h => h.st === 'idle')) finish();
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+  function finish() {
+    state = 'over'; endT = time;
+    winner = score[0] === score[1] ? -1 : score[0] > score[1] ? 0 : 1;
+    if (winner >= 0) { save.wins[winner]++; store(); }
+    [523, 659, 784, 1047].forEach((f, i) => tone(f, .2, 'triangle', .05, i * .09));
+  }
+
+  /* ---------- input ---------- */
+  cv.addEventListener('pointerdown', ev => {
+    ev.preventDefault(); audio();
+    const x = ev.clientX / SC, y = ev.clientY / SC;
+    if (Math.hypot(x - HOME()[0], y - HOME()[1]) < 22) { location.href = '../'; return; }
+    if (Math.hypot(x - SOUND()[0], y - SOUND()[1]) < 22) { save.muted = !save.muted; store(); if (!save.muted) tone(660, .08, 'triangle', .05); return; }
+    for (const b of btns()) if (Math.abs(x - b.x) < b.w / 2 && Math.abs(y - b.y) < b.h / 2) {
+      if (b.id === '2p' || b.id === 'cpu') start(b.id);
+      else if (b.id === 'again') start(mode);
+      else { state = 'menu'; beans = []; }
+      return;
+    }
+    if (state !== 'play') return;
+    const p = y > H / 2 ? 0 : 1;
+    if (!isCpu(p)) lunge(p, x, y);
+  });
+  addEventListener('keydown', ev => { if (ev.key === ' ' && state === 'play') lunge(0, W / 2, H * .62); });
+
+  if (DEBUG) window.__bg = { get state() { return state; }, get beans() { return beans; }, get score() { return score; }, get released() { return released; }, get winner() { return winner; },
+    start, lunge, get H() { return H; }, hippos };
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

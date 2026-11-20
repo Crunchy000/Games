@@ -27,23 +27,24 @@ purpose.  It is provided "as is" without express or implied warranty.
 <link rel="canonical" href="https://crunchy000.github.io/Games/guess-five/">
 <style>
   :root { --bg:#14181f; --panel:#1e2430; --line:#363e4e; --text:#eef1f6; --muted:#8d97ab; --key:#4a5366; --keyText:#fff;
-          --hit:#3fae6a; --near:#e2b33c; --miss:#3a4150; --tile:clamp(44px, min(15.5vw, 7.8dvh), 66px); }
+          --hit:#3fae6a; --near:#e2b33c; --miss:#3a4150; --tile:clamp(34px, min(15vw, 6.8dvh), 64px); --gap:6px; }
   body.contrast { --hit:#f07b2f; --near:#5aa8ef; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; overscroll-behavior:none; }
-  #app { height:100dvh; display:flex; flex-direction:column; align-items:center; max-width:520px; margin:0 auto; }
-  header { width:100%; display:flex; align-items:center; gap:6px; padding:10px 10px 8px; border-bottom:1px solid var(--line); }
-  header h1 { flex:1; margin:0; font-size:1.45rem; font-weight:900; letter-spacing:.02em; text-align:center; }
+  #app { height:var(--app-h, 100dvh); display:flex; flex-direction:column; align-items:center; max-width:520px; margin:0 auto; }
+  header { width:100%; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:4px; padding:8px 8px 6px; border-bottom:1px solid var(--line); flex:none; }
+  header .grp { display:flex; gap:2px; }
+  header h1 { margin:0; white-space:nowrap; font-size:clamp(1.1rem, 6.2vw, 1.45rem); font-weight:900; letter-spacing:.02em; text-align:center; }
   header h1 span { color:var(--hit); }
   .ib { width:40px; height:40px; border:0; border-radius:12px; background:transparent; color:var(--text); display:grid; place-items:center; cursor:pointer; padding:0; }
   .ib:active { background:var(--panel); }
   .ib svg { width:24px; height:24px; }
-  .mode { display:flex; background:var(--panel); border-radius:999px; padding:3px; margin:10px 0 2px; }
+  .mode { display:flex; background:var(--panel); border-radius:999px; padding:3px; margin:8px 0 2px; flex:none; }
   .mode button { border:0; background:transparent; color:var(--muted); font:inherit; font-weight:800; font-size:.85rem; padding:6px 16px; border-radius:999px; cursor:pointer; }
   .mode button.on { background:var(--text); color:var(--bg); }
-  #sub { font-size:.78rem; color:var(--muted); min-height:1.1em; }
-  #board { flex:1; display:flex; flex-direction:column; justify-content:center; gap:6px; padding:6px 0; }
-  .row { display:flex; gap:6px; }
+  #sub { font-size:.78rem; color:var(--muted); min-height:1.1em; flex:none; }
+  #board { flex:1 1 0; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:var(--gap); padding:10px 0 14px; }
+  .row { display:flex; gap:var(--gap); }
   .row.shake { animation:shake .45s; }
   @keyframes shake { 10%,90% { transform:translateX(-2px); } 20%,80% { transform:translateX(4px); } 30%,50%,70% { transform:translateX(-7px); } 40%,60% { transform:translateX(7px); } }
   .tile { width:var(--tile); height:var(--tile); border:2px solid var(--line); border-radius:8px; display:grid; place-items:center; font-size:calc(var(--tile) * .52); font-weight:900; text-transform:uppercase; user-select:none; }
@@ -55,9 +56,9 @@ purpose.  It is provided "as is" without express or implied warranty.
   @keyframes flip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
   .tile.bounce { animation:bounce .5s ease; }
   @keyframes bounce { 0%,100% { transform:translateY(0); } 40% { transform:translateY(-22px); } 70% { transform:translateY(4px); } }
-  #kb { width:100%; padding:0 6px calc(8px + env(safe-area-inset-bottom)); user-select:none; }
+  #kb { width:100%; flex:none; padding:0 6px calc(8px + env(safe-area-inset-bottom)); user-select:none; }
   .kr { display:flex; gap:5px; margin-top:6px; justify-content:center; }
-  .k { flex:1; max-width:46px; height:clamp(46px, 7.4dvh, 58px); border:0; border-radius:7px; background:var(--key); color:var(--keyText); font:inherit; font-weight:800; font-size:1.05rem; text-transform:uppercase; cursor:pointer; padding:0; }
+  .k { flex:1; max-width:46px; height:var(--key-h, clamp(42px, 7dvh, 56px)); border:0; border-radius:7px; background:var(--key); color:var(--keyText); font:inherit; font-weight:800; font-size:1.05rem; text-transform:uppercase; cursor:pointer; padding:0; }
   .k.wide { flex:1.6; max-width:72px; font-size:.75rem; }
   .k:active { filter:brightness(1.25); }
   .k.hit { background:var(--hit); } .k.near { background:var(--near); } .k.miss { background:#262b36; color:#7d879a; }
@@ -92,11 +93,15 @@ purpose.  It is provided "as is" without express or implied warranty.
 <body>
 <div id="app">
   <header>
-    <button class="ib" id="bHelp" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.3a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.5"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
+    <div class="grp">
     <button class="ib" id="bHome" aria-label="All games" onclick="location.href='../'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5"/></svg></button>
+    <button class="ib" id="bHelp" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.3a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.5"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
+    </div>
     <h1>Guess <span>Five</span></h1>
+    <div class="grp">
     <button class="ib" id="bStats" aria-label="Statistics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/></svg></button>
     <button class="ib" id="bSet" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
   </header>
   <div class="mode"><button id="mDaily" class="on">Daily</button><button id="mEndless">Endless</button></div>
   <div id="sub"></div>
@@ -162,6 +167,24 @@ const sBad = () => { tone(180, .12, 'square', .02); tone(150, .14, 'square', .02
 const sReveal = (k, i) => tone(k === 'hit' ? 784 + i * 60 : k === 'near' ? 587 + i * 40 : 262, .12, k === 'miss' ? 'sine' : 'triangle', .035);
 const sWin = () => [0, 4, 7, 12, 16].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .25, 'triangle', .05, i * .09));
 const sLose = () => [7, 3, 0].forEach((s, i) => tone(330 * Math.pow(2, s / 12), .3, 'sine', .04, i * .15));
+
+/* ---------- fit to screen ---------- */
+function fit() {
+  const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight), w = Math.min(innerWidth, 520);
+  const root = document.documentElement.style;
+  root.setProperty('--app-h', h + 'px');
+  const keyH = Math.max(38, Math.min(56, Math.round(h * .068)));
+  root.setProperty('--key-h', keyH + 'px');
+  const gap = h < 600 ? 5 : 6; root.setProperty('--gap', gap + 'px');
+  requestAnimationFrame(() => {
+    const b = $('board'), cs = getComputedStyle(b);
+    const avail = b.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const t = Math.floor(Math.max(30, Math.min(64, (avail - 5 * gap) / 6, (w - 32 - 4 * gap) / 5)));
+    root.setProperty('--tile', t + 'px');
+  });
+}
+addEventListener('resize', fit); if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+fit();
 
 /* ---------- game ---------- */
 function newGame(mode) {

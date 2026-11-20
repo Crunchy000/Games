@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://crunchy000.github.io/Games/</loc></url>
-  <url><loc>https://crunchy000.github.io/Games/river-rush/</loc></url>
   <url><loc>https://crunchy000.github.io/Games/bean-merge/</loc></url>
   <url><loc>https://crunchy000.github.io/Games/stack-drop/</loc></url>
   <url><loc>https://crunchy000.github.io/Games/guess-five/</loc></url>
@@ -17,4 +16,6 @@
   <url><loc>https://crunchy000.github.io/Games/gummy-pop/</loc></url>
   <url><loc>https://crunchy000.github.io/Games/pyramid-hop/</loc></url>
   <url><loc>https://crunchy000.github.io/Games/dots-and-boxes/</loc></url>
+  <url><loc>https://crunchy000.github.io/Games/bean-grab/</loc></url>
+  <url><loc>https://crunchy000.github.io/Games/thin-ice/</loc></url>
 </urlset>

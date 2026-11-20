@@ -8,6 +8,8 @@ Play at https://crunchy000.github.io/Games/
 
 | Game | Folder | What it is |
 | --- | --- | --- |
+| Thin Ice | [`thin-ice/`](thin-ice/) | Bear and Bean take turns knocking blocks out of a frozen pond; unsupported blocks drop too. Whoever drops Pip the penguin loses. Three pond sizes, undo, and a computer opponent. |
+| Bean Grab | [`bean-grab/`](bean-grab/) | Two players on one phone laid flat: tap your half to send your hippo chomping at rolling jelly beans. Gold beans are worth 3. Also plays against the computer. |
 | Guess Five | [`guess-five/`](guess-five/) | Five-letter word puzzle in six guesses with a daily word and endless mode, hard mode, high-contrast colours, stats and sharing. British English word list. |
 | Word Hive | [`word-hive/`](word-hive/) | Honeycomb word puzzle: make words from seven letters using the centre letter. 200 hives (a new one each day), ranks, hints grid and bonus words. |
 | Sudoku | [`sudoku/`](sudoku/) | Sudoku with puzzles generated on the fly (always one solution), four difficulty levels, notes, hints, undo, mistake checking and best times. |
@@ -19,7 +21,6 @@ Play at https://crunchy000.github.io/Games/
 | Bumble Dash | [`bumble-dash/`](bumble-dash/) | One-tap flyer: keep a bee aloft through gaps between honeycomb towers; grab pollen for bonus points. |
 | Ink Bounce | [`ink-bounce/`](ink-bounce/) | Blueprint brick breaker with no paddle: draw one line at a time with limited ink; neat lines refund ink, and falling ink drops and pots refill it. |
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Help Bean hop around a mossy temple in the rainforest, changing every stone while dodging critters. Hop off and a toucan always swoops in to catch you. |
-| River Rush | [`river-rush/`](river-rush/) | Lane runner with Bear on a runaway log: swipe to steer round rocks, hop floating logs, duck low branches, and collect jelly beans and honey. Three life rings; it speeds up as you go. |
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
 | Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |
 | Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: make rockets, bombs and rainbow orbs; bring honey pots down to Bear, break liquorice locks, clear sugar cubes and spreading chocolate. Lolly Pop and Free Swap boosters, +5 moves once per level. |
