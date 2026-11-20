@@ -6,9 +6,7 @@ non-violent.
 
 slitherlink use dots or boxes graphic 
 
-word link
-
-flowersort
+word flow
 
 cut the rope
 
