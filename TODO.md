@@ -17,3 +17,4 @@ non-violent.
 - [ ] **Bear vs Bean: Coaster Hockey (2 players):** air hockey on a pub table with beer mats.
 - [ ] **Nonograms:** picture logic puzzles that reveal little Bear & Bean pictures.
 - [ ] **Pub Quiz:** a daily set of ten questions.
+- [x] ~~**Inspired by LinkedIn Queens:**~~ Done as **Royal Jelly** (queen bees in colour patches).

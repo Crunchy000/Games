@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#fff4dc">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
+<title>Royal Jelly</title>
+<meta name="description" content="A queen bee logic puzzle: place one queen bee in every row, column and colour patch, with no two bees touching. A daily puzzle plus endless boards from 6×6 to 9×9. Free, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<link rel="canonical" href="https://crunchy000.github.io/Games/royal-jelly/">
+<style>
+  :root { --bg:#fff4dc; --ink:#3b2614; --muted:#8c7356; --panel:#ffe9bf; --line:rgba(59,38,20,.18); --thick:#3b2614; --bad:#d93a3a; --accent:#f2a516; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; overscroll-behavior:none; user-select:none; -webkit-user-select:none; }
+  body { background:radial-gradient(600px 400px at 50% -10%, #ffe2a3, transparent 70%), var(--bg); }
+  #app { height:var(--app-h, 100dvh); display:flex; flex-direction:column; align-items:center; max-width:520px; margin:0 auto; padding:0 10px; }
+  header { width:100%; display:grid; grid-template-columns:auto 1fr auto; align-items:center; padding:8px 0 4px; flex:none; }
+  header .grp { display:flex; gap:2px; }
+  header h1 { margin:0; text-align:center; font-size:1.4rem; font-weight:900; white-space:nowrap; }
+  header h1 span { color:var(--accent); }
+  .ib { width:40px; height:40px; border:0; border-radius:12px; background:transparent; color:var(--ink); display:grid; place-items:center; cursor:pointer; padding:0; font:inherit; }
+  .ib:active { background:var(--panel); }
+  .ib svg { width:24px; height:24px; }
+  .seg { display:flex; background:var(--panel); border-radius:999px; padding:3px; margin:4px 0 6px; flex:none; }
+  .seg button { border:0; background:transparent; color:var(--muted); font:inherit; font-weight:800; font-size:.85rem; padding:6px 12px; border-radius:999px; cursor:pointer; }
+  .seg button.on { background:var(--ink); color:var(--bg); }
+  .bar { width:100%; max-width:var(--bw, 480px); display:flex; align-items:center; gap:6px; padding:2px 0 8px; flex:none; }
+  .bar .time { flex:1; font-weight:800; font-variant-numeric:tabular-nums; font-size:1.05rem; }
+  .bar .time small { color:var(--muted); font-weight:700; font-size:.78rem; margin-left:6px; }
+  .tool { border:0; background:var(--panel); color:var(--ink); font:inherit; font-weight:800; font-size:.82rem; padding:8px 12px; border-radius:12px; cursor:pointer; display:flex; align-items:center; gap:5px; }
+  .tool:active { filter:brightness(.95); }
+  .tool:disabled { opacity:.4; }
+  #wrap { flex:1 1 0; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; }
+  #board { display:grid; width:var(--bw); height:var(--bw); border:3px solid var(--thick); border-radius:10px; overflow:hidden; touch-action:none; box-shadow:0 10px 30px rgba(120,70,0,.18); }
+  .cell { position:relative; display:grid; place-items:center; border:0 solid var(--thick); cursor:pointer; }
+  .cell::after { content:''; position:absolute; inset:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); pointer-events:none; }
+  .cell.clash { background-image:repeating-linear-gradient(45deg, rgba(217,58,58,.38) 0 5px, transparent 5px 10px) !important; }
+  .cell .dot { width:22%; height:22%; border-radius:50%; background:rgba(59,38,20,.55); }
+  .cell .dot.auto { background:rgba(59,38,20,.2); }
+  .cell svg { width:78%; height:78%; animation:pop .22s cubic-bezier(.3,1.6,.5,1); overflow:visible; }
+  .cell.bad svg { filter:drop-shadow(0 0 0 var(--bad)); }
+  .cell.bad::before { content:''; position:absolute; inset:3px; border:2.5px solid var(--bad); border-radius:8px; pointer-events:none; }
+  .cell.hint::before { content:''; position:absolute; inset:3px; border:3px solid #2b8a3e; border-radius:8px; pointer-events:none; }
+  @keyframes pop { from { transform:scale(.4); opacity:0; } }
+  #board.won .cell svg { animation:bob 1.6s ease-in-out infinite; }
+  @keyframes bob { 50% { transform:translateY(-6%) rotate(-4deg); } }
+  #msg { min-height:1.3em; text-align:center; font-weight:700; color:var(--muted); font-size:.85rem; padding:8px 4px calc(10px + env(safe-area-inset-bottom)); flex:none; }
+  .ov { position:fixed; inset:0; background:rgba(40,25,10,.5); display:none; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  .ov.show { display:flex; }
+  .card { background:#fffaf0; width:min(94vw, 400px); max-height:92dvh; overflow:auto; border-radius:20px; padding:20px 18px; position:relative; animation:cin .25s cubic-bezier(.3,1.4,.5,1); }
+  @keyframes cin { from { transform:translateY(20px) scale(.96); opacity:0; } }
+  .card h2 { margin:0 0 10px; font-size:1.3rem; }
+  .card p, .card li { color:#5b4530; line-height:1.45; font-size:.95rem; }
+  .card ul { padding-left:20px; margin:8px 0; }
+  .x { position:absolute; top:10px; right:10px; }
+  .btn { border:0; border-radius:999px; padding:12px 22px; font:inherit; font-weight:900; font-size:1rem; cursor:pointer; background:var(--accent); color:#3b2614; }
+  .btn.soft { background:var(--panel); }
+  .row2 { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+  .set { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .set small { display:block; color:var(--muted); }
+  .sw { width:46px; height:28px; border-radius:999px; background:#d9c7a6; border:0; position:relative; cursor:pointer; flex:none; }
+  .sw::after { content:''; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .15s; }
+  .sw.on { background:var(--accent); } .sw.on::after { left:21px; }
+  .win-head { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:6px; }
+  .win-head img { width:56px; height:56px; border-radius:50%; background:#fff; border:3px solid var(--accent); }
+  .stats { display:flex; justify-content:space-around; text-align:center; margin:10px 0 4px; }
+  .stats b { display:block; font-size:1.5rem; } .stats span { font-size:.72rem; color:var(--muted); font-weight:700; }
+  .ex { display:grid; grid-template-columns:repeat(4, 34px); border:2px solid var(--thick); border-radius:6px; overflow:hidden; width:max-content; margin:8px auto; }
+  .ex div { width:34px; height:34px; display:grid; place-items:center; }
+  .ex svg { width:80%; height:80%; }
+  #confetti { position:fixed; inset:0; pointer-events:none; width:100vw; height:100vh; z-index:20; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+<div id="app">
+  <header>
+    <div class="grp">
+      <button class="ib" aria-label="All games" onclick="location.href='../'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg></button>
+      <button class="ib" id="bHelp" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.3a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
+    </div>
+    <h1>Royal <span>Jelly</span></h1>
+    <div class="grp">
+      <button class="ib" id="bStats" aria-label="Statistics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V4"/></svg></button>
+      <button class="ib" id="bSet" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
+  </header>
+  <div class="seg" id="seg">
+    <button data-m="daily">Daily</button><button data-m="6">6×6</button><button data-m="7">7×7</button><button data-m="8">8×8</button><button data-m="9">9×9</button>
+  </div>
+  <div class="bar">
+    <div class="time" id="time">0:00</div>
+    <button class="tool" id="bUndo" aria-label="Undo">↶ Undo</button>
+    <button class="tool" id="bHint">💡 Hint</button>
+    <button class="tool" id="bClear">Clear</button>
+  </div>
+  <div id="wrap"><div id="board" role="grid" aria-label="Puzzle board"></div></div>
+  <div id="msg"></div>
+</div>
+
+<div class="ov" id="ovHelp"><div class="card">
+  <button class="ib x" data-close>✕</button>
+  <h2>How to play</h2>
+  <p>Every hive needs a queen. Place one queen bee in:</p>
+  <ul><li>every <b>row</b></li><li>every <b>column</b></li><li>every <b>colour patch</b></li></ul>
+  <p>And no two queen bees may touch, not even corner to corner.</p>
+  <div class="ex" id="exGrid"></div>
+  <p>Tap a square once for a dot (a reminder that no bee goes there), twice for a queen bee, and again to clear it. Drag across squares to dot lots at once.</p>
+  <p>Every puzzle has exactly one answer, so you never need to guess.</p>
+  <div class="row2"><button class="btn" data-close>Let's play</button></div>
+</div></div>
+<div class="ov" id="ovSet"><div class="card">
+  <button class="ib x" data-close>✕</button>
+  <h2>Settings</h2>
+  <div class="set"><div>Auto dots<small>Faintly dot the squares a queen bee rules out</small></div><button class="sw" id="swAuto"></button></div>
+  <div class="set"><div>Show clashes<small>Stripe squares where two bees break a rule</small></div><button class="sw" id="swClash"></button></div>
+  <div class="set"><div>Sound</div><button class="sw" id="swSound"></button></div>
+</div></div>
+<div class="ov" id="ovWin"><div class="card">
+  <div class="win-head"><img src="../icons/bear.png" alt=""><img src="../icons/bean.png" alt=""></div>
+  <h2 style="text-align:center" id="winTitle">Long live the queens!</h2>
+  <p style="text-align:center;margin:0" id="winSub"></p>
+  <div class="stats" id="winStats"></div>
+  <div class="row2" id="winBtns"></div>
+</div></div>
+<div class="ov" id="ovStats"><div class="card">
+  <button class="ib x" data-close>✕</button>
+  <h2>Statistics</h2>
+  <div class="stats" id="stNums"></div>
+  <div id="stBest"></div>
+</div></div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const DEBUG = /[?&]debug\b/.test(location.search);
+const COLS = ['#ffb4a8', '#ffd97d', '#b5e19c', '#a9d4ff', '#d3b8ff', '#ffc4e1', '#97e3d3', '#f3c497', '#cfd5de'];
+
+/* ---------- puzzle generator: queens first, patches grown round them, then nudged until the answer is unique ---------- */
+function rng32(seed) { let s = seed >>> 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const shuffle = (a, R) => { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function placeQueens(n, R) {
+  const col = Array(n).fill(-1), used = Array(n).fill(false);
+  const go = r => { if (r === n) return true;
+    for (const c of shuffle([...Array(n).keys()], R)) { if (used[c] || (r && Math.abs(col[r - 1] - c) < 2)) continue; col[r] = c; used[c] = true; if (go(r + 1)) return true; used[c] = false; }
+    return false; };
+  go(0); return col;
+}
+const nbrs = (n, i) => { const r = (i / n) | 0, c = i % n, o = []; if (r) o.push(i - n); if (r < n - 1) o.push(i + n); if (c) o.push(i - 1); if (c < n - 1) o.push(i + 1); return o; };
+function growRegions(n, col, R) {
+  const reg = Array(n * n).fill(-1); let left = n * n - n;
+  for (let r = 0; r < n; r++) reg[r * n + col[r]] = r;
+  const w = Array.from({ length: n }, () => .3 + R() * 1.4);
+  while (left) {
+    let tot = 0; for (const x of w) tot += x; if (!tot) break;
+    let k = R() * tot, q = 0; while (k > w[q]) { k -= w[q]; q++; }
+    const cand = []; for (let i = 0; i < n * n; i++) if (reg[i] === q) for (const j of nbrs(n, i)) if (reg[j] < 0) cand.push(j);
+    if (!cand.length) { w[q] = 0; continue; }
+    reg[cand[(R() * cand.length) | 0]] = q; left--;
+  }
+  return reg;
+}
+function solutions(n, reg, cap = 2) {
+  const out = [], uc = Array(n).fill(false), ur = Array(n).fill(false), cur = Array(n);
+  const go = (r, pc) => { if (r === n) { out.push(cur.slice()); return out.length >= cap; }
+    for (let c = 0; c < n; c++) { const g = reg[r * n + c]; if (uc[c] || ur[g] || (r && Math.abs(pc - c) < 2)) continue;
+      uc[c] = ur[g] = true; cur[r] = c; if (go(r + 1, c)) return true; uc[c] = ur[g] = false; }
+    return false; };
+  go(0, -9); return out;
+}
+function connectedWithout(n, reg, q, skip) {
+  const cells = []; for (let i = 0; i < n * n; i++) if (reg[i] === q && i !== skip) cells.push(i);
+  if (!cells.length) return false;
+  const seen = new Set([cells[0]]), st = [cells[0]];
+  while (st.length) for (const j of nbrs(n, st.pop())) if (j !== skip && reg[j] === q && !seen.has(j)) { seen.add(j); st.push(j); }
+  return seen.size === cells.length;
+}
+function repair(n, col, reg, R) {
+  const target = new Set(col.map((c, r) => r * n + c));
+  const size = q => { let k = 0; for (const x of reg) if (x === q) k++; return k; };
+  for (let step = 0; step < 400; step++) {
+    const alt = solutions(n, reg).find(s => s.some((c, r) => c !== col[r]));
+    if (!alt) return true;
+    let moved = false;
+    for (const i of shuffle(alt.map((c, r) => r * n + c).filter(i => !target.has(i)), R)) {
+      const q = reg[i];
+      const opts = nbrs(n, i).filter(j => reg[j] !== q).map(j => [j, size(reg[j]) + R() * 4]).sort((a, b) => a[1] - b[1]);
+      if (!opts.length || !connectedWithout(n, reg, q, i)) continue;
+      reg[i] = reg[opts[0][0]]; moved = true; break;
+    }
+    if (!moved) return false;
+  }
+  return false;
+}
+function generate(n, seed) {
+  const R = rng32(seed);
+  for (;;) {
+    const col = placeQueens(n, R), reg = growRegions(n, col, R);
+    if (reg.includes(-1)) continue;
+    if (repair(n, col, reg, R)) {
+      // shuffle which colour each patch gets so the palette varies
+      const perm = shuffle([...Array(n).keys()], R);
+      return { n, seed, reg: reg.map(g => perm[g]), sol: col };
+    }
+  }
+}
+
+/* ---------- state ---------- */
+const DAY0 = new Date(2026, 0, 1);
+const dayIndex = () => { const d = new Date(); return Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - DAY0) / 864e5); };
+let S = { mode: 'daily', games: {}, auto: false, clash: true, muted: false, seenHelp: false, stats: { solved: 0, streak: 0, bestStreak: 0, lastDaily: -1, best: {} } };
+try { const s = JSON.parse(localStorage.getItem('royaljelly') || 'null'); if (s) S = Object.assign(S, s, { stats: Object.assign(S.stats, s.stats || {}) }); } catch (e) {}
+const save = () => { try { localStorage.setItem('royaljelly', JSON.stringify(S)); } catch (e) {} };
+
+let P = null, G = null, hist = [], hintCell = -1, timerT = 0;
+function load(mode) {
+  S.mode = mode;
+  let g = S.games[mode];
+  if (mode === 'daily' && (!g || g.day !== dayIndex())) g = null;
+  if (!g) {
+    const n = mode === 'daily' ? 8 : +mode, seed = mode === 'daily' ? 900001 + dayIndex() * 7919 : (Math.random() * 2 ** 31) | 0;
+    g = { n, seed, day: mode === 'daily' ? dayIndex() : undefined, cells: Array(n * n).fill(0), time: 0, done: false, hints: 0 };
+    S.games[mode] = g;
+  }
+  G = g; P = generate(g.n, g.seed); hist = []; hintCell = -1;
+  save(); build(); render();
+}
+
+/* ---------- rules ---------- */
+function analyse() {
+  const n = P.n, q = []; G.cells.forEach((v, i) => v === 2 && q.push(i));
+  const clash = new Set(), ruled = new Set();
+  for (let a = 0; a < q.length; a++) {
+    const i = q[a], r = (i / n) | 0, c = i % n;
+    for (let j = 0; j < n * n; j++) { if (j === i) continue; const rr = (j / n) | 0, cc = j % n;
+      if (rr === r || cc === c || P.reg[j] === P.reg[i] || (Math.abs(rr - r) < 2 && Math.abs(cc - c) < 2)) ruled.add(j); }
+    for (let b = a + 1; b < q.length; b++) {
+      const j = q[b], rr = (j / n) | 0, cc = j % n;
+      if (rr === r || cc === c || P.reg[j] === P.reg[i] || (Math.abs(rr - r) < 2 && Math.abs(cc - c) < 2)) { clash.add(i); clash.add(j); }
+    }
+  }
+  return { q, clash, ruled, won: q.length === n && !clash.size };
+}
+
+/* ---------- drawing ---------- */
+const BEE = `<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="13" cy="16" rx="7" ry="5" fill="#fff" stroke="#3b2614" stroke-width="1.6" opacity=".95" transform="rotate(-30 13 16)"/><ellipse cx="27" cy="16" rx="7" ry="5" fill="#fff" stroke="#3b2614" stroke-width="1.6" opacity=".95" transform="rotate(30 27 16)"/><ellipse cx="20" cy="25" rx="10" ry="9.5" fill="#ffc21a" stroke="#3b2614" stroke-width="2"/><path d="M11.5 22.5h17M11 27h18" stroke="#3b2614" stroke-width="3" stroke-linecap="round"/><circle cx="16.5" cy="20" r="1.6" fill="#3b2614"/><circle cx="23.5" cy="20" r="1.6" fill="#3b2614"/><path d="M12.5 12.5l2.5-6 3 4 2-5 2 5 3-4 2.5 6z" fill="#ffd84a" stroke="#b37a00" stroke-width="1.4" stroke-linejoin="round"/><circle cx="20" cy="6.2" r="1.3" fill="#ff5fa2"/></svg>`;
+function build() {
+  const b = $('board'), n = P.n; b.innerHTML = ''; b.classList.toggle('won', !!G.done);
+  b.style.gridTemplateColumns = `repeat(${n}, 1fr)`; b.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+  for (let i = 0; i < n * n; i++) {
+    const d = document.createElement('div'), r = (i / n) | 0, c = i % n, g = P.reg[i];
+    d.className = 'cell'; d.dataset.i = i; d.style.background = COLS[g];
+    const th = j => j < 0 || P.reg[j] !== g;
+    d.style.borderTopWidth = r && th(i - n) ? '1.5px' : '0'; d.style.borderBottomWidth = r < n - 1 && th(i + n) ? '1.5px' : '0';
+    d.style.borderLeftWidth = c && th(i - 1) ? '1.5px' : '0'; d.style.borderRightWidth = c < n - 1 && th(i + 1) ? '1.5px' : '0';
+    b.appendChild(d);
+  }
+  fit();
+}
+function render() {
+  const a = analyse(), cells = $('board').children;
+  for (let i = 0; i < cells.length; i++) {
+    const d = cells[i], v = G.cells[i];
+    const want = v === 2 ? 'q' : v === 1 ? 'd' : S.auto && a.ruled.has(i) ? 'a' : '';
+    if (d.dataset.v !== want) { d.dataset.v = want; d.innerHTML = want === 'q' ? BEE : want === 'd' ? '<div class="dot"></div>' : want === 'a' ? '<div class="dot auto"></div>' : ''; }
+    d.classList.toggle('clash', S.clash && a.clash.has(i));
+    d.classList.toggle('hint', i === hintCell);
+    d.setAttribute('aria-label', `Row ${((i / P.n) | 0) + 1}, column ${i % P.n + 1}${v === 2 ? ', queen bee' : v === 1 ? ', dot' : ''}`);
+  }
+  $('bUndo').disabled = !hist.length || G.done;
+  $('bHint').disabled = $('bClear').disabled = G.done;
+  document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
+  $('msg').textContent = G.done ? 'Solved! Pick a size for a new puzzle.' : S.mode === 'daily' ? `Daily hive #${G.day + 1} · ${a.q.length} of ${P.n} queens` : `${a.q.length} of ${P.n} queens placed`;
+  tickTime();
+  return a;
+}
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function tickTime() { $('time').innerHTML = fmt(G.time) + (G.hints ? `<small>${G.hints} hint${G.hints > 1 ? 's' : ''}</small>` : ''); }
+function fit() {
+  const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight);
+  document.documentElement.style.setProperty('--app-h', h + 'px');
+  requestAnimationFrame(() => {
+    const w = $('wrap'), bw = Math.floor(Math.min(w.clientWidth, 480, w.clientHeight));
+    document.documentElement.style.setProperty('--bw', bw + 'px');
+  });
+}
+addEventListener('resize', fit); if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+
+/* ---------- sound ---------- */
+let ac = null;
+function tone(f, d = .1, type = 'sine', vol = .05, delay = 0, slide = 0) {
+  if (S.muted) return;
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume();
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(f + slide, t + d);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .008); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + .02); } catch (e) {}
+}
+const sDot = () => tone(520, .04, 'triangle', .025);
+const sBee = () => { tone(660, .07, 'triangle', .04); tone(990, .09, 'sine', .03, .05); };
+const sClear = () => tone(330, .05, 'sine', .025);
+const sBad = () => tone(200, .12, 'square', .02);
+
+/* ---------- moves ---------- */
+function setCells(changes) {
+  if (G.done) return;
+  const real = changes.filter(([i, v]) => G.cells[i] !== v); if (!real.length) return;
+  hist.push(real.map(([i]) => [i, G.cells[i]])); if (hist.length > 300) hist.shift();
+  for (const [i, v] of real) G.cells[i] = v;
+  hintCell = -1;
+  const a = render(); save();
+  const placed = real.some(([, v]) => v === 2);
+  if (placed) { [...real].reverse().find(([, v]) => v === 2) && (a.clash.size && S.clash ? sBad() : sBee()); }
+  else if (real.some(([, v]) => v === 1)) sDot(); else sClear();
+  if (a.won) win();
+}
+function undo() { const h = hist.pop(); if (!h || G.done) return; for (const [i, v] of h) G.cells[i] = v; hintCell = -1; render(); save(); sClear(); }
+function hint() {
+  if (G.done) return;
+  const n = P.n, solSet = new Set(P.sol.map((c, r) => r * n + c));
+  // first fix mistakes: a bee in the wrong place, then a dot on a bee's square
+  const wrongBee = G.cells.findIndex((v, i) => v === 2 && !solSet.has(i));
+  const wrongDot = G.cells.findIndex((v, i) => v === 1 && solSet.has(i));
+  let i, v, say;
+  if (wrongBee >= 0) { i = wrongBee; v = 0; say = 'That queen bee can’t stay there, so I’ve taken her off.'; }
+  else if (wrongDot >= 0) { i = wrongDot; v = 0; say = 'A queen bee belongs on this dotted square, so I’ve cleared the dot.'; }
+  else {
+    // reveal the queen of the patch with the fewest open squares left
+    const a = analyse(), open = Array(n).fill(0), has = Array(n).fill(false);
+    G.cells.forEach((x, j) => { if (x === 2) has[P.reg[j]] = true; else if (x === 0 && !a.ruled.has(j)) open[P.reg[j]]++; });
+    let best = -1; for (let g = 0; g < n; g++) if (!has[g] && (best < 0 || open[g] < open[best])) best = g;
+    if (best < 0) return;
+    i = [...solSet].find(j => P.reg[j] === best); v = 2; say = 'Here’s a queen bee to get you going.';
+  }
+  G.hints++; setCells([[i, v]]); hintCell = i; render(); $('msg').textContent = say; save();
+}
+function clearAll() { if (G.done || !G.cells.some(Boolean)) return; if (!confirmClear) { confirmClear = true; $('bClear').textContent = 'Sure?'; setTimeout(() => { confirmClear = false; $('bClear').textContent = 'Clear'; }, 2500); return; }
+  confirmClear = false; $('bClear').textContent = 'Clear'; setCells(G.cells.map((v, i) => [i, 0])); }
+let confirmClear = false;
+
+function win() {
+  G.done = true; const st = S.stats; st.solved++;
+  const key = String(P.n); const prevBest = st.best[key]; if (!G.hints && (!prevBest || G.time < prevBest)) st.best[key] = Math.floor(G.time);
+  if (S.mode === 'daily') { st.streak = st.lastDaily === G.day - 1 ? st.streak + 1 : st.lastDaily === G.day ? st.streak : 1; st.lastDaily = G.day; st.bestStreak = Math.max(st.bestStreak, st.streak); }
+  save(); $('board').classList.add('won'); render();
+  [523, 659, 784, 1047, 1319].forEach((f, k) => tone(f, .22, 'triangle', .05, .15 + k * .09));
+  setTimeout(confetti, 200);
+  setTimeout(() => {
+    $('winSub').textContent = `${S.mode === 'daily' ? 'Daily hive' : P.n + '×' + P.n + ' hive'} solved in ${fmt(G.time)}${G.hints ? ` with ${G.hints} hint${G.hints > 1 ? 's' : ''}` : ''}.`;
+    $('winTitle').textContent = G.hints ? 'Long live the queens!' : ['Long live the queens!', 'A right royal job!', 'Buzzing! Every hive has a queen.'][(Math.random() * 3) | 0];
+    $('winStats').innerHTML = `<div><b>${st.solved}</b><span>SOLVED</span></div><div><b>${st.best[key] != null ? fmt(st.best[key]) : '–'}</b><span>BEST ${P.n}×${P.n}</span></div><div><b>${st.streak}</b><span>DAILY STREAK</span></div>`;
+    $('winBtns').innerHTML = S.mode === 'daily' ? `<button class="btn" data-new="7">Try a 7×7</button><button class="btn soft" data-close>Admire it</button>` : `<button class="btn" data-new="${S.mode}">Next puzzle</button><button class="btn soft" data-close>Admire it</button>`;
+    $('ovWin').classList.add('show');
+  }, 1300);
+}
+
+/* ---------- input: tap cycles, drag dots ---------- */
+const board = $('board');
+let drag = null;
+const cellAt = (x, y) => { const e = document.elementFromPoint(x, y); const c = e && e.closest && e.closest('.cell'); return c ? +c.dataset.i : -1; };
+board.addEventListener('pointerdown', ev => {
+  if (G.done) return; const i = cellAt(ev.clientX, ev.clientY); if (i < 0) return;
+  ev.preventDefault(); try { board.setPointerCapture(ev.pointerId); } catch (e) {}
+  drag = { start: i, last: i, moved: false, mode: G.cells[i] === 1 ? 0 : 1, batch: [] };
+});
+board.addEventListener('pointermove', ev => {
+  if (!drag) return; const i = cellAt(ev.clientX, ev.clientY); if (i < 0 || i === drag.last) return;
+  if (!drag.moved) { drag.moved = true; if (G.cells[drag.start] !== 2) paint(drag.start); }
+  drag.last = i; paint(i);
+});
+function paint(i) {
+  const v = G.cells[i]; if (v === 2) return;
+  if (drag.mode === 1 && v === 0) { G.cells[i] = 1; drag.batch.push([i, 0]); render(); sDot(); }
+  else if (drag.mode === 0 && v === 1) { G.cells[i] = 0; drag.batch.push([i, 1]); render(); sClear(); }
+}
+board.addEventListener('pointerup', () => {
+  if (!drag) return; const d = drag; drag = null;
+  if (d.moved) { if (d.batch.length) { hist.push(d.batch); hintCell = -1; save(); render(); } return; }
+  const v = G.cells[d.start]; setCells([[d.start, (v + 1) % 3]]);
+});
+board.addEventListener('pointercancel', () => { if (drag && drag.batch.length) { hist.push(drag.batch); save(); } drag = null; });
+
+/* ---------- chrome ---------- */
+document.querySelectorAll('#seg button').forEach(b => b.addEventListener('click', () => { load(b.dataset.m); }));
+$('bUndo').onclick = undo; $('bHint').onclick = hint; $('bClear').onclick = clearAll;
+const sw = (id, key, inv) => { const e = $(id); const upd = () => e.classList.toggle('on', inv ? !S[key] : !!S[key]); upd(); e.onclick = () => { S[key] = !S[key]; save(); upd(); render(); }; };
+sw('swAuto', 'auto'); sw('swClash', 'clash'); sw('swSound', 'muted', true);
+const open = id => $(id).classList.add('show');
+$('bHelp').onclick = () => open('ovHelp'); $('bSet').onclick = () => open('ovSet');
+$('bStats').onclick = () => {
+  const st = S.stats;
+  $('stNums').innerHTML = `<div><b>${st.solved}</b><span>SOLVED</span></div><div><b>${st.streak}</b><span>DAILY STREAK</span></div><div><b>${st.bestStreak}</b><span>BEST STREAK</span></div>`;
+  $('stBest').innerHTML = '<p style="margin:12px 0 4px;font-weight:800">Best times (no hints)</p>' + [6, 7, 8, 9].map(k => `<div class="set" style="padding:8px 0"><div>${k}×${k}</div><b>${st.best[k] != null ? fmt(st.best[k]) : '–'}</b></div>`).join('');
+  open('ovStats');
+};
+document.addEventListener('click', ev => {
+  const t = ev.target;
+  if (t.closest('[data-close]') || t.classList.contains('ov')) { t.closest('.ov').classList.remove('show'); if (t.closest('#ovHelp') && !S.seenHelp) { S.seenHelp = true; save(); } }
+  const nb = t.closest('[data-new]'); if (nb) { $('ovWin').classList.remove('show'); const m = nb.dataset.new; delete S.games[m]; load(m); }
+});
+// a little example for the help card
+(() => { const ex = $('exGrid'), reg = [0, 0, 1, 1, 0, 2, 2, 1, 3, 3, 2, 1, 3, 3, 2, 2], q = [1, 7, 8, 14]; reg.forEach((g, i) => { const d = document.createElement('div'); d.style.background = COLS[[0, 3, 2, 5][g]]; if (q.includes(i)) d.innerHTML = BEE; ex.appendChild(d); }); })();
+
+setInterval(() => { if (G && !G.done && document.visibilityState === 'visible' && !document.querySelector('.ov.show')) { G.time += 1; tickTime(); if (G.time % 5 === 0) save(); } }, 1000);
+
+/* ---------- confetti (gentle) ---------- */
+const ccv = $('confetti'), cx = ccv.getContext('2d'); let bits = [], raf = 0;
+function confetti() {
+  const dpr = Math.min(devicePixelRatio || 1, 2); ccv.width = innerWidth * dpr; ccv.height = innerHeight * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  for (let k = 0; k < 120; k++) bits.push({ x: innerWidth / 2 + (Math.random() - .5) * 140, y: innerHeight * .45, vx: (Math.random() - .5) * 12, vy: -Math.random() * 14 - 4,
+    r: Math.random() * 6, vr: (Math.random() - .5) * .4, w: 6 + Math.random() * 6, h: 3 + Math.random() * 4, c: COLS[k % COLS.length], life: 1 });
+  if (!raf) raf = requestAnimationFrame(tick);
+}
+function tick() {
+  cx.clearRect(0, 0, innerWidth, innerHeight);
+  for (const b of bits) { b.vy += .4; b.vx *= .985; b.x += b.vx; b.y += b.vy; b.r += b.vr; b.life -= .007;
+    cx.save(); cx.globalAlpha = Math.max(0, Math.min(1, b.life * 2)); cx.translate(b.x, b.y); cx.rotate(b.r); cx.fillStyle = b.c; cx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h * Math.abs(Math.cos(b.r * 2))); cx.restore(); }
+  bits = bits.filter(b => b.life > 0 && b.y < innerHeight + 30);
+  raf = bits.length ? requestAnimationFrame(tick) : (cx.clearRect(0, 0, innerWidth, innerHeight), 0);
+}
+
+if (DEBUG) window.__rj = { get P() { return P; }, get G() { return G; }, setCells, hint, load, generate, solutions, analyse };
+load(S.mode);
+if (!S.seenHelp) open('ovHelp');
+})();
+</script>
+</body>
+</html>
