@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
 <title>Pyramid Hop</title>
-<meta name="description" content="Hop a hedgehog round a jungle pyramid to light every cube (a second hop puts it out) while centipedes crawl up from the bottom. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="Hop a hedgehog round a jungle pyramid to light every cube (a second hop puts it out) while snakes slither up from the bottom. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://crunchy000.github.io/Games/pyramid-hop/">
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -166,7 +166,7 @@ function kill() {
   beep(150, .5, 'sawtooth', .07, -100); beep(90, .4, 'square', .05, -40, .1);
 }
 
-/* ---------- enemies: centipedes crawl up from the bottom (c wanders, k chases); frost crystal (g) drops from the top ---------- */
+/* ---------- enemies: snakes slither up from the bottom (c wanders, k chases); frost crystal (g) drops from the top ---------- */
 function spawn() {
   const alive = enemies.filter(e => !e.fall && !e.leaving);
   if (alive.length >= Math.min(2 + Math.floor(lvl / 3), 4)) return;
@@ -177,26 +177,26 @@ function spawn() {
     enemies.push({ type, pr: -1, pc: 0, r: 1, c: Math.random() < .5 ? 0 : 1, hop: true, t: 0, dur: .45, wait: .4, fall: null, sq: 0, spin: rnd(0, 6), hatch: 0 });
     beep(1200, .1, 'triangle', .03, 400); return;
   }
-  // crawl in from the ground onto a cube on the bottom row
+  // slither in from the ground onto a cube on the bottom row
   const c = Math.floor(Math.random() * N), pc = c + (Math.random() < .5 ? 0 : 1);
   const e = { type, crawl: true, pr: N, pc, r: N - 1, c, hop: true, t: 0, dur: 1, wait: .1, fall: null, sq: 0, spin: rnd(0, 6), hatch: 0, dir: -1, steps: 0, trail: [] };
   const A = P(N, pc), B = P(N - 1, c), dx = A.x - B.x, dy = A.y - B.y, L = Math.hypot(dx, dy);
-  for (let k = 12; k >= 0; k--) e.trail.push({ x: A.x + dx / L * k * 5, y: A.y + dy / L * k * 5 });   // body already trailing behind, off the bottom
+  for (let k = 16; k >= 0; k--) e.trail.push({ x: A.x + dx / L * k * 5, y: A.y + dy / L * k * 5 });   // body already trailing behind, off the bottom
   enemies.push(e);
   beep(type === 'k' ? 300 : 220, .12, 'triangle', .03, -50);
 }
-function crawlSpeed(e) { return e.type === 'k' ? Math.max(.34, .55 - lvl * .02) : Math.max(.42, .68 - lvl * .025); }
+function crawlSpeed(e) { return e.type === 'k' ? Math.max(.6, .85 - lvl * .02) : Math.max(.75, 1.05 - lvl * .025); }
 function ehop(e) {
   let d = -1;
   if (e.crawl) {
     const opts = ks => ks.filter(k => valid(e.r + DR[k], e.c + DC[k]));
-    if (e.type === 'k' && e.dir < 0 && e.steps < 16) {   // the orange ones chase you for a while
+    if (e.type === 'k' && e.dir < 0 && e.steps < 12) {   // the orange ones chase you for a while
       const tp = (p.ride || p.fall || p.dead) ? null : pos(p); let best = 1e9, bd = [];
       for (const k of opts([0, 1, 2, 3])) { const q = P(e.r + DR[k], e.c + DC[k]), dist = tp ? Math.hypot(q.x - tp.x, q.y - tp.y) : Math.random() * 100;
         if (dist < best - .5) { best = dist; bd = [k]; } else if (Math.abs(dist - best) <= .5) bd.push(k); }
       d = bd.length ? pick(bd) : -1;
     } else {
-      if (e.type === 'k' && e.steps >= 16) e.dir = 1;
+      if (e.type === 'k' && e.steps >= 12) e.dir = 1;
       const up = opts([0, 1]);
       if (e.dir < 0 && up.length) d = pick(up);
       else { e.dir = 1; const dn = opts([2, 3]); d = dn.length ? pick(dn) : (Math.random() < .5 ? 2 : 3); }   // past the bottom row they wander off home
@@ -210,7 +210,7 @@ function ehop(e) {
   e.face = d; e.pr = e.r; e.pc = e.c; e.r += DR[d]; e.c += DC[d]; e.hop = true; e.t = 0; e.dur = .24;
 }
 function eland(e) {
-  if (e.crawl) { if (e.leaving) { e.gone = true; return; } e.wait = e.type === 'k' ? .05 : .12; return; }
+  if (e.crawl) { if (e.leaving) { e.gone = true; return; } e.wait = e.type === 'k' ? .15 : .3; return; }
   if (!valid(e.r, e.c)) { const q = P(e.r, e.c); e.fall = { x: q.x, y: q.y, vy: -40, spin: 0 }; return; }
   e.sq = 1;
   e.wait = Math.max(.4, .75 - lvl * .03);
@@ -482,7 +482,7 @@ function avatar(img, x, y, r) {
   if (img.complete && img.naturalWidth) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.clip(); ctx.drawImage(img, x - r, y - r, r * 2, r * 2); ctx.restore(); }
 }
 function drawEnemy(e) {
-  if (e.crawl) { drawCentipede(e); return; }
+  if (e.crawl) { drawSnake(e); return; }
   const q = pos(e), x = q.x, y = q.y, fz = freezeT > 0 && e.type !== 'g', st = e.hop ? Math.sin(Math.PI * e.t) : 0, sq = e.sq;
   ctx.save(); ctx.translate(x, y);
   if (e.fall) ctx.rotate(e.fall.spin);
@@ -498,15 +498,14 @@ function drawEnemy(e) {
   ctx.restore();
 }
 
-// a friendly-looking centipede: round segments, wiggly legs, antennae with bobbles
-function drawCentipede(e) {
+// a friendly cartoon snake: a smooth tapering body that slithers along the path its head has taken
+function drawSnake(e) {
   const fz = freezeT > 0, orange = e.type === 'k';
-  const body = fz ? '#a5d8ff' : orange ? '#ff922b' : '#69c46b', dark = fz ? '#4a6fa5' : orange ? '#d9480f' : '#2f8a3a', spot = fz ? '#e7f5ff' : orange ? '#ffe066' : '#d8f5a2';
-  const SEG = orange ? 7 : 6, GAP = 7.4;
-  // place segments back along the path the head has travelled
+  const body = fz ? '#a5d8ff' : orange ? '#ff922b' : '#5cc463', dark = fz ? '#4a6fa5' : orange ? '#c2410c' : '#2b7a33', belly = fz ? '#e7f5ff' : orange ? '#ffd8a8' : '#d8f5a2', mark = fz ? '#74c0fc' : orange ? '#ffe066' : '#2f9e44';
+  const SEG = 13, GAP = 3.6;
   let pts;
-  if (e.fall) { const c = pos(e); pts = []; for (let i = 0; i <= SEG; i++) { const a = e.fall.spin + i * .9; pts.push({ x: c.x + Math.cos(a) * i * 1.6, y: c.y + Math.sin(a) * i * 1.6 }); } }
-  else if (e.legend) { pts = []; for (let i = 0; i <= SEG; i++) pts.push({ x: -i * GAP * .8, y: 8 + Math.sin(time * 6 + i) * .8 }); }
+  if (e.fall) { const c = pos(e); pts = []; for (let i = 0; i <= SEG; i++) { const a = e.fall.spin + i * .55; pts.push({ x: c.x + Math.cos(a) * i * 1.1, y: c.y + Math.sin(a) * i * 1.1 }); } }
+  else if (e.legend) { pts = []; for (let i = 0; i <= SEG; i++) pts.push({ x: -i * GAP, y: 8 }); }
   else {
     const head = pos(e); pts = [head]; const tr = e.trail; let need = GAP, prev = head;
     for (let i = tr.length - 1; i >= 0 && pts.length <= SEG; i--) {
@@ -516,29 +515,32 @@ function drawCentipede(e) {
     }
     while (pts.length <= SEG) { const a = pts[pts.length - 1], b = pts[pts.length - 2] || { x: a.x, y: a.y - 1 }; const dx = a.x - b.x, dy = a.y - b.y, L = Math.hypot(dx, dy) || 1; pts.push({ x: a.x + dx / L * GAP, y: a.y + dy / L * GAP }); }
   }
-  const lift = 7, wig = fz ? 0 : time * 16;
-  for (let i = SEG; i >= 1; i--) {
-    const a = pts[i], b = pts[i - 1], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, r = 6.6 - i * .25;
-    ctx.strokeStyle = dark; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
-    for (const sd of [-1, 1]) { const w = Math.sin(wig + i * 1.3 + (sd > 0 ? Math.PI : 0)) * 1.8;
-      ctx.beginPath(); ctx.moveTo(a.x + nx * sd * r * .8, a.y - lift + ny * sd * r * .5 + 2); ctx.lineTo(a.x + nx * sd * (r + 3.5) + dx / L * w, a.y - lift + ny * sd * (r + 2) + 4 + dy / L * w); ctx.stroke(); }
-    ell(a.x, a.y - lift + 1.2, r, r * .95, dark); ell(a.x, a.y - lift, r, r * .92, body);
-    ell(a.x - r * .3, a.y - lift - r * .35, r * .35, r * .22, 'rgba(255,255,255,.45)');
-    if (i % 2) ell(a.x + r * .25, a.y - lift + r * .2, r * .22, r * .2, spot);
+  // a side-to-side slither, stronger towards the tail
+  const lift = 5, sl = fz ? 0 : time * 7;
+  const W2 = pts.map((q, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(SEG, i + 1)], dx = a.x - b.x, dy = a.y - b.y, L = Math.hypot(dx, dy) || 1;
+    const off = i ? Math.sin(i * .75 - sl) * 2.6 * Math.min(1, i / 4) : 0;
+    return { x: q.x - dy / L * off, y: q.y - lift + dx / L * off * .6 };
+  });
+  const rad = i => 5.6 - i * .32;
+  for (let i = SEG; i >= 1; i--) { const q = W2[i]; ell(q.x, q.y + 1.4, rad(i), rad(i) * .9, dark); }
+  for (let i = SEG; i >= 1; i--) { const q = W2[i]; ell(q.x, q.y, rad(i), rad(i) * .88, body); }
+  for (let i = SEG - 1; i >= 1; i -= 2) { const q = W2[i]; ell(q.x, q.y - rad(i) * .2, rad(i) * .45, rad(i) * .32, mark); }
+  for (let i = SEG; i >= 1; i -= 3) { const q = W2[i]; ell(q.x - rad(i) * .35, q.y - rad(i) * .45, rad(i) * .3, rad(i) * .16, 'rgba(255,255,255,.4)'); }
+  // head, looking the way it's going
+  const h = W2[0], nb = W2[2], hx = h.x - nb.x, hy = h.y - nb.y, HL = Math.hypot(hx, hy) || 1, fx = hx / HL, fy = hy / HL;
+  if (!fz && (time + (e.spin || 0)) % 2.2 < .35) {   // a little tongue flick
+    const tx = h.x + fx * 9, ty = h.y + 2 + fy * 6;
+    ctx.strokeStyle = '#e03131'; ctx.lineWidth = 1.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(h.x + fx * 5, h.y + 1 + fy * 3); ctx.lineTo(tx, ty);
+    ctx.lineTo(tx + fx * 2.5 - fy * 1.8, ty + fy * 2.5 + fx * 1.2); ctx.moveTo(tx, ty); ctx.lineTo(tx + fx * 2.5 + fy * 1.8, ty + fy * 2.5 - fx * 1.2); ctx.stroke();
   }
-  // head
-  const h = pts[0], nb = pts[1], hx = h.x - nb.x, hy = h.y - nb.y, HL = Math.hypot(hx, hy) || 1, fx = hx / HL, fy = hy / HL;
-  for (const sd of [-1, 1]) {   // antennae
-    const bx = h.x + fx * 3 + -fy * sd * 3, by = h.y - lift - 5 + fx * sd * 1.5, tx = bx + fx * 4 + -fy * sd * 4, ty = by - 7 + Math.sin(time * 5 + sd) * 1.2;
-    ctx.strokeStyle = dark; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + fx * 2, ty + 2, tx, ty); ctx.stroke(); ell(tx, ty, 1.7, 1.7, orange ? '#ff6b6b' : '#ffd43b');
-  }
-  ell(h.x, h.y - lift + 1.3, 8.4, 7.9, dark); ell(h.x, h.y - lift, 8.4, 7.9, body);
-  const ex = fx * 1.6, ey = fy * 1;
-  for (const sd of [-1, 1]) { ell(h.x + sd * 2.8 + ex, h.y - lift - 1.2 + ey, 2.3, 2.6, '#fff'); ell(h.x + sd * 2.8 + ex * 1.6, h.y - lift - 1 + ey * 1.4, 1.2, 1.5, '#1b1208'); }
-  if (orange && !fz) { ctx.strokeStyle = '#7a2a00'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(h.x - 4.8 + ex, h.y - lift - 5 + ey); ctx.lineTo(h.x - 1.4 + ex, h.y - lift - 3.8 + ey); ctx.moveTo(h.x + 4.8 + ex, h.y - lift - 5 + ey); ctx.lineTo(h.x + 1.4 + ex, h.y - lift - 3.8 + ey); ctx.stroke(); }
-  ctx.strokeStyle = '#1b1208'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(h.x + ex, h.y - lift + 2 + ey, 2, .3, Math.PI - .3); ctx.stroke();
-  ell(h.x - 4.6 + ex, h.y - lift + 2 + ey, 1.4, .9, 'rgba(255,110,130,.55)'); ell(h.x + 4.6 + ex, h.y - lift + 2 + ey, 1.4, .9, 'rgba(255,110,130,.55)');
-  if (fz) { ctx.fillStyle = 'rgba(200,240,255,.3)'; ctx.beginPath(); ctx.arc(h.x, h.y - lift, 10, 0, 6.2832); ctx.fill(); }
+  ell(h.x + fx * 1.5, h.y + 1.4, 7.6, 6.2, dark); ell(h.x + fx * 1.5, h.y, 7.6, 6.2, body);
+  ell(h.x + fx * 3.5, h.y + 2, 4.6, 2.6, belly);
+  const ex = fx * 1.8;
+  for (const sd of [-1, 1]) { ell(h.x + sd * 3 + ex, h.y - 2.4, 2.5, 2.8, '#fff'); ell(h.x + sd * 3 + ex * 1.6, h.y - 2.1 + fy, 1.3, 1.7, '#1b1208'); ell(h.x + sd * 3 + ex * 1.6 - .5, h.y - 2.8 + fy, .5, .5, '#fff'); }
+  if (orange && !fz) { ctx.strokeStyle = '#7a2a00'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(h.x - 5.3 + ex, h.y - 6.2); ctx.lineTo(h.x - 1.6 + ex, h.y - 5.1); ctx.moveTo(h.x + 5.3 + ex, h.y - 6.2); ctx.lineTo(h.x + 1.6 + ex, h.y - 5.1); ctx.stroke(); }
+  ell(h.x - 5 + ex, h.y + 1, 1.5, .9, 'rgba(255,110,130,.55)'); ell(h.x + 5 + ex, h.y + 1, 1.5, .9, 'rgba(255,110,130,.55)');
+  if (fz) { ctx.fillStyle = 'rgba(200,240,255,.3)'; ctx.beginPath(); ctx.arc(h.x, h.y, 10, 0, 6.2832); ctx.fill(); }
 }
 
 /* ---------- HUD & overlays ---------- */
@@ -645,12 +647,12 @@ function draw() {
     ctx.fillStyle = 'rgba(5,22,12,.35)'; ctx.fillRect(0, 0, W, H); text('THE BEAR & BEAN PRESENTS', CX, H * .13 - 42, 10, '#ffc0dc', 'center', null, 800); logo(H * .13);
     const y = H * .13 + 92; panel(y, 132);
     text('Light every cube, but a second hop puts it out!', CX, y + 20, 12, '#fff', 'center', null, 800);
-    const rows = [['c', 'Centipedes crawl up from the bottom'], ['k', 'Orange ones chase you: dodge them!'], ['g', 'Grab Frost to freeze everything'], ['pad', 'Hop off? The toucan always catches you']];
+    const rows = [['c', 'Snakes slither up from the bottom'], ['k', 'Orange ones chase you: dodge them!'], ['g', 'Grab Frost to freeze everything'], ['pad', 'Hop off? The toucan always catches you']];
     rows.forEach(([k, t], i) => {
       const ry = y + 46 + i * 22;
       if (k === 'pad') drawToucan(58, ry + 2, .55, 1);
       else if (k === 'g') { ctx.save(); ctx.translate(56, ry + 8); ctx.scale(.75, .75); drawEnemy({ type: k, hop: false, t: 0, sq: 0, spin: 0, hatch: 0, r: 0, c: 0, fall: { x: 0, y: 0, spin: 0 } }); ctx.restore(); }
-      else { ctx.save(); ctx.translate(66, ry - 3); ctx.scale(.7, .7); const fzWas = freezeT; freezeT = 0; drawCentipede({ type: k, legend: true }); freezeT = fzWas; ctx.restore(); }
+      else { ctx.save(); ctx.translate(66, ry - 3); ctx.scale(.7, .7); const fzWas = freezeT; freezeT = 0; drawSnake({ type: k, legend: true }); freezeT = fzWas; ctx.restore(); }
       text(t, 80, ry, 11, '#dcefd2', 'left', null, 700);
     });
     if (Math.sin(time * 5) > -.3) text('TAP TO START', CX, y + 160, 18, '#ffd43b');
