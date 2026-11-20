@@ -3,7 +3,7 @@
    - fetch: pages come fresh from the network when online (so updates show straight away), falling back to the
      saved copy if the network is slow or offline; icons and other files answer from the saved copy and refresh quietly
    - activate: delete the copies saved by older versions */
-const VERSION = 'games-81c732cccffc';
+const VERSION = 'games-0488669b73b2';
 const FILES = [
   './',
   './manifest.webmanifest',
