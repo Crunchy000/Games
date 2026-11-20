@@ -210,6 +210,8 @@
   .arrow { background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important; color:var(--pk-cream) !important; border:0 !important; border-radius:12px !important; box-shadow:inset 0 0 0 1px rgba(0,0,0,.45), 0 3px 0 var(--pk-edge), 0 6px 14px rgba(0,0,0,.4) !important; }
   .dots button { background:rgba(255,220,170,.25); } .dots button.on { background:var(--pk-brass); }
   footer { color:var(--pk-cream-dim); }
+  .sub.nope { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:6px; font-weight:700; color:var(--pk-cream); }
+  .sub.nope span { white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -217,7 +219,8 @@
   <img class="logo" src="icons/logo.jpg" width="560" height="580" alt="The Bear &amp; Bean Games: a cheerful bear in a green waistcoat and a pink bean in a wizard hat sharing a drink at a little table">
   <div class="intro">
   <h1>The Bear &amp; Bean Games</h1>
-  <p class="sub">Just wholesome mini-games that work offline. Totally free, with no ads, no monetisation and no tracking.</p>
+  <p class="sub">Just wholesome mini-games that work offline. Totally free.</p>
+  <p class="sub nope" aria-label="No ads, no monetisation and no tracking"><span>❌ Ads</span><span>❌ Monetisation</span><span>❌ Tracking</span></p>
   <div id="appbar" class="appbar"><button id="install" class="install pk-btn pk-small" hidden>Install app</button><span id="appnote" class="appnote"></span></div>
   </div>
 </header>
