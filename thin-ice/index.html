@@ -157,6 +157,17 @@
 .pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
 .pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
 </style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <canvas id="confetti"></canvas>
@@ -204,6 +215,7 @@
     if (s.names) names = s.names; if (s.wins) wins = s.wins; if ([5, 7, 9].includes(s.n)) n = s.n;
     if (s.mode === 'cpu') mode = 'cpu'; muted = !!s.muted;
   } catch (e) {}
+  if (BB.muted === null) BB.muted = muted; else muted = BB.muted;   // sound is shared by every game
   const save = () => { try { localStorage.setItem('thinice', JSON.stringify({ names, wins, n, mode, muted })); } catch (e) {} };
 
   /* ---------- sound ---------- */
@@ -574,7 +586,7 @@
   $('undo').addEventListener('click', undo);
   $('resetWins').addEventListener('click', () => { wins = [0, 0]; save(); render(); });
   const setSoundIcon = () => { $('sound').textContent = muted ? '🔇' : '🔊'; $('sound').setAttribute('aria-label', muted ? 'Sound off' : 'Sound on'); };
-  $('sound').addEventListener('click', () => { muted = !muted; save(); setSoundIcon(); if (!muted) tone(660, .1, 'triangle', .06); });
+  $('sound').addEventListener('click', () => { muted = !muted; BB.muted = muted; save(); setSoundIcon(); if (!muted) tone(660, .1, 'triangle', .06); });
   addEventListener('keydown', ev => {
     if (ev.target.isContentEditable) return;
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { ev.preventDefault(); undo(); }

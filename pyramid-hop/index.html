@@ -121,6 +121,17 @@ window.PK = (() => {
   return { plank, board, sign, homeSign, house, presents, face, says, grain, nail, rr, SLAB, CREAM, CREAM_DIM, INK, BRASS, OAK, WAL };
 })();
 </script>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app"><canvas id="c"></canvas></div>
@@ -148,7 +159,7 @@ function resize() {
 
 /* ---------- audio ---------- */
 let ac = null;
-function beep(f, d, type = 'square', vol = .04, slide = 0, delay = 0) {
+function beep(f, d, type = 'square', vol = .04, slide = 0, delay = 0) { if (BB.muted) return;
   try {
     if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
     if (ac.state === 'suspended') ac.resume();

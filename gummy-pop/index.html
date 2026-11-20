@@ -136,6 +136,17 @@
 .pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
 .pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
 </style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app">
@@ -211,6 +222,7 @@ const NAMES = ['hearts', 'drops', 'stars', 'cubes', 'gems', 'hexes'];
 
 let save = { unlocked: 1, stars: {}, muted: false, boost: { hammer: 3, swap: 3 } };
 try { const s = JSON.parse(localStorage.getItem('gummypop')); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
+if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
 if (!save.boost) save.boost = { hammer: 3, swap: 3 };
 const IMG = { bear: new Image() }; IMG.bear.src = '../icons/bear.png';
 const persist = () => { try { localStorage.setItem('gummypop', JSON.stringify(save)); } catch (e) {} };
@@ -1098,7 +1110,7 @@ $('btnHow').onclick = () => show('ovHow'); $('btnHowOk').onclick = openMenu;
 $('btnResume').onclick = () => show(null);
 $('btnRestart').onclick = () => openStart(L.n);
 $('btnLevels').onclick = openMenu;
-$('btnSound').onclick = () => { save.muted = !save.muted; persist(); $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); tone(660, .1, 'triangle', .06); };
+$('btnSound').onclick = () => { save.muted = !save.muted; BB.muted = save.muted; persist(); $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); tone(660, .1, 'triangle', .06); };
 document.addEventListener('visibilitychange', () => { if (ac) document.hidden ? ac.suspend() : ac.resume(); });
 
 addEventListener('resize', () => { resize(); boardCache = null; bgDirty = true; });

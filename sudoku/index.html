@@ -165,6 +165,17 @@
 .pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
 .pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
 </style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app">
@@ -210,18 +221,20 @@ const $ = id => document.getElementById(id);
 const LEVELS = { easy: { name: 'Easy', givens: 40, blurb: 'Hints start switched on' }, medium: { name: 'Medium', givens: 33, blurb: 'Needs a little thought' }, hard: { name: 'Hard', givens: 28, blurb: 'Notes will help' }, expert: { name: 'Expert', givens: 24, blurb: 'Fewest clues possible' } };
 let S = { game: null, best: {}, won: {}, muted: false, theme: null };
 try { const s = JSON.parse(localStorage.getItem('sudoku') || 'null'); if (s) S = Object.assign(S, s); } catch (e) {}
+if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('sudoku', JSON.stringify(S)); } catch (e) {} };
 
 /* ---------- theme: follows the phone's setting until you pick one ---------- */
 const sysDark = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
-const isDark = () => S.theme ? S.theme === 'dark' : !!(sysDark && sysDark.matches);
+if (!BB.theme && S.theme) BB.theme = S.theme;   // light or dark is shared by every game
+const isDark = () => BB.theme ? BB.theme === 'dark' : !!(sysDark && sysDark.matches);
 function applyTheme() {
   document.body.classList.toggle('dark', isDark());
   document.querySelector('meta[name=theme-color]').setAttribute('content', isDark() ? '#0f131a' : '#f3f6fb');
   const b = document.getElementById('bTheme');
   if (b) b.innerHTML = isDark() ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
 }
-if (sysDark && sysDark.addEventListener) sysDark.addEventListener('change', () => { if (!S.theme) applyTheme(); });
+if (sysDark && sysDark.addEventListener) sysDark.addEventListener('change', () => { if (!BB.theme) applyTheme(); });
 applyTheme();
 
 /* ---------- sound ---------- */
@@ -399,8 +412,8 @@ $('tNotes').onclick = () => { audio(); toggleNotes(); };
 $('tHint').onclick = () => { audio(); toggleHelper(); };
 function setPaused(p) { if (G.done) return; paused = p; render(); }
 $('bPause').onclick = () => setPaused(!paused);
-$('bTheme').onclick = () => { S.theme = isDark() ? 'light' : 'dark'; save(); applyTheme(); audio(); tone(isDark() ? 440 : 880, .08, 'sine', .03); };
-$('bSound').onclick = () => { S.muted = !S.muted; save(); audio(); render(); tone(660, .08, 'triangle'); };
+$('bTheme').onclick = () => { BB.theme = isDark() ? 'light' : 'dark'; save(); applyTheme(); audio(); tone(isDark() ? 440 : 880, .08, 'sine', .03); };
+$('bSound').onclick = () => { S.muted = !S.muted; BB.muted = S.muted; save(); audio(); render(); tone(660, .08, 'triangle'); };
 addEventListener('keydown', e => {
   if (document.querySelector('.ov.show')) return;
   audio();

@@ -19,6 +19,17 @@
   html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#2b1a3d; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   canvas { display:block; width:100vw; height:100dvh; touch-action:none; }
 </style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <script id="pub-kit-canvas">
@@ -134,6 +145,7 @@ window.PK = (() => {
   const imgs = [new Image(), new Image()]; imgs[0].src = '../icons/bear.png'; imgs[1].src = '../icons/bean.png';
   let save = { wins: [0, 0], muted: false };
   try { save = Object.assign(save, JSON.parse(localStorage.getItem('beangrab') || '{}')); } catch (e) {}
+  if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
   const store = () => { try { localStorage.setItem('beangrab', JSON.stringify(save)); } catch (e) {} };
 
   function resize() {
@@ -419,7 +431,7 @@ window.PK = (() => {
     ev.preventDefault(); audio();
     const x = ev.clientX / SC, y = ev.clientY / SC;
     if (Math.hypot(x - HOME()[0], y - HOME()[1]) < 22) { location.href = '../'; return; }
-    if (Math.hypot(x - SOUND()[0], y - SOUND()[1]) < 22) { save.muted = !save.muted; store(); if (!save.muted) tone(660, .08, 'triangle', .05); return; }
+    if (Math.hypot(x - SOUND()[0], y - SOUND()[1]) < 22) { save.muted = !save.muted; BB.muted = save.muted; store(); if (!save.muted) tone(660, .08, 'triangle', .05); return; }
     for (const b of btns()) if (Math.abs(x - b.x) < b.w / 2 && Math.abs(y - b.y) < b.h / 2) {
       if (b.id === '2p' || b.id === 'cpu') start(b.id);
       else if (b.id === 'again') start(mode);

@@ -166,6 +166,17 @@
 .pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
 .pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
 </style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <canvas id="confetti"></canvas>
@@ -310,11 +321,13 @@ const DAY0 = new Date(2026, 0, 1);
 const dayIndex = () => { const d = new Date(); return Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - DAY0) / 864e5); };
 let S = { theme: null, mode: 'daily', games: {}, auto: false, clash: true, muted: false, seenHelp: false, stats: { solved: 0, streak: 0, bestStreak: 0, lastDaily: -1, best: {} } };
 try { const s = JSON.parse(localStorage.getItem('royaljelly') || 'null'); if (s) S = Object.assign(S, s, { stats: Object.assign(S.stats, s.stats || {}) }); } catch (e) {}
+if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('royaljelly', JSON.stringify(S)); } catch (e) {} };
 
 /* ---------- theme: follows the phone's setting until you pick one ---------- */
 const sysDark = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
-const isDark = () => S.theme ? S.theme === 'dark' : !!(sysDark && sysDark.matches);
+if (!BB.theme && S.theme) BB.theme = S.theme;   // light or dark is shared by every game
+const isDark = () => BB.theme ? BB.theme === 'dark' : !!(sysDark && sysDark.matches);
 function applyTheme() {
   document.body.classList.toggle('dark', isDark());
   COLS = isDark() ? COLS_DARK : COLS_LIGHT;
@@ -327,7 +340,7 @@ function applyTheme() {
   if (P) { const cells = document.querySelectorAll('#board .cell'); cells.forEach((d, i) => { d.style.background = COLS[P.reg[i]]; }); }
   document.querySelectorAll('#exGrid div').forEach(d => { if (d.dataset.g) d.style.background = COLS[+d.dataset.g]; });
 }
-if (sysDark && sysDark.addEventListener) sysDark.addEventListener('change', () => { if (!S.theme) applyTheme(); });
+if (sysDark && sysDark.addEventListener) sysDark.addEventListener('change', () => { if (!BB.theme) applyTheme(); });
 
 let P = null, G = null, hist = [], hintCell = -1, timerT = 0;
 function load(mode) {
@@ -500,7 +513,7 @@ board.addEventListener('pointercancel', () => { if (drag && drag.batch.length) {
 /* ---------- chrome ---------- */
 document.querySelectorAll('#seg button').forEach(b => b.addEventListener('click', () => { load(b.dataset.m); }));
 $('bUndo').onclick = undo; $('bHint').onclick = hint; $('bClear').onclick = clearAll;
-const sw = (id, key, inv) => { const e = $(id); const upd = () => e.classList.toggle('on', inv ? !S[key] : !!S[key]); upd(); e.onclick = () => { S[key] = !S[key]; save(); upd(); render(); }; };
+const sw = (id, key, inv) => { const e = $(id); const upd = () => e.classList.toggle('on', inv ? !S[key] : !!S[key]); upd(); e.onclick = () => { S[key] = !S[key]; if (key === 'muted') BB.muted = S.muted; save(); upd(); render(); }; };
 sw('swClash', 'clash'); sw('swSound', 'muted', true);
 const open = id => $(id).classList.add('show');
 $('bHelp').onclick = () => open('ovHelp'); $('bSet').onclick = () => open('ovSet');
@@ -537,7 +550,7 @@ function tick() {
 }
 
 if (DEBUG) window.__rj = { get P() { return P; }, get G() { return G; }, setCells, hint, load, generate, solutions, analyse };
-applyTheme(); $('bTheme').onclick = () => { S.theme = isDark() ? 'light' : 'dark'; save(); applyTheme(); };
+applyTheme(); $('bTheme').onclick = () => { BB.theme = isDark() ? 'light' : 'dark'; save(); applyTheme(); };
 load(S.mode);
 if (!S.seenHelp) open('ovHelp');
 })();

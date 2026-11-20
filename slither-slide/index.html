@@ -124,6 +124,17 @@
 .pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
 .pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
 </style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app">
@@ -165,6 +176,7 @@ const SKINS = [
 ];
 let save = { level: 1, stars: {}, skin: 'pip', muted: false };
 try { save = Object.assign(save, JSON.parse(localStorage.getItem('slitherslide') || '{}')); } catch (e) {}
+if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
 const persist = () => { try { localStorage.setItem('slitherslide', JSON.stringify(save)); } catch (e) {} };
 const skin = () => SKINS.find(s => s.id === save.skin) || SKINS[0];
 const RAINBOW = ['#ff6b6b', '#ffa94d', '#ffd43b', '#69db7c', '#4dabf7', '#9775fa'];
@@ -269,7 +281,7 @@ cv.addEventListener('pointerdown', e => {
   e.preventDefault(); audio(); const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
   if (y < 64) {
     if (x < 56) { openMenu(); return; }
-    if (x > W - 56) { save.muted = !save.muted; persist(); return; }
+    if (x > W - 56) { save.muted = !save.muted; BB.muted = save.muted; persist(); return; }
     if (x > W - 104) { if (state === 'play') { startLevel(L.n); tone(500, .08, 'triangle', .05); } return; }
     if (x > W - 152) { undo(); return; }
   }

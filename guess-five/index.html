@@ -173,6 +173,17 @@ purpose.  It is provided "as is" without express or implied warranty.
 .pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
 .pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
 </style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app">
@@ -237,6 +248,7 @@ const ORDER = (() => { const a = ANSWERS.slice(), r = rng32(5551); for (let i = 
 const blankStats = () => ({ played: 0, wins: 0, streak: 0, best: 0, dist: [0, 0, 0, 0, 0, 0], last: -1 });
 let S = { mode: 'daily', daily: null, endless: null, stats: { daily: blankStats(), endless: blankStats() }, hard: false, contrast: false, muted: false, seenHelp: false };
 try { const s = JSON.parse(localStorage.getItem('guessfive') || 'null'); if (s) S = Object.assign(S, s); } catch (e) {}
+if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('guessfive', JSON.stringify(S)); } catch (e) {} };
 
 /* ---------- sound ---------- */
@@ -381,7 +393,7 @@ $('bSet').onclick = () => { syncSwitches(); open('ovSet'); };
 function syncSwitches() { $('swHard').classList.toggle('on', S.hard); $('swCon').classList.toggle('on', S.contrast); $('swSound').classList.toggle('on', !S.muted); }
 $('swHard').onclick = () => { const g = game(); if (!S.hard && g.guesses.length && !g.done) { toast('Hard mode can only be turned on at the start of a word'); return; } S.hard = !S.hard; save(); syncSwitches(); paint(); };
 $('swCon').onclick = () => { S.contrast = !S.contrast; save(); syncSwitches(); paint(); };
-$('swSound').onclick = () => { S.muted = !S.muted; save(); syncSwitches(); audio(); tone(660, .08, 'triangle'); };
+$('swSound').onclick = () => { S.muted = !S.muted; BB.muted = S.muted; save(); syncSwitches(); audio(); tone(660, .08, 'triangle'); };
 function setMode(m) { if (busy) return; S.mode = m; cur = ''; save(); paint(); }
 $('mDaily').onclick = () => setMode('daily'); $('mEndless').onclick = () => setMode('endless');
 let tick = null;

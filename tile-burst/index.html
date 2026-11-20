@@ -222,6 +222,17 @@ window.PK = (() => {
   return { plank, board, sign, homeSign, house, presents, face, says, grain, nail, rr, SLAB, CREAM, CREAM_DIM, INK, BRASS, OAK, WAL };
 })();
 </script>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app">
@@ -277,6 +288,7 @@ function randShape() { let x = Math.random() * totalW; for (const s of SHAPES) {
 let board, tray, score = 0, shown = 0, best = 0, streak = 0, miss = 0, state = 'start', muted = false, moves = 0;
 let drag = null, snap = null, dying = [], parts = [], flashes = [], callout = null, popups = [], pops = [], shake = 0, time = 0, overT = 0, trayAnim = [0, 0, 0];
 try { const s = JSON.parse(localStorage.getItem('tileburst') || '{}'); best = s.best || 0; muted = !!s.muted; if (s.board && s.tray) { board = s.board; tray = s.tray.map(t => t === null ? null : { s: SHAPES[t.i], col: t.col, i: t.i }); score = s.score || 0; shown = score; streak = s.streak || 0; miss = s.miss || 0; } } catch (e) {}
+if (BB.muted === null) BB.muted = muted; else muted = BB.muted;   // sound is shared by every game
 function persist(clearGame) {
   try { const o = { best, muted }; if (!clearGame && board) Object.assign(o, { board, tray: tray.map(t => t ? { i: t.i, col: t.col } : null), score, streak, miss }); localStorage.setItem('tileburst', JSON.stringify(o)); } catch (e) {}
 }
@@ -384,7 +396,7 @@ const hitBtn = (p, b) => p.x > b[0] && p.x < b[0] + b[2] && p.y > b[1] && p.y < 
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); const p = local(e);
   if (p.x < 48 && p.y < 64) { location.href = '../'; return; }
-  if (hitBtn(p, BTN.sound)) { muted = !muted; persist(state !== 'play'); tone(660, .08, 'triangle', .05); return; }
+  if (hitBtn(p, BTN.sound)) { muted = !muted; BB.muted = muted; persist(state !== 'play'); tone(660, .08, 'triangle', .05); return; }
   if (hitBtn(p, BTN.restart)) { if (state === 'play') { newGame(); tone(400, .1, 'triangle', .05, 0, 200); } return; }
   if (state !== 'play') return;
   for (let i = 0; i < 3; i++) if (tray[i] && Math.abs(p.x - slotX(i)) < 60 && p.y > TY - 10 && p.y < TY + 130) {

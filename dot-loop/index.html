@@ -126,6 +126,17 @@
 .pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
 .pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
 </style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app">
@@ -185,6 +196,7 @@ const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31, 33, 36];
 
 let save = { unlocked: 1, stars: {}, best: 0, muted: false };
 try { const s = JSON.parse(localStorage.getItem('dotloop')); if (s) save = Object.assign(save, s); } catch (e) {}
+if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
 const persist = () => { try { localStorage.setItem('dotloop', JSON.stringify(save)); } catch (e) {} };
 
 function resize() {
@@ -488,7 +500,7 @@ $('btnHow').onclick = () => show('ovHow'); $('btnHowOk').onclick = openMenu;
 $('btnResume').onclick = () => { pause = false; show(null); };
 $('btnRestart').onclick = () => { pause = false; L.timed ? startTimed() : openStart(L.n); };
 $('btnMap').onclick = () => { pause = false; openMenu(); };
-$('btnSound').onclick = () => { save.muted = !save.muted; persist(); $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); note(7, .2, .05); };
+$('btnSound').onclick = () => { save.muted = !save.muted; BB.muted = save.muted; persist(); $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); note(7, .2, .05); };
 addEventListener('keydown', e => { if (e.key === 'Escape' && state === 'play') openPause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play' && L && L.timed && !pause) openPause(); if (ac) document.hidden ? ac.suspend() : ac.resume(); });
 addEventListener('resize', resize); resize();

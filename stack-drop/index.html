@@ -122,6 +122,17 @@ window.PK = (() => {
   return { plank, board, sign, homeSign, house, presents, face, says, grain, nail, rr, SLAB, CREAM, CREAM_DIM, INK, BRASS, OAK, WAL };
 })();
 </script>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app"><canvas id="c"></canvas></div>
@@ -137,6 +148,7 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v, rnd = (a, b) => a + Math.r
 const TAU = Math.PI * 2;
 let best = 0, maxLevel = 1, muted = false;
 try { const s = JSON.parse(localStorage.getItem('stackdrop') || '{}'); best = s.best || 0; maxLevel = s.level || 1; muted = !!s.muted; } catch (e) {}
+if (BB.muted === null) BB.muted = muted; else muted = BB.muted;   // sound is shared by every game
 const persist = () => { try { localStorage.setItem('stackdrop', JSON.stringify({ best, level: maxLevel, muted })); } catch (e) {} };
 
 function resize() {
@@ -239,7 +251,7 @@ const release = () => { holding = false; };
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
   if (x < 50 && y < 56) { location.href = '../'; return; }
-  if (x > W - 50 && y < 56) { muted = !muted; persist(); return; }
+  if (x > W - 50 && y < 56) { muted = !muted; BB.muted = muted; persist(); return; }
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   press();
 });

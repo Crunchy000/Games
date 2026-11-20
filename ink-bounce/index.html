@@ -221,6 +221,17 @@ window.PK = (() => {
   return { plank, board, sign, homeSign, house, presents, face, says, grain, nail, rr, SLAB, CREAM, CREAM_DIM, INK, BRASS, OAK, WAL };
 })();
 </script>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app">
@@ -255,6 +266,7 @@ const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = id => do
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v, rnd = (a, b) => a + Math.random() * (b - a), ri = n => Math.floor(Math.random() * n);
 let save = { best: 0, level: 1, muted: false };
 try { save = Object.assign(save, JSON.parse(localStorage.getItem('inkbounce') || '{}')); } catch (e) {}
+if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
 const persist = () => { try { localStorage.setItem('inkbounce', JSON.stringify(save)); } catch (e) {} };
 
 function resize() {
@@ -354,7 +366,7 @@ let lastPt = null, lastT = 0, downAt = null;
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); audio(); const p = local(e);
   if (p.y < 52 && p.x < 46) { location.href = '../'; return; }
-  if (p.y < 52 && p.x > W - 52) { save.muted = !save.muted; persist(); if (save.muted) scratchStop(); tone(660, .08, 'triangle', .05); return; }
+  if (p.y < 52 && p.x > W - 52) { save.muted = !save.muted; BB.muted = save.muted; persist(); if (save.muted) scratchStop(); tone(660, .08, 'triangle', .05); return; }
   if (state !== 'play') return;
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   downAt = { ...p, t: performance.now() };

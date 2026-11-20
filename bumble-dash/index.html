@@ -122,6 +122,17 @@ window.PK = (() => {
   return { plank, board, sign, homeSign, house, presents, face, says, grain, nail, rr, SLAB, CREAM, CREAM_DIM, INK, BRASS, OAK, WAL };
 })();
 </script>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
 </head>
 <body>
 <div id="app"><canvas id="c"></canvas></div>
@@ -133,6 +144,7 @@ let H = 640, GROUND = 580, SC = 1;
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v, rnd = (a, b) => a + Math.random() * (b - a);
 let best = 0, muted = false; try { const s = JSON.parse(localStorage.getItem('bumbledash') || '{}'); best = s.best || 0; muted = !!s.muted; } catch (e) {}
+if (BB.muted === null) BB.muted = muted; else muted = BB.muted;   // sound is shared by every game
 const persist = () => { try { localStorage.setItem('bumbledash', JSON.stringify({ best, muted })); } catch (e) {} };
 
 function resize() {
@@ -185,7 +197,7 @@ function flap() {
 /* ---------- input ---------- */
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
-  if (x > W - 50 && y < 50) { muted = !muted; persist(); return; }
+  if (x > W - 50 && y < 50) { muted = !muted; BB.muted = muted; persist(); return; }
   if (x < 50 && y < 50) { location.href = '../'; return; }
   flap();
 });
