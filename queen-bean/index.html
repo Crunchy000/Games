@@ -83,88 +83,64 @@
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
 </style>
 <style id="pub-kit">
-/* The Bear & Bean pub kit: aged wood buttons, framed boards and the house signs.
+/* The Bear & Bean house style: soft clay. Muted terracotta and sage, soft cream cards, rounded shapes.
    tools/pub-kit.py copies this into every game so each page stays self-contained. */
 :root {
-  --pk-oak-hi:#e2b27a; --pk-oak:#c18a52; --pk-oak-lo:#94612f;
-  --pk-wal-hi:#5e3b20; --pk-wal:#47291a; --pk-wal-lo:#2f1a0e; --pk-edge:#221208;
-  --pk-cream:#fbefd6; --pk-cream-dim:#dcc5a0; --pk-ink:#2e1a0d; --pk-brass:#e5b65a;
-  --pk-slab:"Rockwell","Roboto Slab","Zilla Slab","Arvo",Georgia,"Times New Roman",serif;
-  --pk-grain:repeating-linear-gradient(177deg, rgba(255,232,196,.07) 0 1px, transparent 1px 4px, rgba(35,15,4,.10) 4px 5px, transparent 5px 9px),
-             repeating-linear-gradient(181deg, transparent 0 13px, rgba(35,15,4,.07) 13px 15px, transparent 15px 23px);
+  --pk-clay:#c8643b; --pk-clay-hi:#d57650; --pk-clay-lo:#a94f2c; --pk-clay-text:#b5532e;
+  --pk-sage:#dce3d3; --pk-sage-hi:#e6ecdf; --pk-sage-ink:#3f4e35;
+  --pk-sand:#ede4d6; --pk-card:#f7f1e7; --pk-card-2:#efe5d6;
+  --pk-ink:#3b2e22; --pk-ink-2:#6e6152; --pk-ink-3:#8e7f6c; --pk-on-clay:#fff5ec;
+  /* older names kept so game styles that borrowed them still work */
+  --pk-cream:var(--pk-ink); --pk-cream-dim:var(--pk-ink-2); --pk-brass:var(--pk-clay-text); --pk-oak:#e8d9c4;
+  --pk-slab:"ui-rounded","SF Pro Rounded","Nunito","Varela Round","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
 }
-/* buttons: a plank of light oak with engraved lettering; .alt is dark walnut */
+/* buttons: terracotta for the main action, .pk-alt is sage */
 .pk-btn {
   position:relative !important; display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  border:0 !important; border-radius:10px !important; padding:12px 26px !important; text-decoration:none !important;
-  font:800 1.05rem/1.1 var(--pk-slab) !important; letter-spacing:.02em; cursor:pointer;
-  color:var(--pk-ink) !important; text-shadow:0 1px 0 rgba(255,236,204,.55) !important;
-  background:var(--pk-grain), radial-gradient(ellipse 16px 5px at 28% 62%, rgba(90,50,18,.35), transparent 75%),
-             linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak) 55%, var(--pk-oak-lo)) !important;
-  box-shadow:inset 0 1px 0 rgba(255,240,215,.55), inset 0 0 0 1px rgba(60,30,8,.45), inset 0 0 10px rgba(60,30,8,.25),
-             0 3px 0 var(--pk-edge), 0 7px 14px rgba(0,0,0,.28) !important;
-  transition:transform .08s, box-shadow .08s;
+  border:0 !important; border-radius:16px !important; padding:12px 26px !important; text-decoration:none !important;
+  font:700 1.02rem/1.15 var(--pk-slab) !important; letter-spacing:.01em; cursor:pointer;
+  color:var(--pk-on-clay) !important; text-shadow:none !important;
+  background:var(--pk-clay) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 2px 0 var(--pk-clay-lo), 0 8px 18px rgba(120,55,25,.18) !important;
+  transition:transform .08s, box-shadow .08s, background .15s;
 }
-.pk-btn::before, .pk-btn::after {
-  content:''; position:absolute; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%;
-  background:radial-gradient(circle at 35% 35%, #fbe3a6, #a8761f 70%); box-shadow:0 1px 0 rgba(0,0,0,.35);
-}
-.pk-btn::before { left:8px; } .pk-btn::after { right:8px; }
-.pk-btn.pk-alt {
-  color:var(--pk-cream) !important; text-shadow:0 1px 0 rgba(0,0,0,.6) !important;
-  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal) 55%, var(--pk-wal-lo)) !important;
-  box-shadow:inset 0 1px 0 rgba(255,220,170,.18), inset 0 0 0 1px rgba(0,0,0,.4), 0 3px 0 var(--pk-edge), 0 7px 14px rgba(0,0,0,.28) !important;
-}
-.pk-btn.pk-small { padding:9px 20px !important; font-size:.9rem !important; }
-.pk-btn:active { transform:translateY(2px); box-shadow:inset 0 0 0 1px rgba(60,30,8,.45), 0 1px 0 var(--pk-edge), 0 2px 5px rgba(0,0,0,.25) !important; }
+.pk-btn:hover { background:var(--pk-clay-hi) !important; }
+.pk-btn.pk-alt { color:var(--pk-sage-ink) !important; background:var(--pk-sage) !important; box-shadow:0 2px 0 #c3ccb8, 0 6px 14px rgba(60,75,45,.12) !important; }
+.pk-btn.pk-alt:hover { background:var(--pk-sage-hi) !important; }
+.pk-btn.pk-small { padding:9px 20px !important; font-size:.9rem !important; border-radius:14px !important; }
+.pk-btn:active { transform:translateY(2px); box-shadow:0 0 0 transparent, 0 3px 8px rgba(120,55,25,.15) !important; }
 .pk-btn:disabled { opacity:.45; cursor:default; }
-/* chips: small wooden toolbar buttons (no nails) */
+/* chips: small rounded toolbar buttons */
 .pk-chip {
-  border:0 !important; border-radius:9px !important; font-family:var(--pk-slab) !important; font-weight:800 !important;
-  color:var(--pk-cream) !important; text-shadow:0 1px 0 rgba(0,0,0,.55);
-  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important;
-  box-shadow:inset 0 1px 0 rgba(255,220,170,.18), inset 0 0 0 1px rgba(0,0,0,.4), 0 2px 0 var(--pk-edge) !important;
+  border:0 !important; border-radius:12px !important; font-family:var(--pk-slab) !important; font-weight:700 !important;
+  color:var(--pk-ink) !important; text-shadow:none !important; background:var(--pk-card-2) !important;
+  box-shadow:0 1px 0 rgba(90,60,30,.12) !important;
 }
-.pk-chip.on, .pk-chip[aria-pressed="true"] {
-  color:var(--pk-ink) !important; text-shadow:0 1px 0 rgba(255,236,204,.5);
-  background:var(--pk-grain), linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak-lo)) !important;
-}
-/* boards: a dark stained panel in an oak frame, with a brass nail in each corner */
+.pk-chip.on, .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; }
+.pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
+/* cards: soft cream, generously rounded, gently lifted */
 .pk-card {
-  color:var(--pk-cream) !important;
-  border:7px solid transparent !important; border-radius:16px !important;
-  background:
-    radial-gradient(circle at 9px 9px, #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at calc(100% - 9px) 9px, #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at 9px calc(100% - 9px), #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #fbe3a6 0 1.5px, #a8761f 2.6px, transparent 3.4px) padding-box,
-    var(--pk-grain) padding-box,
-    radial-gradient(ellipse at 50% 0%, rgba(255,210,150,.12), transparent 60%) padding-box,
-    linear-gradient(180deg, #553219, #3b2112) padding-box,
-    var(--pk-grain) border-box,
-    linear-gradient(180deg, var(--pk-oak-hi), var(--pk-oak-lo)) border-box !important;
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.45), inset 0 0 24px rgba(0,0,0,.35), 0 0 0 1px var(--pk-edge), 0 18px 40px rgba(0,0,0,.45) !important;
+  color:var(--pk-ink) !important; background:var(--pk-card) !important;
+  border:0 !important; border-radius:24px !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 20px 44px rgba(50,30,12,.28), 0 2px 6px rgba(50,30,12,.12) !important;
 }
-.pk-card :is(h2, h3) { font-family:var(--pk-slab) !important; color:var(--pk-cream) !important; }
-.pk-card :is(p, li, small, label, dd, dt) { color:var(--pk-cream-dim) !important; }
-.pk-card b, .pk-card strong { color:var(--pk-cream) !important; }
+.pk-card :is(h2, h3) { font-family:var(--pk-slab) !important; color:var(--pk-ink) !important; letter-spacing:-.01em; }
+.pk-card :is(p, li, small, label, dd, dt) { color:var(--pk-ink-2) !important; }
+.pk-card b, .pk-card strong { color:var(--pk-ink) !important; }
+.pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-ink-2) !important; }
 /* "The Bear & Bean presents", with both landlords' faces */
 .pk-presents { display:flex; align-items:center; justify-content:center; gap:7px; margin:0 0 10px;
-  font:800 .64rem/1 var(--pk-slab); letter-spacing:.16em; text-transform:uppercase; color:var(--pk-brass); }
-.pk-presents img { width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid var(--pk-oak); }
+  font:700 .66rem/1 var(--pk-slab); letter-spacing:.14em; text-transform:uppercase; color:var(--pk-ink-3); }
+.pk-presents img { width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid #fff; box-shadow:0 1px 3px rgba(60,35,15,.25); }
 /* a word from Bear or Bean */
-.pk-says { display:flex; align-items:center; gap:10px; text-align:left; margin:12px auto 6px; padding:8px 12px; max-width:290px;
-  border-radius:12px; background:rgba(0,0,0,.22); box-shadow:inset 0 0 0 1px rgba(255,220,170,.12); }
-.pk-says img { width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:3px solid var(--pk-oak); }
-.pk-says b { display:block; font:800 .66rem/1.2 var(--pk-slab); letter-spacing:.1em; text-transform:uppercase; color:var(--pk-brass) !important; }
-.pk-says span { display:block; font-weight:800; font-size:.98rem; color:var(--pk-cream); }
-/* the way home: a little wooden sign with a house on it */
-.pk-home { color:var(--pk-cream) !important;
-  background:var(--pk-grain), linear-gradient(180deg, var(--pk-wal-hi), var(--pk-wal-lo)) !important;
-  box-shadow:inset 0 1px 0 rgba(255,220,170,.2), inset 0 0 0 1px rgba(0,0,0,.45), 0 2px 0 var(--pk-edge), 0 4px 10px rgba(0,0,0,.25) !important;
-  border:0 !important; border-radius:11px !important; }
-.pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
-.pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-cream) !important; }
+.pk-says { display:flex; align-items:center; gap:10px; text-align:left; margin:12px auto 6px; padding:9px 12px; max-width:290px;
+  border-radius:16px; background:var(--pk-card-2); }
+.pk-says img { width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:2px solid #fff; box-shadow:0 1px 4px rgba(60,35,15,.25); }
+.pk-says b { display:block; font:700 .66rem/1.2 var(--pk-slab); letter-spacing:.1em; text-transform:uppercase; color:var(--pk-clay-text) !important; }
+.pk-says span { display:block; font-weight:700; font-size:.98rem; color:var(--pk-ink); }
+/* header buttons: a soft tinted square in whatever colour the game's header uses */
+.pk-home { background:color-mix(in srgb, currentColor 11%, transparent) !important; border:0 !important; border-radius:13px !important; box-shadow:none !important; }
+.pk-home:active { background:color-mix(in srgb, currentColor 20%, transparent) !important; }
 </style>
 <script id="pub-kit-settings">
 window.BB = (() => {
