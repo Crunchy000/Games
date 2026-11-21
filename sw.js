@@ -3,7 +3,7 @@
    - fetch: pages come fresh from the network when online (so updates show straight away), falling back to the
      saved copy if the network is slow or offline; icons and other files answer from the saved copy and refresh quietly
    - activate: delete the copies saved by older versions */
-const VERSION = 'games-24c39d80e79a';
+const VERSION = 'games-5f326b3fcc5a';
 const FILES = [
   './',
   './manifest.webmanifest',
@@ -38,7 +38,13 @@ const FILES = [
   './tangle-tails/',
   './thin-ice/',
   './tile-burst/',
-  './word-hive/'
+  './word-hive/',
+  './hide-and-seek/beach.webp',
+  './hide-and-seek/camp.webp',
+  './hide-and-seek/jungle.webp',
+  './hide-and-seek/pyramids.webp',
+  './hide-and-seek/sprites.webp',
+  './hide-and-seek/winter.webp'
 ];
 
 self.addEventListener('install', event => {
