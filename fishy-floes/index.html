@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0f2742">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
+<script>if ('serviceWorker' in navigator) {
+  // keep installed copies current: check for a new version whenever the app comes back to the front,
+  // and switch to it straight away if it lands just after opening, otherwise after the app has been away a while
+  const had = !!navigator.serviceWorker.controller, t0 = Date.now(); let swap = false, away = 0;
+  addEventListener('load', () => navigator.serviceWorker.register('../sw.js').then(reg => {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { away = Date.now(); return; }
+      if (swap && Date.now() - away > 30000) { location.reload(); return; }
+      reg.update().catch(() => {});
+    });
+  }).catch(() => {}));
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
+}</script>
+<title>Fishy Floes · Bear vs Bean</title>
+<meta name="description" content="Bear and Bean's penguins race across melting ice floes to catch the most fish. Slide a penguin in a straight line and the floe it leaves sinks, fish and all. Two players on one phone, or play the computer. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<link rel="canonical" href="https://www.bearandbean.uk/fishy-floes/">
+<style>
+  :root {
+    --bg1:#14304f; --bg2:#08121f; --card:rgba(255,255,255,.07); --card-b:rgba(255,255,255,.12);
+    --ink:#f2f8ff; --mute:#9fb3cc; --p0:#e8994a; --p0-glow:rgba(232,153,74,.45); --p1:#ff5fa2; --p1-glow:rgba(255,95,162,.45); --accent:#8fd8ff;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; min-height:100%; }
+  body { min-height:100dvh; display:flex; align-items:flex-start; justify-content:center; color:var(--ink);
+         background:radial-gradient(800px 500px at 15% -10%, rgba(143,216,255,.18), transparent 60%),
+                    radial-gradient(800px 500px at 100% 110%, rgba(255,95,162,.12), transparent 60%),
+                    linear-gradient(170deg, var(--bg1), var(--bg2));
+         font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
+  main { width:min(94vw,480px); padding:14px 0 22px; }
+  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
+  h1 { margin:0; font-size:1.5rem; font-weight:900; letter-spacing:-.01em; }
+  h1 .ice { color:var(--accent); }
+  h1 .sub { display:block; font-size:.7rem; color:var(--mute); font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-top:1px; }
+  .head-btns { display:flex; gap:8px; }
+  .icon-btn { width:40px; height:40px; border-radius:12px; border:1px solid var(--card-b); background:var(--card); color:var(--ink);
+              display:grid; place-items:center; cursor:pointer; font-size:1.05rem; text-decoration:none; padding:0; }
+  .icon-btn svg { width:22px; height:22px; }
+  .icon-btn:disabled { opacity:.35; cursor:default; }
+  button { font:inherit; }
+  button:focus-visible, [contenteditable]:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .seg { display:flex; padding:3px; border-radius:13px; background:var(--card); border:1px solid var(--card-b); }
+  .seg button { flex:1; border:0; background:none; color:var(--mute); padding:7px 2px; font-weight:800; font-size:.82rem; cursor:pointer; border-radius:10px; transition:background .2s, color .2s; white-space:nowrap; }
+  .seg button[aria-pressed="true"] { background:var(--ink); color:var(--bg2); }
+  .scores { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0 6px; }
+  .sc { position:relative; border-radius:16px; padding:9px 12px 8px; background:var(--card); border:1px solid var(--card-b); transition:transform .25s, box-shadow .25s, border-color .25s; }
+  .sc .row { display:flex; align-items:center; gap:7px; }
+  .sc .av { width:30px; height:30px; border-radius:50%; flex:none; border:2px solid var(--p0); background:#fff; }
+  .sc.p1 .av { border-color:var(--p1); }
+  .sc .name { font-weight:800; font-size:.95rem; min-width:2ch; max-width:100%; overflow:hidden; white-space:nowrap; border-radius:6px; padding:1px 3px; margin:-1px -3px; cursor:text; }
+  .sc .cpu { font-size:.68rem; color:var(--mute); font-weight:700; margin-left:auto; }
+  .sc .n { font-size:1.7rem; font-weight:900; line-height:1.15; font-variant-numeric:tabular-nums; display:flex; align-items:baseline; gap:4px; }
+  .sc .n small { font-size:.72rem; color:var(--mute); font-weight:700; }
+  .sc .meta { display:flex; justify-content:space-between; font-size:.72rem; color:var(--mute); font-weight:700; }
+  .sc.p0 .n { color:var(--p0); } .sc.p1 .n { color:var(--p1); }
+  .sc.active.p0 { border-color:var(--p0); box-shadow:0 0 0 1px var(--p0), 0 8px 26px var(--p0-glow); transform:translateY(-2px); }
+  .sc.active.p1 { border-color:var(--p1); box-shadow:0 0 0 1px var(--p1), 0 8px 26px var(--p1-glow); transform:translateY(-2px); }
+  .plus { position:absolute; right:12px; top:8px; font-weight:900; font-size:1.05rem; animation:up .9s ease forwards; pointer-events:none; }
+  @keyframes up { to { transform:translateY(-22px); opacity:0; } }
+  #status { min-height:1.5em; text-align:center; font-weight:800; font-size:1.04rem; margin:4px 0 0; }
+  #status .p0 { color:var(--p0); } #status .p1 { color:var(--p1); }
+  #left { text-align:center; color:var(--mute); font-size:.8rem; font-weight:600; margin:2px 0 8px; min-height:1.2em; }
+  .board-wrap { border-radius:22px; background:var(--card); border:1px solid var(--card-b); box-shadow:0 20px 50px rgba(0,0,0,.3); padding:6px; }
+  #board { display:block; width:100%; touch-action:none; cursor:pointer; user-select:none; -webkit-user-select:none; border-radius:16px; }
+  .actions { display:flex; gap:10px; margin-top:12px; }
+  .actions .pk-btn { flex:1; }
+  .actions .pk-alt { flex:.6; }
+  .hint { text-align:center; color:var(--mute); font-size:.8rem; margin:12px 0 0; line-height:1.45; }
+  #confetti { position:fixed; inset:0; pointer-events:none; width:100vw; height:100vh; z-index:5; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+</style>
+<style id="pub-kit">
+/* The Bear & Bean house style: soft clay. Muted terracotta and sage, soft cream cards, rounded shapes.
+   tools/pub-kit.py copies this into every game so each page stays self-contained. */
+:root {
+  --pk-clay:#c8643b; --pk-clay-hi:#d57650; --pk-clay-lo:#a94f2c; --pk-clay-text:#b5532e;
+  --pk-sage:#dce3d3; --pk-sage-hi:#e6ecdf; --pk-sage-ink:#3f4e35;
+  --pk-sand:#ede4d6; --pk-card:#f7f1e7; --pk-card-2:#efe5d6;
+  --pk-ink:#3b2e22; --pk-ink-2:#6e6152; --pk-ink-3:#8e7f6c; --pk-on-clay:#fff5ec;
+  /* older names kept so game styles that borrowed them still work */
+  --pk-cream:var(--pk-ink); --pk-cream-dim:var(--pk-ink-2); --pk-brass:var(--pk-clay-text); --pk-oak:#e8d9c4;
+  --pk-slab:"ui-rounded","SF Pro Rounded","Nunito","Varela Round","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+}
+/* buttons: terracotta for the main action, .pk-alt is sage */
+.pk-btn {
+  position:relative !important; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:0 !important; border-radius:16px !important; padding:12px 26px !important; text-decoration:none !important;
+  font:700 1.02rem/1.15 var(--pk-slab) !important; letter-spacing:.01em; cursor:pointer;
+  color:var(--pk-on-clay) !important; text-shadow:none !important;
+  background:var(--pk-clay) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 2px 0 var(--pk-clay-lo), 0 8px 18px rgba(120,55,25,.18) !important;
+  transition:transform .08s, box-shadow .08s, background .15s;
+}
+.pk-btn:hover { background:var(--pk-clay-hi) !important; }
+.pk-btn.pk-alt { color:var(--pk-sage-ink) !important; background:var(--pk-sage) !important; box-shadow:0 2px 0 #c3ccb8, 0 6px 14px rgba(60,75,45,.12) !important; }
+.pk-btn.pk-alt:hover { background:var(--pk-sage-hi) !important; }
+.pk-btn.pk-small { padding:9px 20px !important; font-size:.9rem !important; border-radius:14px !important; }
+.pk-btn:active { transform:translateY(2px); box-shadow:0 0 0 transparent, 0 3px 8px rgba(120,55,25,.15) !important; }
+.pk-btn:disabled { opacity:.45; cursor:default; }
+/* chips: small rounded toolbar buttons */
+.pk-chip {
+  border:0 !important; border-radius:12px !important; font-family:var(--pk-slab) !important; font-weight:700 !important;
+  color:var(--pk-ink) !important; text-shadow:none !important; background:#fffaf3 !important;
+  box-shadow:inset 0 0 0 1px rgba(90,60,30,.16), 0 2px 5px rgba(90,60,30,.12) !important;
+}
+.pk-chip.on, .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; }
+.pk-btn[hidden], .pk-chip[hidden] { display:none !important; }
+/* dark mode: chips become soft lamplit panels so they never vanish into the background */
+body.dark .pk-chip { color:#f3e6cc !important; background:rgba(255,240,220,.12) !important; box-shadow:inset 0 0 0 1px rgba(255,240,220,.1) !important; }
+body.dark .pk-chip.on, body.dark .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; box-shadow:none !important; }
+/* ...except inside the cream cards, which stay light in both modes */
+body.dark .pk-card .pk-chip { color:var(--pk-ink) !important; background:#fffaf3 !important; box-shadow:inset 0 0 0 1px rgba(90,60,30,.16), 0 2px 5px rgba(90,60,30,.12) !important; }
+body.dark .pk-card .pk-chip.on, body.dark .pk-card .pk-chip[aria-pressed="true"] { color:var(--pk-on-clay) !important; background:var(--pk-clay) !important; }
+.pk-chip:disabled { opacity:1 !important; cursor:default; color:rgba(59,46,34,.38) !important; box-shadow:inset 0 0 0 1px rgba(90,60,30,.12) !important; }
+body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow:inset 0 0 0 1px rgba(255,240,220,.08) !important; }
+/* cards: soft cream, generously rounded, gently lifted */
+.pk-card {
+  color:var(--pk-ink) !important; background:var(--pk-card) !important;
+  border:0 !important; border-radius:24px !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 20px 44px rgba(50,30,12,.28), 0 2px 6px rgba(50,30,12,.12) !important;
+}
+.pk-card :is(h2, h3) { font-family:var(--pk-slab) !important; color:var(--pk-ink) !important; letter-spacing:-.01em; }
+.pk-card :is(p, li, small, label, dd, dt) { color:var(--pk-ink-2) !important; }
+.pk-card b, .pk-card strong { color:var(--pk-ink) !important; }
+.pk-card .x, .pk-card button.ib[data-close] { color:var(--pk-ink-2) !important; }
+/* "The Bear & Bean presents", with both landlords' faces */
+.pk-presents { display:flex; align-items:center; justify-content:center; gap:7px; margin:0 0 10px;
+  font:700 .66rem/1 var(--pk-slab); letter-spacing:.14em; text-transform:uppercase; color:var(--pk-ink-3); }
+.pk-presents img { width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid #fff; box-shadow:0 1px 3px rgba(60,35,15,.25); }
+/* a word from Bear or Bean */
+.pk-says { display:flex; align-items:center; gap:10px; text-align:left; margin:12px auto 6px; padding:9px 12px; max-width:290px;
+  border-radius:16px; background:var(--pk-card-2); }
+.pk-says img { width:42px; height:42px; flex:none; border-radius:50%; background:#fff; border:2px solid #fff; box-shadow:0 1px 4px rgba(60,35,15,.25); }
+.pk-says b { display:block; font:700 .66rem/1.2 var(--pk-slab); letter-spacing:.1em; text-transform:uppercase; color:var(--pk-clay-text) !important; }
+.pk-says span { display:block; font-weight:700; font-size:.98rem; color:var(--pk-ink); }
+/* header buttons: a soft tinted square in whatever colour the game's header uses */
+.pk-home { background:color-mix(in srgb, currentColor 11%, transparent) !important; border:0 !important; border-radius:13px !important; box-shadow:none !important; }
+.pk-home:active { background:color-mix(in srgb, currentColor 20%, transparent) !important; }
+</style>
+<script id="pub-kit-settings">
+window.BB = (() => {
+  const KEY = 'bearbean-settings'; let s = {};
+  try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  const put = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  return {
+    get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
+    get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+  };
+})();
+</script>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+<main>
+  <header>
+    <h1><span class="ice">Fishy Floes</span><small class="sub">Bear vs Bean</small></h1>
+    <div class="head-btns">
+      <a class="icon-btn pk-home" href="../" aria-label="All games" title="All games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg></a>
+      <button class="icon-btn pk-home" id="undo" aria-label="Undo" title="Undo">↶</button>
+      <button class="icon-btn pk-home" id="sound" aria-label="Sound on" title="Sound">🔊</button>
+    </div>
+  </header>
+
+  <div class="opts">
+    <div class="seg" id="segSize" role="group" aria-label="Board size"><button data-v="small">Small</button><button data-v="big">Big</button></div>
+    <div class="seg" id="segMode" role="group" aria-label="Opponent"><button data-v="2p">2 players</button><button data-v="cpu">vs CPU</button></div>
+  </div>
+
+  <div class="scores">
+    <div class="sc p0" id="card0"><div class="row"><img class="av" src="../icons/bear.png" alt=""><span class="name" id="name0" contenteditable="true" spellcheck="false" enterkeyhint="done" aria-label="Bear player name">Bear</span></div><div class="n" id="f0">0<small>fish</small></div><div class="meta"><span id="pg0"></span><span id="w0"></span></div></div>
+    <div class="sc p1" id="card1"><div class="row"><img class="av" src="../icons/bean.png" alt=""><span class="name" id="name1" contenteditable="true" spellcheck="false" enterkeyhint="done" aria-label="Bean player name">Bean</span><span class="cpu" id="cpuTag"></span></div><div class="n" id="f1">0<small>fish</small></div><div class="meta"><span id="pg1"></span><span id="w1"></span></div></div>
+  </div>
+
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="left"></div>
+
+  <div class="board-wrap"><canvas id="board" aria-label="Ice floes with fish, and Bear's and Bean's penguins"></canvas></div>
+
+  <div class="actions">
+    <button class="pk-btn" id="newGame">New game</button>
+    <button class="pk-btn pk-alt" id="resetWins">Reset wins</button>
+  </div>
+  <p class="hint">First, take turns putting your penguins on floes with one fish. Then on your turn, slide a penguin in a straight line as far as you like. It can't jump gaps or other penguins. The floe it leaves sinks, and you keep its fish. A penguin with nowhere to go takes its floe and climbs out. Most fish wins!<br>Tap a name to rename · Who starts swaps every game</p>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const DEBUG = /[?&]debug\b/.test(location.search);
+  const DEFAULT_NAMES = ['Bear', 'Bean'];
+  const TEAM = [{ scarf: '#e8994a', hat: '#a86a3c', hatLine: 'rgba(80,40,10,.45)' }, { scarf: '#ff5fa2', hat: '#ff5fa2', hatLine: 'rgba(160,30,90,.45)' }];
+  const SIZES = { small: { rows: [5, 6, 5, 6, 5, 6], pens: 3 }, big: { rows: [7, 8, 7, 8, 7, 8, 7, 8], pens: 4 } };
+  const DIRS = [[2, 0], [-2, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]];   // the six ways across a hex grid, in doubled columns
+
+  let names = DEFAULT_NAMES.slice(), wins = [0, 0], size = 'big', mode = '2p', muted = false, starter = 0, saved = null;
+  try {
+    const s = JSON.parse(localStorage.getItem('fishyfloes') || '{}');
+    if (s.names) names = s.names; if (s.wins) wins = s.wins; if (SIZES[s.size]) size = s.size;
+    if (s.mode === 'cpu') mode = 'cpu'; muted = !!s.muted; if (s.starter) starter = 1; if (s.game) saved = s.game;
+  } catch (e) {}
+  if (BB.muted === null) BB.muted = muted; else muted = BB.muted;   // sound is shared by every game
+
+  /* ---------- sound: plops, splashes and fish, all synthesised ---------- */
+  let ac = null;
+  const audio = () => { if (muted) return null; try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; } return ac; };
+  function tone(f, d = .12, type = 'sine', vol = .06, delay = 0, slide = 0) {
+    const a = audio(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + .02);
+  }
+  let noiseBuf = null;
+  function noise(d, freq, q, vol, delay = 0) {
+    const a = audio(); if (!a) return;
+    if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate * .6, a.sampleRate); const ch = noiseBuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1; }
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + delay;
+    s.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start(t); s.stop(t + d + .02);
+  }
+  const sPlace = () => { tone(520, .09, 'triangle', .05); tone(780, .08, 'sine', .03, .05); };
+  const sPick = () => tone(880, .06, 'sine', .04);
+  const sSlide = d => noise(d, 2600, .6, .05);
+  const sSink = (d = 0) => { tone(300, .35, 'sine', .06, d, -180); noise(.4, 700, .8, .05, d + .05); };
+  const sFish = (n, d = 0) => { for (let k = 0; k < n; k++) tone(988 * Math.pow(2, (k * 4) / 12), .14, 'triangle', .045, d + k * .08); };
+  const sNope = () => tone(170, .12, 'triangle', .05, 0, -40);
+  const sWin = () => [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .28, 'triangle', .055, i * .08));
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+  /* ---------- the game state: plain data, so undo and saving are easy ---------- */
+  // st = { tiles:[{x,r,fish,gone}], pens:[{p,t}] (t = tile index or -1 once out), fish:[a,b], floes:[a,b], phase:'place'|'move'|'over', turn, out:[bool,bool] }
+  let st = null, hist = [], sel = -1, busy = false, anims = [], lastMsg = '';
+  const key = (x, r) => x + ',' + r;
+  let index = {};
+  function rebuildIndex() { index = {}; st.tiles.forEach((t, i) => index[key(t.x, t.r)] = i); }
+  const tileAt = (x, r) => { const i = index[key(x, r)]; return i === undefined || st.tiles[i].gone ? -1 : i; };
+  const penOn = i => st.pens.findIndex(q => q.t === i);
+  const isCpu = q => mode === 'cpu' && q === 1;
+
+  function newBoard() {
+    const rows = SIZES[size].rows, tiles = [];
+    const total = rows.reduce((a, b) => a + b, 0), threes = Math.round(total / 6), twos = Math.round(total / 3), bag = [];
+    for (let k = 0; k < total; k++) bag.push(k < threes ? 3 : k < threes + twos ? 2 : 1);
+    for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+    const wide = Math.max(...rows); let k = 0;
+    rows.forEach((len, r) => { const start = wide - len; for (let c = 0; c < len; c++) tiles.push({ x: start + c * 2, r, fish: bag[k++], gone: false }); });
+    return tiles;
+  }
+  function newGame(keepStarter) {
+    if (!keepStarter) starter = 1 - starter;
+    st = { tiles: newBoard(), pens: [], fish: [0, 0], floes: [0, 0], phase: 'place', turn: starter, out: [false, false] };
+    rebuildIndex(); hist = []; sel = -1; anims = []; lastMsg = ''; busy = false; persist(); layout(); render(); draw(); maybeCpu();
+  }
+
+  /* ---------- rules ---------- */
+  function movesFrom(i, s = st, idx = index) {
+    const t = s.tiles[i], out = [];
+    for (const [dx, dr] of DIRS) {
+      let x = t.x + dx, r = t.r + dr;
+      while (true) {
+        const j = idx[key(x, r)]; if (j === undefined || s.tiles[j].gone || s.pens.some(q => q.t === j)) break;
+        out.push(j); x += dx; r += dr;
+      }
+    }
+    return out;
+  }
+  const penMoves = (q, s = st) => s.pens.map((pn, k) => ({ k, pn })).filter(o => o.pn.p === q && o.pn.t >= 0).map(o => ({ k: o.k, to: movesFrom(o.pn.t, s) }));
+  const canMove = (q, s = st) => penMoves(q, s).some(o => o.to.length);
+  const placeable = i => !st.tiles[i].gone && st.tiles[i].fish === 1 && penOn(i) < 0;
+  const placedBy = q => st.pens.filter(pn => pn.p === q).length;
+
+  // a penguin with no floe next to it at all can never move again: it climbs out with its floe
+  function retireIsolated(s, quiet) {
+    const gone = [];
+    s.pens.forEach(pn => {
+      if (pn.t < 0) return; const t = s.tiles[pn.t];
+      const near = DIRS.some(([dx, dr]) => { const j = index[key(t.x + dx, t.r + dr)]; return j !== undefined && !s.tiles[j].gone; });
+      if (!near) gone.push(pn);
+    });
+    gone.forEach(pn => { const t = s.tiles[pn.t]; s.fish[pn.p] += t.fish; s.floes[pn.p]++; t.gone = true; if (!quiet) { lastMsg = `${names[pn.p]}'s penguin climbs out with ${t.fish} fish`; plus(pn.p, t.fish); } pn.t = -1; });
+    return gone.length;
+  }
+  // when a player can't move any more, all their penguins climb out with their floes
+  function retireStuck(q, s) {
+    s.pens.forEach(pn => { if (pn.p === q && pn.t >= 0) { const t = s.tiles[pn.t]; s.fish[q] += t.fish; s.floes[q]++; t.gone = true; pn.t = -1; } });
+    s.out[q] = true;
+  }
+  function nextTurn() {
+    if (st.phase === 'place') {
+      const per = SIZES[size].pens;
+      if (placedBy(0) >= per && placedBy(1) >= per) { st.phase = 'move'; st.turn = starter; }
+      else { st.turn = 1 - st.turn; if (placedBy(st.turn) >= per) st.turn = 1 - st.turn; return; }
+    } else st.turn = 1 - st.turn;
+    // skip anyone who can't move; if nobody can, the game is over
+    for (let k = 0; k < 2; k++) {
+      if (canMove(st.turn)) return;
+      if (!st.out[st.turn]) { const before = st.fish[st.turn]; retireStuck(st.turn, st); if (st.fish[st.turn] > before) { plus(st.turn, st.fish[st.turn] - before); lastMsg = `${names[st.turn]} can't move, so their penguins climb out with their floes`; } }
+      st.turn = 1 - st.turn;
+    }
+    finish();
+  }
+  function finish() {
+    st.pens.forEach(pn => { if (pn.t >= 0) { const t = st.tiles[pn.t]; st.fish[pn.p] += t.fish; st.floes[pn.p]++; t.gone = true; pn.t = -1; } });
+    st.phase = 'over';
+    const w = winner();
+    if (w >= 0) { wins[w]++; confetti(w); sWin(); buzz([30, 40, 60]); } else { tone(660, .3, 'triangle', .05); tone(880, .3, 'triangle', .04, .12); }
+  }
+  const winner = () => st.fish[0] !== st.fish[1] ? (st.fish[0] > st.fish[1] ? 0 : 1) : st.floes[0] !== st.floes[1] ? (st.floes[0] > st.floes[1] ? 0 : 1) : -1;
+
+  const snapshot = () => JSON.parse(JSON.stringify({ st, lastMsg }));
+  function place(i) {
+    hist.push(snapshot());
+    st.pens.push({ p: st.turn, t: i }); sPlace(); buzz(8); lastMsg = '';
+    nextTurn(); afterTurn();
+  }
+  function move(k, to) {
+    hist.push(snapshot());
+    const pn = st.pens[k], from = pn.t, t = st.tiles[from], q = pn.p;
+    // slide over, then the floe left behind sinks and its fish are kept
+    const dist = Math.hypot(st.tiles[to].x - t.x, (st.tiles[to].r - t.r) * 1.73) / 2, dur = Math.min(520, 180 + dist * 85);
+    anims.push({ type: 'slide', k, from, to, t0: performance.now(), dur });
+    anims.push({ type: 'sink', i: from, t0: performance.now() + dur * .35, dur: 650 });
+    pn.t = to; t.gone = true; st.fish[q] += t.fish; st.floes[q]++;
+    sSlide(dur / 1000); sSink(dur / 1000 * .35); sFish(t.fish, dur / 1000 * .5); buzz(10);
+    plus(q, t.fish); lastMsg = `${names[q]} caught ${t.fish} fish`;
+    sel = -1; busy = true;
+    setTimeout(() => { busy = false; retireIsolated(st); nextTurn(); afterTurn(); }, dur + 250);
+    render();
+  }
+  function afterTurn() { persist(); render(); draw(); maybeCpu(); }
+  function undo() {
+    if (busy || !hist.length) return;
+    do { const h = hist.pop(); st = h.st; lastMsg = h.lastMsg; } while (hist.length && isCpu(st.turn) && st.phase !== 'over');
+    if (st.phase === 'over' && hist.length) { const h = hist.pop(); st = h.st; lastMsg = h.lastMsg; }
+    rebuildIndex(); sel = -1; anims = []; persist(); render(); draw(); tone(600, .08, 'sine', .03, 0, -220);
+  }
+
+  /* ---------- the computer: looks one reply ahead, and values floes it can still reach ---------- */
+  function reachValue(q, s) {
+    const seen = new Set(); let v = 0, mob = 0;
+    s.pens.forEach(pn => { if (pn.p !== q || pn.t < 0) return; const m = movesFrom(pn.t, s); mob += m.length; m.forEach(j => { if (!seen.has(j)) { seen.add(j); v += s.tiles[j].fish; } }); });
+    return v + mob * .15;
+  }
+  const evalFor = (q, s) => (s.fish[q] - s.fish[1 - q]) + .35 * (reachValue(q, s) - reachValue(1 - q, s));
+  function apply(s, k, to) { const c = JSON.parse(JSON.stringify(s)), pn = c.pens[k], t = c.tiles[pn.t]; t.gone = true; c.fish[pn.p] += t.fish; c.floes[pn.p]++; pn.t = to; return c; }
+  function cpuMove() {
+    const q = st.turn; let best = null;
+    for (const { k, to } of penMoves(q)) for (const j of to) {
+      const s1 = apply(st, k, j); let worst = evalFor(q, s1);
+      const replies = penMoves(1 - q, s1); let any = false;
+      for (const r of replies) for (const j2 of r.to) { any = true; worst = Math.min(worst, evalFor(q, apply(s1, r.k, j2))); }
+      const score = (any ? worst : evalFor(q, s1)) + Math.random() * .05;
+      if (!best || score > best.score) best = { k, j, score };
+    }
+    return best;
+  }
+  function cpuPlace() {
+    let best = null;
+    st.tiles.forEach((t, i) => { if (!placeable(i)) return; const m = movesFrom(i); let v = m.reduce((a, j) => a + st.tiles[j].fish, 0) + m.length * .3 + Math.random() * .5; if (!best || v > best.v) best = { i, v }; });
+    return best && best.i;
+  }
+  function maybeCpu() {
+    if (st.phase === 'over' || !isCpu(st.turn) || busy) return;
+    busy = true; render();
+    setTimeout(() => {
+      busy = false; if (st.phase === 'over' || !isCpu(st.turn)) return;
+      if (st.phase === 'place') { const i = cpuPlace(); if (i != null) place(i); }
+      else { const m = cpuMove(); if (m) { sel = m.k; draw(); setTimeout(() => move(m.k, m.j), 380); } }
+    }, st.phase === 'place' ? 520 : 650);
+  }
+
+  /* ---------- drawing ---------- */
+  const cv = $('board'), g = cv.getContext('2d');
+  let W = 400, H = 360, R = 20, ox = 0, oy = 0, dpr = 1;
+  function layout() {
+    dpr = Math.min(3, devicePixelRatio || 1);
+    const rows = SIZES[size].rows, wide = Math.max(...rows) * 2;   // doubled columns
+    W = cv.parentElement.clientWidth - 12; const hexW = W / (wide / 2 + .5);
+    R = hexW / Math.sqrt(3); const gap = R * .06;
+    H = Math.round(2 * R + (rows.length - 1) * 1.5 * R + R * .9 + 8);
+    ox = hexW / 2 + gap; oy = R + 6;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px';
+  }
+  const pos = i => { const t = st.tiles[i]; return { x: ox + t.x * (R * Math.sqrt(3) / 2), y: oy + t.r * 1.5 * R }; };
+  function hexPath(x, y, rad) { g.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30); g.lineTo(x + rad * Math.cos(a), y + rad * Math.sin(a)); } g.closePath(); }
+  function drawFish(x, y, s, col, flip) {
+    g.save(); g.translate(x, y); g.scale(flip ? -1 : 1, 1);
+    g.fillStyle = col; g.beginPath(); g.ellipse(0, 0, s, s * .55, 0, 0, 7); g.fill();
+    g.beginPath(); g.moveTo(-s * .8, 0); g.lineTo(-s * 1.45, -s * .5); g.lineTo(-s * 1.45, s * .5); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.ellipse(s * .1, -s * .18, s * .45, s * .16, 0, 0, 7); g.fill();
+    g.fillStyle = '#16202e'; g.beginPath(); g.arc(s * .52, -s * .08, s * .12, 0, 7); g.fill();
+    g.restore();
+  }
+  const FISHCOL = ['#ff8a5c', '#4aa6e0', '#f4c53f'];
+  function drawFloe(i, k = 1, drop = 0) {
+    const { x, y } = pos(i), t = st.tiles[i], rr = R * .93 * k;
+    g.save(); g.globalAlpha = Math.max(0, Math.min(1, k * 1.4)); g.translate(0, drop);
+    hexPath(x, y + R * .16, rr); g.fillStyle = '#7fb6d9'; g.fill();   // the thickness of the ice
+    hexPath(x, y, rr); const gr = g.createLinearGradient(x - rr, y - rr, x + rr, y + rr); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#cfe8f7'); g.fillStyle = gr; g.fill();
+    g.lineWidth = 1.2; g.strokeStyle = 'rgba(120,170,205,.7)'; g.stroke();
+    const s = R * .27 * k, spots = t.fish === 1 ? [[.08, 0]] : t.fish === 2 ? [[-.26, -.22], [.3, .2]] : [[-.36, .26], [.4, .26], [.04, -.3]];
+    spots.forEach(([fx, fy], n) => drawFish(x + fx * R * k, y + fy * R * k, s, FISHCOL[(i + n) % 3], (i + n) % 2));
+    g.restore();
+  }
+  // Pip the penguin from Thin Ice, dressed in team colours
+  function drawPen(x, y, sz, t, team, worried) {
+    pip(x, y, sz, t, worried, false, TEAM[team]);
+  }
+  function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  function pip(x, y, sz, t, worried, ring, TC) {
+    g.save(); g.translate(x, y);
+    if (ring) g.translate(0, Math.sin(t * 2.2) * 1.5);
+    else g.rotate(worried ? Math.sin(t * 5) * .07 : Math.sin(t * 1.6) * .03);   // a gentle waddle, a wobble when worried
+    const k = sz / 40; g.scale(k, k);
+    const navy = '#1f2d40', blink = !worried && (t % 3.6) > 3.45;
+    if (ring) {   // rubber ring: back half first
+      g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.ellipse(0, 4, 31, 8, 0, 0, 7); g.fill();
+      g.lineWidth = 9; g.strokeStyle = '#e8664a'; g.beginPath(); g.ellipse(0, -2, 22, 8, 0, Math.PI, Math.PI * 2); g.stroke();
+    } else {
+      g.fillStyle = 'rgba(30,70,100,.28)'; g.beginPath(); g.ellipse(0, 0, 16, 5, 0, 0, 7); g.fill();
+      // orange feet with little toes
+      g.fillStyle = '#ff9f1c';
+      for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(sd * 6.5, -1, 6.5, 3.2, sd * .12, 0, 7); g.fill(); }
+      g.strokeStyle = '#d9770b'; g.lineWidth = .9;
+      for (const sd of [-1, 1]) for (const tx2 of [-2.2, 0, 2.2]) { g.beginPath(); g.moveTo(sd * 6.5 + tx2, .4); g.lineTo(sd * 6.5 + tx2 * 1.25, 2); g.stroke(); }
+    }
+    // body
+    const bg = g.createLinearGradient(-15, -40, 15, 0); bg.addColorStop(0, '#34496a'); bg.addColorStop(1, '#141e2c');
+    g.fillStyle = bg; g.beginPath(); g.ellipse(0, -19, 15, 19.5, 0, 0, 7); g.fill();
+    const wg = g.createRadialGradient(-3, -20, 2, 0, -15, 15); wg.addColorStop(0, '#ffffff'); wg.addColorStop(1, '#e3edf5');
+    g.fillStyle = wg; g.beginPath(); g.ellipse(0, -15.5, 10.5, 14.5, 0, 0, 7); g.fill();
+    // flippers: flap when worried, wave from the ring
+    const flap = ring ? Math.sin(t * 6) * .5 : worried ? Math.sin(t * 9) * .45 : Math.sin(t * 1.6) * .05;
+    g.fillStyle = navy;
+    for (const sd of [-1, 1]) { g.save(); g.translate(sd * 13, -24); g.rotate(sd * (-.35 - (sd > 0 && ring ? 1.9 : 0)) - sd * flap); g.beginPath(); g.ellipse(0, 8, 4, 10.5, 0, 0, 7); g.fill(); g.restore(); }
+    // head
+    g.fillStyle = bg; g.beginPath(); g.arc(0, -37, 12.5, 0, 7); g.fill();
+    // heart-shaped white face
+    g.fillStyle = '#fff'; g.beginPath(); g.ellipse(-4.6, -37, 5.6, 6.6, .15, 0, 7); g.ellipse(4.6, -37, 5.6, 6.6, -.15, 0, 7); g.ellipse(0, -32.5, 6.5, 4.8, 0, 0, 7); g.fill();
+    // eyes
+    const ey = -37.5, er = worried ? 2.6 : 2.2;
+    if (blink) { g.strokeStyle = navy; g.lineWidth = 1.5; g.lineCap = 'round'; g.beginPath(); g.moveTo(-6.5, ey); g.quadraticCurveTo(-4.3, ey + 1.6, -2.1, ey); g.moveTo(2.1, ey); g.quadraticCurveTo(4.3, ey + 1.6, 6.5, ey); g.stroke(); }
+    else {
+      g.fillStyle = '#16202e'; g.beginPath(); g.ellipse(-4.3, ey, er, er * 1.2, 0, 0, 7); g.ellipse(4.3, ey, er, er * 1.2, 0, 0, 7); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(-3.5, ey - 1.1, .95, 0, 7); g.arc(5.1, ey - 1.1, .95, 0, 7); g.arc(-4.9, ey + .9, .45, 0, 7); g.arc(3.7, ey + .9, .45, 0, 7); g.fill();
+    }
+    if (worried) { g.strokeStyle = navy; g.lineWidth = 1.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-7.5, -43); g.lineTo(-2.8, -41.8); g.moveTo(7.5, -43); g.lineTo(2.8, -41.8); g.stroke();
+      g.fillStyle = '#8fd8ff'; g.beginPath(); g.moveTo(12, -41); g.quadraticCurveTo(14.5, -37, 12, -35.5); g.quadraticCurveTo(9.5, -37, 12, -41); g.fill(); }
+    // cheeks and beak
+    g.fillStyle = 'rgba(255,130,150,.6)'; g.beginPath(); g.ellipse(-7.6, -32.5, 2.3, 1.5, 0, 0, 7); g.ellipse(7.6, -32.5, 2.3, 1.5, 0, 0, 7); g.fill();
+    g.fillStyle = '#ffae2b'; g.beginPath(); g.moveTo(-3.6, -33.6); g.quadraticCurveTo(0, -35.4, 3.6, -33.6); g.quadraticCurveTo(1.2, -30.6, 0, -29.8); g.quadraticCurveTo(-1.2, -30.6, -3.6, -33.6); g.fill();
+    g.fillStyle = '#e07d0c'; g.beginPath(); g.moveTo(-2.4, -31.8); g.quadraticCurveTo(0, -30.6, 2.4, -31.8); g.quadraticCurveTo(.8, -29.9, 0, -29.6); g.quadraticCurveTo(-.8, -29.9, -2.4, -31.8); g.fill();
+    // striped scarf
+    g.fillStyle = TC.scarf; rr(-12, -27.5, 24, 5.5, 2.7); g.fill();
+    g.fillStyle = '#fff3d6'; for (const sx of [-7, -1, 5]) g.fillRect(sx, -27.5, 2, 5.5);
+    g.save(); g.translate(6, -24); g.rotate(ring ? -.2 : .12 + Math.sin(t * 2) * .05);
+    g.fillStyle = TC.scarf; rr(-2.6, 0, 5.4, 12, 2.2); g.fill(); g.fillStyle = '#fff3d6'; g.fillRect(-2.6, 4, 5.4, 1.8); g.fillRect(-2.6, 8, 5.4, 1.8);
+    g.strokeStyle = TC.scarf; g.lineWidth = 1.1; for (const fx of [-1.6, 0, 1.6]) { g.beginPath(); g.moveTo(fx, 12); g.lineTo(fx, 14.2); g.stroke(); }
+    g.restore();
+    // woolly bobble hat
+    g.save(); g.translate(0, -46); g.rotate(-.08);
+    g.fillStyle = TC.hat; g.beginPath(); g.moveTo(-10.5, 2); g.quadraticCurveTo(-10, -9, 0, -9.5); g.quadraticCurveTo(10, -9, 10.5, 2); g.closePath(); g.fill();
+    g.strokeStyle = TC.hatLine; g.lineWidth = 1; for (const hx of [-5, 0, 5]) { g.beginPath(); g.moveTo(hx, 1); g.lineTo(hx * .7, -8); g.stroke(); }
+    g.fillStyle = '#ffffff'; rr(-11.5, -.5, 23, 5, 2.5); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(0, -11, 3.6, 0, 7); g.fill();
+    g.fillStyle = 'rgba(200,220,240,.8)'; g.beginPath(); g.arc(1, -10, 1.6, 0, 7); g.fill();
+    g.restore();
+    if (ring) {   // front half of the ring, with stripes
+      g.lineWidth = 9; g.strokeStyle = '#ff7a59'; g.beginPath(); g.ellipse(0, -2, 22, 8, 0, 0, Math.PI); g.stroke();
+      g.strokeStyle = '#fff'; g.setLineDash([6, 10]); g.beginPath(); g.ellipse(0, -2, 22, 8, 0, 0, Math.PI); g.stroke(); g.setLineDash([]);
+    }
+    g.restore();
+  }
+
+  function draw(now = performance.now()) {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    // the sea, with a few soft swells
+    const sea = g.createLinearGradient(0, 0, 0, H); sea.addColorStop(0, '#1d5a8a'); sea.addColorStop(1, '#123c63'); g.fillStyle = sea; g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 2;
+    for (let yy = 18; yy < H; yy += 34) { g.beginPath(); for (let xx = 0; xx <= W; xx += 8) g.lineTo(xx, yy + Math.sin(xx / 22 + yy + now / 1400) * 3); g.stroke(); }
+    const sliding = anims.find(a => a.type === 'slide'), sinking = anims.filter(a => a.type === 'sink');
+    const targets = sel >= 0 && st.phase === 'move' ? movesFrom(st.pens[sel].t) : [];
+    st.tiles.forEach((t, i) => {
+      const sk = sinking.find(a => a.i === i);
+      if (t.gone && !sk) return;
+      if (sk) { const p = Math.max(0, (now - sk.t0) / sk.dur); if (p >= 1) return; drawFloe(i, 1 - p * .6, p * R * .5);
+        if (p > 0) { const { x, y } = pos(i); g.strokeStyle = `rgba(255,255,255,${.5 * (1 - p)})`; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y + R * .3, R * (.6 + p), R * (.25 + p * .4), 0, 0, 7); g.stroke(); }
+        return; }
+      drawFloe(i);
+      if (st.phase === 'place' && placeable(i) && !isCpu(st.turn)) { const { x, y } = pos(i); hexPath(x, y, R * .8); g.lineWidth = 2.5; g.strokeStyle = st.turn ? 'rgba(255,95,162,.75)' : 'rgba(232,153,74,.8)'; g.setLineDash([5, 4]); g.stroke(); g.setLineDash([]); }
+    });
+    targets.forEach(j => { const { x, y } = pos(j); hexPath(x, y, R * .82); g.lineWidth = 3; g.strokeStyle = st.turn ? '#ff5fa2' : '#e8994a'; g.stroke(); g.fillStyle = st.turn ? 'rgba(255,95,162,.14)' : 'rgba(232,153,74,.16)'; g.fill(); });
+    // penguins, back rows first so they overlap nicely
+    const order = st.pens.map((pn, k) => k).filter(k => st.pens[k].t >= 0).sort((a, b) => st.tiles[st.pens[a].t].r - st.tiles[st.pens[b].t].r);
+    order.forEach(k => {
+      const pn = st.pens[k]; let { x, y } = pos(pn.t);
+      if (sliding && sliding.k === k) { const p = Math.min(1, (now - sliding.t0) / sliding.dur), e = 1 - Math.pow(1 - p, 3), a = pos(sliding.from), b = pos(sliding.to); x = a.x + (b.x - a.x) * e; y = a.y + (b.y - a.y) * e; }
+      if (k === sel) { g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.ellipse(x, y + R * .2, R * .62, R * .26, 0, 0, 7); g.fill(); }
+      const stuck = st.phase === 'move' && pn.p === st.turn && !movesFrom(pn.t).length;
+      // a ring in the team colour under each penguin, so you can tell the sides apart at a glance
+      g.lineWidth = 3.5; g.strokeStyle = pn.p ? '#ff5fa2' : '#e8994a'; g.fillStyle = pn.p ? 'rgba(255,95,162,.25)' : 'rgba(232,153,74,.28)';
+      g.beginPath(); g.ellipse(x, y + R * .34, R * .52, R * .2, 0, 0, 7); g.fill(); g.stroke();
+      drawPen(x, y + R * .34, R * 1.62, now / 1000 + k, pn.p, stuck);
+    });
+    anims = anims.filter(a => now - a.t0 < a.dur + 30);
+  }
+  function frame(now) { requestAnimationFrame(frame); draw(now); }
+
+  /* ---------- tapping ---------- */
+  function hit(cx, cy) {
+    const r = cv.getBoundingClientRect(), x = cx - r.left, y = cy - r.top; let best = -1, bd = 1e9;
+    st.tiles.forEach((t, i) => { if (t.gone) return; const p = pos(i), d = Math.hypot(p.x - x, p.y - y); if (d < R * .95 && d < bd) { bd = d; best = i; } });
+    return best;
+  }
+  cv.addEventListener('pointerdown', e => {
+    audio(); if (busy || st.phase === 'over' || isCpu(st.turn)) return;
+    const i = hit(e.clientX, e.clientY); if (i < 0) { sel = -1; return; }
+    if (st.phase === 'place') { if (placeable(i)) place(i); else { sNope(); lastMsg = st.tiles[i].fish !== 1 ? 'Penguins start on a floe with one fish' : 'There’s already a penguin there'; render(); } return; }
+    const k = penOn(i);
+    if (k >= 0 && st.pens[k].p === st.turn) {
+      if (!movesFrom(i).length) { sNope(); lastMsg = 'That penguin is boxed in. Try another'; sel = -1; render(); return; }
+      sel = sel === k ? -1 : k; if (sel >= 0) sPick(); render(); return;
+    }
+    if (sel >= 0 && movesFrom(st.pens[sel].t).includes(i)) { move(sel, i); return; }
+    if (k >= 0) { sNope(); lastMsg = `That's ${names[st.pens[k].p]}'s penguin`; } else if (sel < 0) lastMsg = 'Tap one of your penguins first';
+    else { sNope(); lastMsg = 'Penguins slide in straight lines, and can’t jump gaps or other penguins'; }
+    sel = -1; render();
+  });
+
+  /* ---------- the panels ---------- */
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function plus(q, n) { const p = document.createElement('div'); p.className = 'plus'; p.style.color = q ? 'var(--p1)' : 'var(--p0)'; p.textContent = '+' + n; $('card' + q).appendChild(p); setTimeout(() => p.remove(), 950); }
+  function render() {
+    const per = SIZES[size].pens;
+    for (const q of [0, 1]) {
+      $('f' + q).innerHTML = `${st.fish[q]}<small>fish</small>`;
+      const on = st.pens.filter(pn => pn.p === q && pn.t >= 0).length;
+      $('pg' + q).textContent = st.phase === 'place' ? `🐧 ${per - placedBy(q)} to place` : `🐧 ${on} on the ice`;
+      $('w' + q).textContent = `${wins[q]} win${wins[q] === 1 ? '' : 's'}`;
+      $('card' + q).classList.toggle('active', st.phase !== 'over' && st.turn === q);
+      if (document.activeElement !== $('name' + q)) $('name' + q).textContent = names[q];
+    }
+    $('cpuTag').textContent = mode === 'cpu' ? 'computer' : '';
+    $('undo').disabled = !hist.length || busy;
+    const nm = q => `<span class="p${q}">${esc(names[q])}</span>`;
+    if (st.phase === 'over') { const w = winner(); $('status').innerHTML = w < 0 ? 'A draw! Fish for everyone 🐟' : `${nm(w)} wins! 🎉`; }
+    else if (isCpu(st.turn)) $('status').innerHTML = `${nm(1)} is thinking…`;
+    else if (st.phase === 'place') $('status').innerHTML = `${nm(st.turn)}: place a penguin on a one-fish floe`;
+    else $('status').innerHTML = sel >= 0 ? `${nm(st.turn)}: slide to a glowing floe` : `${nm(st.turn)}'s turn · pick a penguin`;
+    const left = st.tiles.filter(t => !t.gone).length;
+    $('left').textContent = st.phase === 'over' ? `${st.fish[0]} fish to ${st.fish[1]}` + (st.fish[0] === st.fish[1] ? ` · floes ${st.floes[0]} to ${st.floes[1]}` : '') + ' · Tap New game for a rematch'
+      : lastMsg ? `${lastMsg} · ${left} floes left` : `${left} floes left`;
+  }
+  function persist() { try { localStorage.setItem('fishyfloes', JSON.stringify({ names, wins, size, mode, muted, starter, game: st && st.phase !== 'over' ? { st, size } : null })); } catch (e) {} }
+
+  /* ---------- confetti ---------- */
+  const ccv = $('confetti'), cx = ccv.getContext('2d'); let bits = [], raf = 0;
+  function confetti(q) {
+    const d = Math.min(devicePixelRatio || 1, 2); ccv.width = innerWidth * d; ccv.height = innerHeight * d; cx.setTransform(d, 0, 0, d, 0, 0);
+    const main = q ? '#ff5fa2' : '#e8994a', cols = [main, main, '#8fd8ff', '#ffffff', '#ffe08a'];
+    for (let k = 0; k < 140; k++) bits.push({ x: innerWidth / 2 + (Math.random() - .5) * 140, y: innerHeight * .45, vx: (Math.random() - .5) * 13, vy: -Math.random() * 15 - 4, r: Math.random() * 6, vr: (Math.random() - .5) * .4, w: 6 + Math.random() * 6, h: 3 + Math.random() * 4, c: cols[k % cols.length], life: 1 });
+    if (!raf) raf = requestAnimationFrame(tick);
+  }
+  function tick() {
+    cx.clearRect(0, 0, innerWidth, innerHeight);
+    bits = bits.filter(b => b.life > 0 && b.y < innerHeight + 20);
+    bits.forEach(b => { b.vy += .45; b.vx *= .99; b.x += b.vx; b.y += b.vy; b.r += b.vr; b.life -= .006; cx.save(); cx.translate(b.x, b.y); cx.rotate(b.r); cx.globalAlpha = Math.min(1, b.life * 2); cx.fillStyle = b.c; cx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); cx.restore(); });
+    raf = bits.length ? requestAnimationFrame(tick) : 0;
+  }
+
+  /* ---------- buttons ---------- */
+  function segs() {
+    document.querySelectorAll('#segSize button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === size));
+    document.querySelectorAll('#segMode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === mode));
+  }
+  let confirmT = 0;
+  const midGame = () => st.phase !== 'over' && hist.length > 0;
+  function guarded(fn, label) { if (midGame() && Date.now() - confirmT > 2500) { confirmT = Date.now(); lastMsg = `Tap ${label} again to start over`; render(); return; } confirmT = 0; fn(); }
+  document.querySelectorAll('#segSize button').forEach(b => b.onclick = () => { if (b.dataset.v === size) return; guarded(() => { size = b.dataset.v; segs(); newGame(true); }, b.textContent); });
+  document.querySelectorAll('#segMode button').forEach(b => b.onclick = () => { if (b.dataset.v === mode) return; guarded(() => { mode = b.dataset.v; segs(); newGame(true); }, b.textContent); });
+  $('newGame').onclick = () => guarded(() => newGame(false), 'New game');
+  $('resetWins').onclick = () => { wins = [0, 0]; persist(); render(); };
+  $('undo').onclick = undo;
+  $('sound').onclick = () => { muted = !muted; BB.muted = muted; persist(); $('sound').textContent = muted ? '🔇' : '🔊'; $('sound').setAttribute('aria-label', muted ? 'Sound off' : 'Sound on'); tone(660, .08, 'triangle'); };
+  for (const q of [0, 1]) {
+    const el = $('name' + q);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+    el.addEventListener('blur', () => { names[q] = (el.textContent.trim() || DEFAULT_NAMES[q]).slice(0, 14); persist(); render(); });
+  }
+  addEventListener('resize', () => { layout(); draw(); });
+
+  segs(); $('sound').textContent = muted ? '🔇' : '🔊';
+  if (saved && saved.st && saved.size === size) { st = saved.st; rebuildIndex(); layout(); render(); maybeCpu(); }
+  else newGame(true);
+  requestAnimationFrame(frame);
+  if (DEBUG) window.__ff = { get st() { return st; }, place, move, movesFrom, penMoves, canMove, get busy() { return busy; }, get sel() { return sel; }, pos, cpuMove, cpuPlace, newGame, undo, get hist() { return hist.length; } };
+})();
+</script>
+<script id="pub-kit-says">
+(() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
+  const go = () => { const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.isIntersecting && pick(e.target))) : null; document.querySelectorAll('.pk-says').forEach(el => { pick(el); if (io) io.observe(el); }); };
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
+</script>
+</body>
+</html>
