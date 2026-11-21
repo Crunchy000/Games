@@ -10,10 +10,22 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
-<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
+<script>if ('serviceWorker' in navigator) {
+  // keep installed copies current: check for a new version whenever the app comes back to the front,
+  // and switch to it straight away if it lands just after opening, otherwise after the app has been away a while
+  const had = !!navigator.serviceWorker.controller, t0 = Date.now(); let swap = false, away = 0;
+  addEventListener('load', () => navigator.serviceWorker.register('../sw.js').then(reg => {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { away = Date.now(); return; }
+      if (swap && Date.now() - away > 30000) { location.reload(); return; }
+      reg.update().catch(() => {});
+    });
+  }).catch(() => {}));
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
+}</script>
 <title>Hide &amp; Seek</title>
-<meta name="description" content="A cosy hidden-object game: lanterns, marshmallows, compasses and little beans are tucked all over six illustrated places, from a forest camp and the seaside to the pyramids and a camp in space. Pinch to zoom, tap to find them all. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
-<link rel="canonical" href="https://bearandbean.uk/hide-and-seek/">
+<meta name="description" content="A cosy hidden-object game: 50 things are tucked into each of seven busy scenes, from a woodland camp and a beach festival to the pyramids and a camp in space. Pinch to zoom and tap to find everything on the list. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<link rel="canonical" href="https://www.bearandbean.uk/hide-and-seek/">
 <style>
   :root { --bg:#f1e7d8; --ink:#3b2e22; --muted:#8e7f6c; --panel:#e6d8c3; --card:#fffaf3; --accent:#c8643b; }
   body.dark { --bg:#17110a; --ink:#f3e6cc; --muted:#b39b78; --panel:#2c2114; --card:#221a10; --accent:#e58a5e; }
@@ -70,7 +82,7 @@
   .stats b { display:block; font-size:1.5rem; color:var(--ink); letter-spacing:0; }
   .scenes { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:12px; }
   .scenes button { border:0; padding:0; background:none; font:inherit; font-weight:800; font-size:.85rem; color:var(--ink); cursor:pointer; display:flex; flex-direction:column; gap:6px; align-items:center; }
-  .scenes img { width:100%; aspect-ratio:572/820; object-position:50% 20%; object-fit:cover; border-radius:12px; box-shadow:0 2px 8px rgba(40,25,10,.25); outline:3px solid transparent; outline-offset:2px; }
+  .scenes img { width:100%; aspect-ratio:1080/1550; object-position:50% 20%; object-fit:cover; border-radius:12px; box-shadow:0 2px 8px rgba(40,25,10,.25); outline:3px solid transparent; outline-offset:2px; }
   .scenes button.on img { outline-color:var(--accent); }
   .gold { display:inline-flex; align-items:center; gap:6px; font-weight:800; background:#f4c53f; color:#5a3f10; border-radius:999px; padding:5px 12px; margin:6px 0 2px; }
 </style>
@@ -170,7 +182,7 @@ window.BB = (() => {
   </header>
   <div class="info"><div><small>Round</small><span id="rnd">1</span></div><button class="tool sm pk-chip" id="bScene" aria-label="Choose a scene">🗺<span class="lbl2"> </span><span id="scName">Forest camp</span></button><div class="got" id="got">0 of 8 found</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint">🔍<span class="lbl"> Hint</span></button><button class="tool sm pk-chip" id="bNew" aria-label="Reshuffle">↻</button></div>
   <div class="main">
-  <div id="stage" aria-label="The forest camp. Pinch to zoom, drag to look around, tap to find things.">
+  <div id="stage" aria-label="The scene. Pinch to zoom, drag to look around, tap to find things.">
     <canvas id="cv"></canvas>
     <div class="note" id="note" role="status" aria-live="polite"></div>
     <div class="zoom"><button class="tool pk-chip" id="bIn" aria-label="Zoom in">＋</button><button class="tool pk-chip" id="bOut" aria-label="Zoom out">－</button></div>
@@ -183,14 +195,14 @@ window.BB = (() => {
   <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>Hide &amp; Seek</h2>
-  <p>Everyone's packed for camp, and things have been left all over the forest!</p>
+  <p>Bear, Bean and friends have left things all over the place!</p>
   <ul>
     <li>Find everything shown along the bottom.</li>
     <li><b>Pinch</b> or use <b>＋</b> to zoom in, and <b>drag</b> to look around.</li>
-    <li><b>Tap</b> a thing when you spot it. Some things that aren't on the list are hiding too.</li>
+    <li><b>Tap</b> a thing when you spot it. Lots of other things are hiding too, but only the ones on the list count.</li>
     <li>Stuck? A <b>hint</b> shows you roughly where to look.</li>
   </ul>
-  <p>Each round hides more things, and smaller ones, and moves between the forest camp, the seaside, the jungle temple, the pyramids, the frozen lake and space camp, each with its own things to find. Tap 🗺 to pick a place.</p>
+  <p>Each round asks for more things, and trickier ones, and moves on to the next of seven places. Tap 🗺 to pick a place.</p>
   <div class="row2"><button class="btn pk-btn" data-close>Let's look</button></div>
 </div></div>
 
@@ -213,16 +225,17 @@ window.BB = (() => {
 <script>
 (() => {
 'use strict';
-const KINDS = [{"n": "sleeping bag", "v": [[964, 451, 88, 63]]}, {"n": "snoozing bean", "v": [[0, 0, 74, 88]]}, {"n": "hiker bean", "v": [[1043, 273, 88, 85], [77, 0, 67, 88]]}, {"n": "rucksack", "v": [[147, 0, 78, 88], [228, 0, 78, 88]]}, {"n": "lantern", "v": [[309, 0, 44, 88], [356, 0, 45, 88]]}, {"n": "torch", "v": [[404, 0, 37, 88], [1144, 528, 88, 40]]}, {"n": "acorn", "v": [[444, 0, 62, 88], [509, 0, 66, 88]]}, {"n": "Bear on a hike", "v": [[578, 0, 57, 88]]}, {"n": "sleepy Bear", "v": [[546, 528, 88, 50]]}, {"n": "waving bean", "v": [[638, 0, 80, 88], [721, 0, 73, 88]]}, {"n": "bean with a flag", "v": [[819, 364, 88, 78], [1407, 273, 88, 84]]}, {"n": "happy Bear", "v": [[910, 364, 88, 78]]}, {"n": "sitting Bear", "v": [[797, 0, 77, 88]]}, {"n": "bean in a cap", "v": [[877, 0, 82, 88], [962, 0, 68, 88]]}, {"n": "napping beans", "v": [[364, 451, 88, 70]]}, {"n": "party bean", "v": [[1033, 0, 47, 88], [91, 451, 88, 73]]}, {"n": "water bottle", "v": [[1083, 0, 72, 88], [1158, 0, 67, 88]]}, {"n": "compass", "v": [[1228, 0, 69, 88], [1300, 0, 64, 88]]}, {"n": "guitar", "v": [[1134, 273, 88, 85], [728, 528, 88, 44]]}, {"n": "treasure map", "v": [[873, 451, 88, 64]]}, {"n": "camera", "v": [[782, 451, 88, 66], [1390, 451, 88, 60]]}, {"n": "picnic basket", "v": [[91, 364, 88, 83], [1365, 364, 88, 75]]}, {"n": "bedroll", "v": [[962, 528, 88, 42], [1053, 528, 88, 41]]}, {"n": "binoculars", "v": [[182, 451, 88, 73]]}, {"n": "suitcase", "v": [[455, 451, 88, 69]]}, {"n": "keyring", "v": [[1367, 0, 23, 88]]}, {"n": "honey jar", "v": [[1393, 0, 73, 88], [0, 91, 70, 88]]}, {"n": "jam jar", "v": [[73, 91, 78, 88], [154, 91, 65, 88]]}, {"n": "marmalade", "v": [[222, 91, 72, 88]]}, {"n": "marshmallow", "v": [[297, 91, 65, 88], [365, 91, 81, 88]]}, {"n": "kettle", "v": [[0, 364, 88, 84], [455, 364, 88, 81]]}, {"n": "sandwich", "v": [[1055, 451, 88, 63], [273, 528, 88, 53]]}, {"n": "mug", "v": [[182, 364, 88, 83], [273, 364, 88, 83]]}, {"n": "pie", "v": [[455, 528, 88, 52], [182, 528, 88, 54]]}, {"n": "pine cone", "v": [[449, 91, 65, 88], [517, 91, 74, 88]]}, {"n": "blueberries", "v": [[594, 91, 75, 88]]}, {"n": "cherries", "v": [[672, 91, 78, 88]]}, {"n": "daisy", "v": [[753, 91, 51, 88]]}, {"n": "pink flower", "v": [[807, 91, 53, 88]]}, {"n": "acorn badge", "v": [[863, 91, 87, 88]]}, {"n": "star badge", "v": [[953, 91, 76, 88]]}, {"n": "little heart", "v": [[910, 528, 49, 43]]}, {"n": "beach ball", "v": [[1032, 91, 87, 88]], "sc": [1, 0]}, {"n": "sun cream", "v": [[1122, 91, 53, 88]], "sc": [1]}, {"n": "sunglasses", "v": [[1235, 528, 88, 36]], "sc": [1]}, {"n": "crab", "v": [[364, 528, 88, 53]], "sc": [1, 0]}, {"n": "starfish", "v": [[1178, 91, 61, 88]], "sc": [1]}, {"n": "bucket and spade", "v": [[1242, 91, 58, 88]], "sc": [1]}, {"n": "fish", "v": [[1303, 91, 40, 88]], "sc": [1, 2]}, {"n": "bean in shades", "v": [[1346, 91, 69, 88]], "sc": [1]}, {"n": "bean in a sunhat", "v": [[1418, 91, 65, 88]], "sc": [1]}, {"n": "Bear in a sunhat", "v": [[0, 182, 66, 88]], "sc": [1]}, {"n": "surfboard", "v": [[69, 182, 33, 88]], "sc": [0, 2, 3]}, {"n": "sandcastle", "v": [[1183, 364, 88, 76]], "sc": [3, 0]}, {"n": "explorer bean", "v": [[105, 182, 71, 88], [179, 182, 78, 88]], "sc": [2]}, {"n": "explorer Bear", "v": [[260, 182, 50, 88]], "sc": [2]}, {"n": "jaguar", "v": [[313, 182, 74, 88]], "sc": [2]}, {"n": "bean on a jaguar", "v": [[628, 451, 88, 67]], "sc": [2]}, {"n": "sun stone", "v": [[390, 182, 88, 88]], "sc": [2, 3]}, {"n": "flaming torch", "v": [[481, 182, 29, 88], [513, 182, 31, 88]], "sc": [2, 3]}, {"n": "pharaoh bean", "v": [[547, 182, 70, 88]], "sc": [3]}, {"n": "bean in a crown", "v": [[620, 182, 59, 88]], "sc": [3]}, {"n": "golden Bear", "v": [[637, 364, 88, 79]], "sc": [3]}, {"n": "scarab", "v": [[682, 182, 61, 88]], "sc": [3]}, {"n": "ankh", "v": [[746, 182, 51, 88]], "sc": [3]}, {"n": "camel", "v": [[273, 451, 88, 72]], "sc": [0, 1]}, {"n": "skating Bear", "v": [[800, 182, 67, 88]], "sc": [4]}, {"n": "snowballs", "v": [[1092, 364, 88, 77], [637, 528, 88, 46]], "sc": [4]}, {"n": "bean in a bobble hat", "v": [[870, 182, 65, 88]], "sc": [4]}, {"n": "Bear with cocoa", "v": [[938, 182, 53, 88]], "sc": [4]}, {"n": "snow shovel", "v": [[994, 182, 86, 88], [1083, 182, 79, 88]], "sc": [4]}, {"n": "hockey puck", "v": [[0, 528, 88, 58]], "sc": [4]}, {"n": "ice skates", "v": [[1225, 273, 88, 85]], "sc": [4]}, {"n": "earmuffs", "v": [[1274, 364, 88, 76]], "sc": [4]}, {"n": "mittens", "v": [[1165, 182, 62, 88], [1230, 182, 61, 88]], "sc": [4]}, {"n": "scarf", "v": [[1294, 182, 84, 88], [1381, 182, 81, 88]], "sc": [4]}, {"n": "hot cocoa", "v": [[0, 273, 75, 88]], "sc": [4, 5]}, {"n": "flask", "v": [[78, 273, 47, 88]], "sc": [4]}, {"n": "icicles", "v": [[364, 364, 88, 83]], "sc": [4]}, {"n": "fishing rod", "v": [[546, 364, 88, 81]], "sc": [4, 1]}, {"n": "snowflake", "v": [[719, 451, 60, 67], [728, 364, 88, 79]], "sc": [4, 5]}, {"n": "snowy pine cone", "v": [[1001, 364, 88, 78], [1208, 451, 88, 61]], "sc": [4]}, {"n": "bucket of fish", "v": [[128, 273, 78, 88], [209, 273, 72, 88]], "sc": [4, 1]}, {"n": "snowy bedroll", "v": [[819, 528, 88, 44]], "sc": [4]}, {"n": "jetpack Bear", "v": [[284, 273, 68, 88]], "sc": [5]}, {"n": "bean on an asteroid", "v": [[355, 273, 62, 88]], "sc": [5]}, {"n": "bean astronaut", "v": [[420, 273, 53, 88]], "sc": [5]}, {"n": "rocket", "v": [[476, 273, 66, 88]], "sc": [5, 0]}, {"n": "flying saucer", "v": [[1299, 451, 88, 61]], "sc": [5, 4]}, {"n": "space rock", "v": [[546, 451, 79, 69], [91, 528, 88, 57]], "sc": [5]}, {"n": "space helmet", "v": [[1316, 273, 88, 85]], "sc": [5]}, {"n": "moon rover", "v": [[0, 451, 88, 74]], "sc": [5]}, {"n": "crescent moon", "v": [[1146, 451, 59, 62]], "sc": [5]}, {"n": "space flag", "v": [[545, 273, 70, 88], [618, 273, 72, 88]], "sc": [5]}, {"n": "space food", "v": [[693, 273, 45, 88], [741, 273, 42, 88]], "sc": [5]}, {"n": "mission badge", "v": [[786, 273, 88, 88], [877, 273, 75, 88]], "sc": [5]}, {"n": "space backpack", "v": [[955, 273, 85, 88]], "sc": [5]}];
-const SCENES = [{ id: 'camp', name: 'Forest camp' }, { id: 'beach', name: 'Seaside' }, { id: 'jungle', name: 'Jungle temple' }, { id: 'pyramids', name: 'Pyramids' }, { id: 'winter', name: 'Frozen lake' }, { id: 'space', name: 'Space camp' }];
-const SW = 572, SH = 1024;   // every scene picture, in its own pixels
+// every scene: a picture with its things drawn in, and where each thing is (from the asset pack's location maps)
+const SCENES = [{"id":"woodland","name":"Woodland camp","w":1080,"h":1935,"items":[{"n":"Pine cone","x":396,"y":163,"r":17.0,"d":2,"i":[0,0,44,60]},{"n":"Happy little bean","x":842,"y":155,"r":18.0,"d":2,"i":[46,0,54,60]},{"n":"Strawberry jam jar","x":264,"y":219,"r":18.0,"d":2,"i":[102,0,44,60]},{"n":"Toasted marshmallow","x":871,"y":371,"r":19.0,"d":1,"i":[148,0,44,60]},{"n":"Shy cap bean","x":86,"y":492,"r":19.0,"d":1,"i":[194,0,42,60]},{"n":"Festive flag bean","x":214,"y":426,"r":23.5,"d":1,"i":[310,186,60,50]},{"n":"Camp lantern","x":253,"y":529,"r":21.0,"d":1,"i":[238,0,30,60]},{"n":"Bean with blue flag","x":318,"y":437,"r":24.0,"d":0,"i":[248,186,60,53]},{"n":"Blueberry jam jar","x":558,"y":511,"r":20.0,"d":1,"i":[270,0,44,60]},{"n":"Purple daisy","x":599,"y":391,"r":15.0,"d":2,"i":[366,124,54,58]},{"n":"Red camp mug","x":707,"y":549,"r":15.0,"d":2,"i":[124,186,60,55]},{"n":"Hiker bean with pack","x":721,"y":443,"r":23.0,"d":1,"i":[422,124,60,58]},{"n":"Gold star shield badge","x":828,"y":498,"r":15.5,"d":2,"i":[316,0,52,60]},{"n":"Full picnic basket","x":704,"y":670,"r":25.5,"d":0,"i":[62,186,60,56]},{"n":"Red jam jar","x":812,"y":767,"r":19.0,"d":1,"i":[370,0,54,60]},{"n":"Striped green bean","x":876,"y":677,"r":25.0,"d":0,"i":[426,0,50,60]},{"n":"Blue camp teapot","x":94,"y":885,"r":21.0,"d":1,"i":[186,186,60,55]},{"n":"Green torch","x":230,"y":905,"r":21.0,"d":2,"i":[478,0,27,60]},{"n":"Party hat bean","x":412,"y":937,"r":22.0,"d":1,"i":[507,0,32,60]},{"n":"Sleeping bear cub","x":535,"y":899,"r":25.0,"d":1,"i":[310,246,60,34]},{"n":"Teal bedroll","x":638,"y":865,"r":19.5,"d":1,"i":[372,246,60,28]},{"n":"Baked berry pie","x":921,"y":832,"r":20.0,"d":2,"i":[248,246,60,36]},{"n":"Round pocket compass","x":68,"y":1140,"r":17.5,"d":1,"i":[0,62,48,60]},{"n":"Singing cap bean","x":114,"y":1017,"r":21.0,"d":1,"i":[50,62,56,60]},{"n":"Explorer cap bean","x":254,"y":1120,"r":22.5,"d":1,"i":[108,62,45,60]},{"n":"Yellow torch","x":306,"y":1025,"r":20.0,"d":2,"i":[155,62,25,60]},{"n":"Gold pocket compass","x":504,"y":1068,"r":18.5,"d":2,"i":[182,62,43,60]},{"n":"Polka-dot sleeping bag","x":657,"y":1030,"r":25.0,"d":0,"i":[186,246,60,42]},{"n":"Tan hiking backpack","x":804,"y":1060,"r":20.0,"d":2,"i":[227,62,54,60]},{"n":"Bee honey jar","x":892,"y":1006,"r":20.5,"d":2,"i":[283,62,50,60]},{"n":"Army water canteen","x":997,"y":1070,"r":21.5,"d":1,"i":[335,62,46,60]},{"n":"Orange camp kettle","x":439,"y":1260,"r":22.0,"d":0,"i":[304,124,60,59]},{"n":"Field binoculars","x":725,"y":1164,"r":23.0,"d":1,"i":[372,186,60,49]},{"n":"Bean in leaf bag","x":78,"y":1415,"r":26.5,"d":0,"i":[434,186,60,48]},{"n":"Acorn scout badge","x":146,"y":1540,"r":18.5,"d":2,"i":[383,62,60,60]},{"n":"Leather suitcase","x":264,"y":1506,"r":29.5,"d":0,"i":[496,186,60,47]},{"n":"Sitting bear cub","x":349,"y":1448,"r":27.5,"d":0,"i":[445,62,52,60]},{"n":"Red forest berries","x":485,"y":1396,"r":20.5,"d":1,"i":[499,62,54,60]},{"n":"Silver oil lantern","x":583,"y":1513,"r":21.0,"d":2,"i":[0,124,30,60]},{"n":"Acoustic guitar","x":848,"y":1516,"r":31.0,"d":0,"i":[484,124,60,58]},{"n":"Bean keychain clip","x":902,"y":1388,"r":24.0,"d":1,"i":[32,124,15,60]},{"n":"Round water canteen","x":238,"y":1738,"r":24.0,"d":0,"i":[49,124,49,60]},{"n":"Wild blueberries","x":302,"y":1617,"r":18.0,"d":2,"i":[100,124,51,60]},{"n":"Red & blue backpack","x":407,"y":1592,"r":21.5,"d":1,"i":[153,124,52,60]},{"n":"Black retro camera","x":509,"y":1606,"r":24.0,"d":1,"i":[0,246,60,45]},{"n":"Woodland acorn","x":619,"y":1638,"r":16.5,"d":2,"i":[207,124,44,60]},{"n":"Club sandwich plate","x":746,"y":1686,"r":23.0,"d":1,"i":[124,246,60,43]},{"n":"Folded trail map","x":928,"y":1738,"r":27.5,"d":0,"i":[62,246,60,44]},{"n":"Bean with red flag","x":747,"y":1885,"r":30.0,"d":0,"i":[0,186,60,58]},{"n":"Spotted red toadstool","x":1030,"y":1772,"r":23.0,"d":1,"i":[253,124,49,60]}]},{"id":"beach","name":"Beach festival","w":1080,"h":1935,"items":[{"n":"Bonfire marshmallow","x":48,"y":263,"r":17.0,"d":2,"i":[0,0,44,60]},{"n":"Coastal island map","x":136,"y":209,"r":22.5,"d":2,"i":[237,182,60,44]},{"n":"Yellow coastal flower","x":380,"y":206,"r":13.5,"d":2,"i":[46,0,35,60]},{"n":"Gold pocket compass","x":692,"y":196,"r":16.0,"d":2,"i":[83,0,43,60]},{"n":"Party hat bean","x":108,"y":494,"r":20.5,"d":1,"i":[128,0,32,60]},{"n":"Rolled beach towel","x":362,"y":460,"r":19.5,"d":1,"i":[284,234,60,28]},{"n":"Tropical surfboard","x":530,"y":534,"r":24.5,"d":0,"i":[162,0,21,60]},{"n":"Black retro camera","x":921,"y":426,"r":22.0,"d":1,"i":[175,182,60,45]},{"n":"Club sandwich plate","x":988,"y":561,"r":19.5,"d":0,"i":[299,182,60,43]},{"n":"Little red crab","x":148,"y":680,"r":21.5,"d":0,"i":[62,234,60,36]},{"n":"Fruit picnic basket","x":256,"y":692,"r":23.5,"d":0,"i":[0,124,60,56]},{"n":"Brown vintage camera","x":622,"y":630,"r":18.5,"d":2,"i":[464,182,60,40]},{"n":"Gold star badge","x":726,"y":652,"r":18.5,"d":2,"i":[185,0,52,60]},{"n":"Bee honey jar","x":833,"y":651,"r":19.0,"d":1,"i":[239,0,50,60]},{"n":"Tiny red heart","x":944,"y":676,"r":16.0,"d":1,"i":[346,234,27,24]},{"n":"Sandy sandcastle","x":148,"y":920,"r":24.0,"d":1,"i":[310,124,60,52]},{"n":"Polka-dot beach mat","x":438,"y":792,"r":25.0,"d":0,"i":[361,182,60,42]},{"n":"Peach preserve jar","x":598,"y":881,"r":21.0,"d":1,"i":[291,0,49,60]},{"n":"Sitting safari bear","x":856,"y":884,"r":23.5,"d":1,"i":[342,0,44,60]},{"n":"Sunglasses beach bean","x":862,"y":777,"r":23.0,"d":1,"i":[388,0,46,60]},{"n":"Blue sea blossom","x":994,"y":852,"r":15.0,"d":2,"i":[423,182,39,41]},{"n":"Waving bean","x":212,"y":1013,"r":20.0,"d":1,"i":[436,0,47,60]},{"n":"Bean keychain clip","x":353,"y":980,"r":22.0,"d":1,"i":[485,0,15,60]},{"n":"Green tin mug","x":360,"y":1156,"r":17.5,"d":2,"i":[186,124,60,54]},{"n":"Happy little bean","x":450,"y":1026,"r":22.5,"d":1,"i":[502,0,54,60]},{"n":"Red camp mug","x":466,"y":1149,"r":18.0,"d":1,"i":[62,124,60,55]},{"n":"Headscarf bean","x":568,"y":1140,"r":22.0,"d":1,"i":[0,62,45,60]},{"n":"Red hibiscus blossom","x":626,"y":1040,"r":18.0,"d":2,"i":[372,124,52,51]},{"n":"Sunhat swimsuit bean","x":761,"y":1064,"r":26.0,"d":0,"i":[47,62,44,60]},{"n":"Pink scallop seashell","x":79,"y":1329,"r":17.0,"d":2,"i":[248,234,34,31]},{"n":"Festive flag bean","x":96,"y":1223,"r":27.5,"d":0,"i":[488,124,60,50]},{"n":"Sand bucket & spade","x":190,"y":1302,"r":21.0,"d":1,"i":[93,62,38,60]},{"n":"Travel suitcase","x":254,"y":1170,"r":26.5,"d":0,"i":[113,182,60,47]},{"n":"Checkered picnic basket","x":383,"y":1340,"r":26.0,"d":0,"i":[426,124,60,51]},{"n":"Beach sunglasses","x":490,"y":1302,"r":18.0,"d":2,"i":[375,234,60,23]},{"n":"Beach acoustic guitar","x":613,"y":1316,"r":30.0,"d":0,"i":[478,62,60,58]},{"n":"Coastal binoculars","x":740,"y":1267,"r":21.5,"d":2,"i":[51,182,60,49]},{"n":"Striped beach ball","x":842,"y":1212,"r":22.5,"d":1,"i":[133,62,60,60]},{"n":"Cheese sandwich plate","x":1028,"y":1320,"r":20.0,"d":2,"i":[124,234,60,36]},{"n":"Cheering bean","x":84,"y":1496,"r":23.5,"d":1,"i":[195,62,55,60]},{"n":"Sun cream bottle","x":244,"y":1475,"r":21.0,"d":2,"i":[252,62,35,60]},{"n":"Red jam jar","x":464,"y":1408,"r":21.5,"d":2,"i":[289,62,54,60]},{"n":"Bean with blue flag","x":662,"y":1446,"r":26.5,"d":0,"i":[248,124,60,53]},{"n":"Round water canteen","x":866,"y":1374,"r":23.5,"d":1,"i":[345,62,49,60]},{"n":"Baked berry pie","x":940,"y":1535,"r":21.0,"d":1,"i":[186,234,60,36]},{"n":"Blue tropical fish","x":90,"y":1628,"r":23.0,"d":0,"i":[396,62,26,60]},{"n":"Orange starfish","x":182,"y":1684,"r":16.5,"d":2,"i":[0,182,49,50]},{"n":"Red & blue daypack","x":934,"y":1733,"r":22.0,"d":1,"i":[424,62,52,60]},{"n":"Shoulder strap camera","x":736,"y":1747,"r":22.0,"d":1,"i":[0,234,60,38]},{"n":"Blue enamel mug","x":740,"y":1879,"r":20.5,"d":1,"i":[124,124,60,55]}]},{"id":"aztec","name":"Aztec ruins","w":1080,"h":1935,"items":[{"n":"Canvas expedition pack","x":240,"y":144,"r":19.5,"d":2,"i":[0,0,53,60]},{"n":"Strap survey camera","x":396,"y":112,"r":17.0,"d":1,"i":[62,243,60,38]},{"n":"Spotted forest cap","x":552,"y":150,"r":15.0,"d":2,"i":[241,124,60,59]},{"n":"Army canteen","x":356,"y":374,"r":20.5,"d":1,"i":[55,0,46,60]},{"n":"Gold pocket compass","x":596,"y":244,"r":14.0,"d":2,"i":[103,0,43,60]},{"n":"Blue tiny blossom","x":794,"y":235,"r":14.5,"d":2,"i":[470,186,39,41]},{"n":"Crimson forest berries","x":971,"y":305,"r":16.0,"d":2,"i":[148,0,54,60]},{"n":"Acorn explorer badge","x":193,"y":434,"r":16.0,"d":2,"i":[204,0,60,60]},{"n":"Scarlet jungle bloom","x":323,"y":486,"r":16.5,"d":2,"i":[124,186,52,51]},{"n":"Round pocket compass","x":526,"y":428,"r":16.0,"d":1,"i":[266,0,48,60]},{"n":"Wild jungle berries","x":726,"y":394,"r":15.0,"d":2,"i":[316,0,51,60]},{"n":"Orange camp kettle","x":868,"y":506,"r":19.5,"d":1,"i":[303,124,60,59]},{"n":"Red field backpack","x":352,"y":612,"r":21.0,"d":1,"i":[369,0,53,60]},{"n":"Safari explorer bean","x":419,"y":745,"r":24.0,"d":1,"i":[424,0,48,60]},{"n":"Purple orchid daisy","x":532,"y":688,"r":15.0,"d":2,"i":[365,124,54,58]},{"n":"Silver oil lantern","x":809,"y":604,"r":21.5,"d":1,"i":[474,0,30,60]},{"n":"Sitting safari bear","x":848,"y":700,"r":25.5,"d":0,"i":[506,0,44,60]},{"n":"Tall red mushroom","x":144,"y":942,"r":22.5,"d":0,"i":[0,62,41,60]},{"n":"Scout binoculars","x":338,"y":858,"r":21.5,"d":0,"i":[178,186,60,50]},{"n":"Spotted jungle jaguar","x":417,"y":964,"r":25.5,"d":0,"i":[43,62,50,60]},{"n":"Round water canteen","x":454,"y":842,"r":19.5,"d":2,"i":[95,62,49,60]},{"n":"Blue camp teapot","x":587,"y":893,"r":20.0,"d":2,"i":[483,124,60,55]},{"n":"Forked jungle twig","x":772,"y":804,"r":19.5,"d":1,"i":[146,62,19,60]},{"n":"Golden jungle flower","x":880,"y":812,"r":15.0,"d":2,"i":[167,62,35,60]},{"n":"Temple fire torch","x":104,"y":1134,"r":21.0,"d":1,"i":[204,62,21,60]},{"n":"Vintage brown camera","x":201,"y":1064,"r":22.0,"d":1,"i":[0,243,60,40]},{"n":"Bean keychain clip","x":350,"y":1144,"r":19.5,"d":2,"i":[227,62,15,60]},{"n":"Explorer bear","x":570,"y":1032,"r":25.5,"d":0,"i":[244,62,34,60]},{"n":"Ancient ruin map","x":695,"y":1044,"r":24.0,"d":1,"i":[408,186,60,43]},{"n":"Jungle scout bean","x":731,"y":1140,"r":20.5,"d":1,"i":[280,62,53,60]},{"n":"Bean riding jaguar","x":816,"y":1230,"r":25.5,"d":1,"i":[284,186,60,46]},{"n":"Flaming wooden torch","x":82,"y":1445,"r":22.0,"d":1,"i":[335,62,19,60]},{"n":"Golden honey jar","x":238,"y":1474,"r":20.5,"d":1,"i":[356,62,50,60]},{"n":"Flag explorer bean","x":408,"y":1410,"r":28.0,"d":0,"i":[421,124,60,58]},{"n":"Olive bedroll","x":522,"y":1402,"r":24.0,"d":1,"i":[124,243,60,28]},{"n":"Red jungle toadstool","x":588,"y":1504,"r":23.5,"d":1,"i":[408,62,49,60]},{"n":"Herbal elixir jar","x":830,"y":1384,"r":24.5,"d":0,"i":[459,62,37,60]},{"n":"Twin sprout leaves","x":901,"y":1476,"r":17.5,"d":2,"i":[240,186,42,47]},{"n":"Pith helmet bean","x":188,"y":1568,"r":24.0,"d":0,"i":[498,62,48,60]},{"n":"Black field camera","x":311,"y":1638,"r":25.0,"d":0,"i":[346,186,60,45]},{"n":"Green camp mug","x":424,"y":1596,"r":19.5,"d":1,"i":[62,186,60,54]},{"n":"Jungle oak leaf","x":613,"y":1618,"r":17.5,"d":2,"i":[0,124,41,60]},{"n":"Golden Aztec sun stone","x":750,"y":1672,"r":23.5,"d":0,"i":[43,124,60,60]},{"n":"Brass expedition lantern","x":1027,"y":1732,"r":24.5,"d":0,"i":[105,124,30,60]},{"n":"Gold star shield badge","x":58,"y":1860,"r":20.5,"d":1,"i":[137,124,52,60]},{"n":"Red tin mug","x":138,"y":1782,"r":21.0,"d":1,"i":[0,186,60,55]},{"n":"Emerald jungle leaf","x":750,"y":1888,"r":21.5,"d":2,"i":[191,124,48,60]},{"n":"Green expedition torch","x":964,"y":1870,"r":25.5,"d":0,"i":[186,243,60,27]}]},{"id":"egypt","name":"Ancient Egypt","w":1080,"h":1935,"items":[{"n":"Ancient papyrus map","x":1011,"y":170,"r":18.0,"d":2,"i":[434,186,60,43]},{"n":"Produce market basket","x":226,"y":371,"r":22.5,"d":0,"i":[371,124,60,56]},{"n":"Golden ankh","x":554,"y":382,"r":19.0,"d":1,"i":[0,0,35,60]},{"n":"Army water canteen","x":782,"y":194,"r":19.0,"d":1,"i":[37,0,46,60]},{"n":"Round desert canteen","x":890,"y":194,"r":19.5,"d":1,"i":[85,0,49,60]},{"n":"Royal acorn seal","x":1000,"y":296,"r":17.5,"d":2,"i":[136,0,60,60]},{"n":"Flag expedition bean","x":130,"y":416,"r":24.5,"d":0,"i":[247,124,60,58]},{"n":"Green torch","x":344,"y":488,"r":21.5,"d":1,"i":[248,243,60,27]},{"n":"Fig jam jar","x":500,"y":558,"r":20.5,"d":1,"i":[198,0,44,60]},{"n":"Silver oil lantern","x":704,"y":538,"r":19.5,"d":2,"i":[244,0,30,60]},{"n":"Desert headscarf bean","x":140,"y":688,"r":19.5,"d":2,"i":[276,0,45,60]},{"n":"Egyptian collar bear","x":235,"y":644,"r":24.0,"d":1,"i":[62,186,60,53]},{"n":"Sitting explorer bear","x":407,"y":604,"r":21.5,"d":0,"i":[323,0,44,60]},{"n":"Baked desert pie","x":472,"y":693,"r":18.5,"d":2,"i":[62,243,60,36]},{"n":"Rolled bazaar rug","x":904,"y":636,"r":18.5,"d":2,"i":[310,243,60,26]},{"n":"Basket of desert dates","x":84,"y":826,"r":22.5,"d":1,"i":[124,186,60,51]},{"n":"Royal honey pot","x":128,"y":922,"r":23.5,"d":1,"i":[369,0,47,60]},{"n":"Desert scout bean","x":300,"y":925,"r":21.0,"d":2,"i":[418,0,53,60]},{"n":"Golden crown pharaoh bean","x":438,"y":846,"r":24.0,"d":1,"i":[473,0,40,60]},{"n":"Obsidian fire torch","x":543,"y":780,"r":22.0,"d":1,"i":[515,0,21,60]},{"n":"Tan explorer pack","x":602,"y":954,"r":22.5,"d":1,"i":[0,62,53,60]},{"n":"Bazaar lute guitar","x":740,"y":947,"r":23.0,"d":1,"i":[309,124,60,58]},{"n":"Copper tea kettle","x":144,"y":1130,"r":20.0,"d":2,"i":[185,124,60,59]},{"n":"Blue bazaar cup","x":245,"y":1023,"r":16.0,"d":2,"i":[433,124,60,55]},{"n":"Spiced tea jar","x":338,"y":1090,"r":20.5,"d":2,"i":[55,62,37,60]},{"n":"Flaming temple torch","x":678,"y":1120,"r":19.5,"d":1,"i":[94,62,19,60]},{"n":"Pith helmet bean","x":907,"y":976,"r":22.5,"d":0,"i":[115,62,48,60]},{"n":"Golden honey jar","x":1014,"y":1087,"r":23.0,"d":0,"i":[165,62,50,60]},{"n":"Black field camera","x":484,"y":1271,"r":22.0,"d":1,"i":[372,186,60,45]},{"n":"Egyptian scarab beetle","x":543,"y":1166,"r":21.5,"d":1,"i":[217,62,40,60]},{"n":"Brown vintage camera","x":748,"y":1234,"r":21.5,"d":1,"i":[496,186,60,40]},{"n":"Golden star shield","x":850,"y":1208,"r":19.5,"d":2,"i":[259,62,52,60]},{"n":"Round pocket compass","x":958,"y":1234,"r":18.0,"d":2,"i":[313,62,48,60]},{"n":"Rolled desert mat","x":256,"y":1500,"r":23.5,"d":0,"i":[186,243,60,28]},{"n":"Golden sun medallion","x":380,"y":1398,"r":21.5,"d":1,"i":[363,62,60,60]},{"n":"Brass desert lantern","x":480,"y":1528,"r":24.0,"d":1,"i":[425,62,30,60]},{"n":"Nemes pharaoh bean","x":588,"y":1528,"r":27.5,"d":0,"i":[457,62,47,60]},{"n":"Desert binoculars","x":648,"y":1396,"r":21.5,"d":1,"i":[186,186,60,50]},{"n":"Ceramic blue teapot","x":742,"y":1450,"r":22.5,"d":1,"i":[495,124,60,55]},{"n":"Survey field camera","x":897,"y":1454,"r":22.0,"d":2,"i":[0,243,60,38]},{"n":"Safari archaeologist bean","x":105,"y":1637,"r":25.0,"d":0,"i":[506,62,48,60]},{"n":"Leather expedition trunk","x":294,"y":1609,"r":29.0,"d":0,"i":[310,186,60,47]},{"n":"Bean keychain relic","x":919,"y":1740,"r":23.5,"d":1,"i":[0,124,15,60]},{"n":"Golden oasis flower","x":967,"y":1582,"r":16.5,"d":2,"i":[17,124,35,60]},{"n":"Clay red mug","x":1030,"y":1731,"r":19.0,"d":2,"i":[0,186,60,55]},{"n":"Gold pocket compass","x":46,"y":1768,"r":19.0,"d":2,"i":[54,124,43,60]},{"n":"Explorer bear","x":136,"y":1827,"r":27.0,"d":0,"i":[99,124,34,60]},{"n":"Sleeping desert bear","x":230,"y":1750,"r":28.5,"d":0,"i":[124,243,60,34]},{"n":"Arabian camel","x":706,"y":1758,"r":26.5,"d":0,"i":[248,186,60,49]},{"n":"Apricot preserve jar","x":845,"y":1882,"r":21.5,"d":1,"i":[135,124,48,60]}]},{"id":"icelake","name":"Frozen lake","w":1080,"h":1935,"items":[{"n":"Tiny ice snowflake","x":975,"y":153,"r":15.0,"d":2,"i":[186,241,33,38]},{"n":"Striped winter scarf","x":112,"y":300,"r":21.0,"d":2,"i":[0,0,55,60]},{"n":"Black retro camera","x":259,"y":210,"r":20.0,"d":2,"i":[483,186,60,45]},{"n":"Blue snow shovel","x":284,"y":314,"r":19.5,"d":2,"i":[57,0,54,60]},{"n":"Frosted pine cone branch","x":508,"y":550,"r":20.5,"d":1,"i":[0,186,60,53]},{"n":"Alpine binoculars","x":558,"y":418,"r":17.5,"d":1,"i":[306,186,60,49]},{"n":"Right knit mitten","x":717,"y":482,"r":19.0,"d":0,"i":[113,0,42,60]},{"n":"Folded alpine map","x":863,"y":430,"r":23.0,"d":1,"i":[0,241,60,44]},{"n":"Gold pocket compass","x":969,"y":469,"r":15.0,"d":2,"i":[157,0,43,60]},{"n":"Winter holly berries","x":182,"y":712,"r":18.5,"d":2,"i":[202,0,54,60]},{"n":"Red winter backpack","x":210,"y":590,"r":19.0,"d":2,"i":[258,0,52,60]},{"n":"Frosted blueberries","x":298,"y":715,"r":17.0,"d":2,"i":[312,0,51,60]},{"n":"Green torch","x":348,"y":592,"r":19.5,"d":1,"i":[461,241,60,27]},{"n":"Snowball stack","x":531,"y":670,"r":20.0,"d":1,"i":[62,186,60,53]},{"n":"Large crystal snowflake","x":640,"y":674,"r":17.0,"d":2,"i":[430,186,51,47]},{"n":"Ice hockey bear","x":742,"y":682,"r":24.5,"d":0,"i":[365,0,46,60]},{"n":"Hot cocoa bear","x":865,"y":664,"r":24.5,"d":0,"i":[413,0,36,60]},{"n":"Acorn winter badge","x":68,"y":793,"r":15.0,"d":2,"i":[451,0,60,60]},{"n":"Bucket of caught fish","x":258,"y":913,"r":21.0,"d":1,"i":[0,62,50,60]},{"n":"Bundled winter bean","x":384,"y":884,"r":19.0,"d":2,"i":[52,62,44,60]},{"n":"Sledding bean","x":414,"y":778,"r":26.0,"d":0,"i":[124,186,60,52]},{"n":"Blue crystal snowflake","x":506,"y":874,"r":15.0,"d":2,"i":[248,186,56,51]},{"n":"Fish bait bucket","x":645,"y":804,"r":20.5,"d":1,"i":[98,62,53,60]},{"n":"Skewered marshmallow","x":784,"y":885,"r":18.0,"d":1,"i":[153,62,31,60]},{"n":"Steaming cocoa mug","x":842,"y":800,"r":20.5,"d":1,"i":[368,186,60,49]},{"n":"Black hockey puck","x":959,"y":811,"r":18.0,"d":2,"i":[221,241,52,34]},{"n":"Winter acorn","x":141,"y":1156,"r":16.5,"d":2,"i":[186,62,44,60]},{"n":"Frozen icicles","x":270,"y":1092,"r":21.5,"d":0,"i":[416,124,60,56]},{"n":"Snowball fort pile","x":380,"y":992,"r":22.0,"d":0,"i":[337,241,60,31]},{"n":"Red frost toadstool","x":649,"y":1076,"r":22.5,"d":0,"i":[232,62,49,60]},{"n":"Alpine pine cone","x":750,"y":1011,"r":16.0,"d":2,"i":[283,62,44,60]},{"n":"Spiced honey jar","x":926,"y":986,"r":20.0,"d":1,"i":[329,62,49,60]},{"n":"Bean flask","x":1010,"y":1108,"r":19.5,"d":1,"i":[380,62,31,60]},{"n":"Fluffy pink earmuffs","x":140,"y":1343,"r":21.5,"d":1,"i":[186,186,60,52]},{"n":"Red pom-pom scarf","x":68,"y":1432,"r":22.5,"d":1,"i":[413,62,57,60]},{"n":"Grey snow shovel","x":233,"y":1478,"r":27.0,"d":1,"i":[472,62,59,60]},{"n":"Snowy pine bough","x":326,"y":1531,"r":26.0,"d":1,"i":[62,241,60,41]},{"n":"Ice fishing rod","x":496,"y":1534,"r":29.0,"d":0,"i":[478,124,60,55]},{"n":"Ice skating scarf bear","x":537,"y":1430,"r":27.5,"d":0,"i":[0,124,46,60]},{"n":"Toasted marshmallow stick","x":606,"y":1530,"r":23.0,"d":1,"i":[48,124,44,60]},{"n":"Pair of ice skates","x":809,"y":1508,"r":21.0,"d":1,"i":[354,124,60,57]},{"n":"Brown vintage camera","x":827,"y":1378,"r":23.0,"d":1,"i":[124,241,60,40]},{"n":"Snow-topped bedroll","x":940,"y":1485,"r":23.0,"d":1,"i":[399,241,60,30]},{"n":"Orange cocoa kettle","x":154,"y":1596,"r":25.0,"d":0,"i":[292,124,60,59]},{"n":"Left knit mitten","x":603,"y":1635,"r":23.0,"d":1,"i":[94,124,42,60]},{"n":"Warm camp lantern","x":913,"y":1728,"r":24.0,"d":1,"i":[138,124,30,60]},{"n":"Wooden toboggan","x":268,"y":1762,"r":25.5,"d":0,"i":[275,241,60,34]},{"n":"Mini snowman","x":427,"y":1784,"r":23.5,"d":1,"i":[170,124,49,60]},{"n":"Bean keychain clip","x":740,"y":1880,"r":23.5,"d":0,"i":[221,124,15,60]},{"n":"Gold star shield badge","x":1018,"y":1754,"r":22.0,"d":2,"i":[238,124,52,60]}]},{"id":"space","name":"Space camp","w":1080,"h":1935,"items":[{"n":"Green zero-g mug","x":146,"y":122,"r":16.0,"d":2,"i":[402,124,60,54]},{"n":"Crescent moon","x":336,"y":175,"r":14.0,"d":2,"i":[522,186,32,35]},{"n":"Floating space drone","x":978,"y":90,"r":18.5,"d":1,"i":[248,186,60,41]},{"n":"Galaxy space helmet","x":544,"y":306,"r":19.5,"d":2,"i":[160,124,60,58]},{"n":"Small moon crater rock","x":711,"y":255,"r":18.0,"d":2,"i":[413,186,45,39]},{"n":"Hotdog space food tube","x":822,"y":235,"r":17.0,"d":2,"i":[0,0,27,60]},{"n":"Space flask","x":132,"y":393,"r":20.0,"d":1,"i":[29,0,31,60]},{"n":"Zero-g acoustic guitar","x":232,"y":538,"r":26.5,"d":0,"i":[222,124,60,58]},{"n":"Retro space rocket","x":234,"y":420,"r":21.5,"d":1,"i":[62,0,44,60]},{"n":"Mini floating asteroid","x":434,"y":434,"r":15.5,"d":2,"i":[0,239,32,31]},{"n":"Gold astro compass","x":594,"y":476,"r":15.5,"d":2,"i":[108,0,43,60]},{"n":"High-tech space pack","x":824,"y":491,"r":20.0,"d":1,"i":[153,0,58,60]},{"n":"Ringed Saturn planet","x":898,"y":416,"r":20.5,"d":1,"i":[460,186,60,36]},{"n":"Tiny cosmic heart","x":1018,"y":404,"r":15.5,"d":2,"i":[152,239,27,24]},{"n":"Standing astronaut bear","x":123,"y":766,"r":23.5,"d":0,"i":[213,0,44,60]},{"n":"Asteroid-riding bean","x":262,"y":687,"r":24.0,"d":0,"i":[259,0,43,60]},{"n":"Apple space food tube","x":358,"y":770,"r":21.5,"d":1,"i":[304,0,30,60]},{"n":"Stargazer binoculars","x":606,"y":730,"r":20.0,"d":1,"i":[62,186,60,49]},{"n":"Blue zero-g mug","x":684,"y":652,"r":14.5,"d":2,"i":[340,124,60,55]},{"n":"Green radar badge","x":264,"y":817,"r":17.0,"d":2,"i":[336,0,60,60]},{"n":"Black astro camera","x":367,"y":874,"r":20.0,"d":1,"i":[124,186,60,45]},{"n":"Space shield emblem","x":476,"y":860,"r":18.5,"d":2,"i":[398,0,51,60]},{"n":"Astronaut panda","x":641,"y":910,"r":23.0,"d":1,"i":[451,0,47,60]},{"n":"Green space torch","x":774,"y":858,"r":20.5,"d":1,"i":[34,239,60,27]},{"n":"Golden cosmic star","x":920,"y":932,"r":17.0,"d":2,"i":[96,239,26,27]},{"n":"Vintage space camera","x":1020,"y":865,"r":20.5,"d":1,"i":[351,186,60,40]},{"n":"Zero-g marshmallow stick","x":140,"y":1055,"r":19.0,"d":1,"i":[500,0,44,60]},{"n":"Star sector map","x":214,"y":1132,"r":21.5,"d":0,"i":[186,186,60,44]},{"n":"Tethered space bean","x":348,"y":987,"r":28.0,"d":0,"i":[0,62,36,60]},{"n":"Party hat space bean","x":790,"y":1032,"r":20.5,"d":2,"i":[38,62,32,60]},{"n":"Jetpack space bear","x":982,"y":1016,"r":26.0,"d":0,"i":[72,62,46,60]},{"n":"Bean space keychain","x":420,"y":1286,"r":22.5,"d":1,"i":[120,62,15,60]},{"n":"Large meteorite chunk","x":812,"y":1296,"r":24.0,"d":0,"i":[464,124,59,51]},{"n":"Cosmic honey jar","x":212,"y":1494,"r":24.5,"d":1,"i":[137,62,49,60]},{"n":"Blue nebula flower","x":351,"y":1476,"r":17.5,"d":1,"i":[310,186,39,41]},{"n":"Spotted crater shroom","x":464,"y":1516,"r":23.5,"d":1,"i":[188,62,49,60]},{"n":"Purple space leaf","x":532,"y":1424,"r":15.5,"d":1,"i":[239,62,41,60]},{"n":"Purple star blossom","x":600,"y":1518,"r":20.0,"d":2,"i":[284,124,54,58]},{"n":"Lunar Mars rover","x":858,"y":1388,"r":26.5,"d":0,"i":[0,186,60,51]},{"n":"Space blueberries","x":859,"y":1505,"r":20.0,"d":1,"i":[282,62,51,60]},{"n":"Orbital satellite","x":168,"y":1663,"r":26.0,"d":0,"i":[335,62,58,60]},{"n":"Tall purple alien leaf","x":294,"y":1610,"r":19.0,"d":1,"i":[395,62,32,60]},{"n":"Violet cosmic leaf","x":488,"y":1621,"r":19.0,"d":1,"i":[429,62,47,60]},{"n":"Orbital camp lantern","x":614,"y":1630,"r":22.5,"d":1,"i":[478,62,30,60]},{"n":"Alien fern leaf","x":746,"y":1685,"r":23.0,"d":1,"i":[510,62,40,60]},{"n":"Twinkling mini star","x":314,"y":1767,"r":17.0,"d":2,"i":[124,239,26,27]},{"n":"Saturn space flag","x":418,"y":1778,"r":25.0,"d":0,"i":[0,124,49,60]},{"n":"Purple planet flag","x":918,"y":1762,"r":24.5,"d":0,"i":[51,124,47,60]},{"n":"Glowing cosmic mushrooms","x":1028,"y":1746,"r":24.5,"d":0,"i":[100,124,58,60]}]},{"id":"winter","name":"Winter woodland","w":1080,"h":1935,"items":[{"n":"Winter red berries","x":400,"y":164,"r":14.5,"d":2,"i":[0,0,54,60]},{"n":"Fluffy pink earmuffs","x":816,"y":138,"r":18.5,"d":2,"i":[248,186,60,52]},{"n":"Tiny ice snowflake","x":199,"y":329,"r":16.0,"d":2,"i":[301,244,33,38]},{"n":"Snowy pine bough","x":674,"y":240,"r":16.0,"d":1,"i":[239,244,60,41]},{"n":"Tan hiking backpack","x":848,"y":279,"r":20.0,"d":1,"i":[56,0,54,60]},{"n":"Woodland acorn","x":58,"y":506,"r":14.5,"d":2,"i":[112,0,44,60]},{"n":"Blue crystal snowflake","x":216,"y":430,"r":17.0,"d":2,"i":[372,186,56,51]},{"n":"Pair of ice skates","x":319,"y":496,"r":21.0,"d":1,"i":[440,124,60,57]},{"n":"Roasted marshmallow","x":524,"y":396,"r":24.5,"d":1,"i":[158,0,44,60]},{"n":"Red winter backpack","x":638,"y":418,"r":18.0,"d":2,"i":[204,0,52,60]},{"n":"Polka-dot sleeping bag","x":771,"y":395,"r":24.0,"d":1,"i":[177,244,60,42]},{"n":"Yellow torch","x":833,"y":476,"r":19.5,"d":1,"i":[258,0,25,60]},{"n":"Acorn scout badge","x":944,"y":420,"r":16.5,"d":2,"i":[285,0,60,60]},{"n":"Frosted pine cone branch","x":259,"y":612,"r":21.0,"d":1,"i":[124,186,60,53]},{"n":"Frozen icicles","x":503,"y":620,"r":21.0,"d":1,"i":[0,186,60,56]},{"n":"Snow-topped bedroll","x":94,"y":918,"r":21.0,"d":2,"i":[0,293,60,30]},{"n":"Blue camp teapot","x":210,"y":910,"r":22.5,"d":1,"i":[62,186,60,55]},{"n":"Large crystal snowflake","x":416,"y":944,"r":17.0,"d":2,"i":[0,244,51,47]},{"n":"Party hat bean","x":524,"y":895,"r":21.0,"d":2,"i":[347,0,32,60]},{"n":"Bundled winter bean","x":584,"y":810,"r":19.0,"d":2,"i":[381,0,44,60]},{"n":"Spotted red toadstool","x":656,"y":913,"r":22.0,"d":1,"i":[427,0,49,60]},{"n":"Explorer cap bean","x":836,"y":888,"r":22.0,"d":1,"i":[478,0,45,60]},{"n":"Black retro camera","x":950,"y":906,"r":22.5,"d":1,"i":[53,244,60,45]},{"n":"Fireside guitar","x":56,"y":1098,"r":27.0,"d":0,"i":[316,124,60,58]},{"n":"Striped winter scarf","x":306,"y":1044,"r":19.5,"d":2,"i":[0,62,55,60]},{"n":"Silver oil lantern","x":522,"y":1028,"r":22.5,"d":0,"i":[57,62,30,60]},{"n":"Snowball stack","x":700,"y":1052,"r":22.5,"d":1,"i":[186,186,60,53]},{"n":"Warm berry pie","x":728,"y":1158,"r":22.0,"d":1,"i":[336,244,60,36]},{"n":"Round pocket compass","x":808,"y":1048,"r":16.0,"d":2,"i":[89,62,48,60]},{"n":"Grey snow shovel","x":918,"y":1022,"r":23.0,"d":2,"i":[139,62,59,60]},{"n":"Wooden toboggan","x":1033,"y":1000,"r":23.0,"d":0,"i":[398,244,60,34]},{"n":"Right knit mitten","x":136,"y":1185,"r":21.0,"d":0,"i":[200,62,42,60]},{"n":"Ice skating scarf bear","x":298,"y":1290,"r":27.0,"d":0,"i":[244,62,46,60]},{"n":"Striped green bean","x":96,"y":1440,"r":25.0,"d":0,"i":[292,62,50,60]},{"n":"Hiker bean with pack","x":204,"y":1476,"r":24.5,"d":1,"i":[378,124,60,58]},{"n":"Red jam jar","x":308,"y":1472,"r":25.5,"d":1,"i":[344,62,54,60]},{"n":"Red pom-pom scarf","x":502,"y":1544,"r":23.5,"d":0,"i":[400,62,57,60]},{"n":"Snow trail map","x":596,"y":1498,"r":24.5,"d":1,"i":[115,244,60,44]},{"n":"Winter binoculars","x":760,"y":1480,"r":23.5,"d":1,"i":[430,186,60,49]},{"n":"Bee honey jar","x":846,"y":1381,"r":22.0,"d":1,"i":[459,62,50,60]},{"n":"Steaming cocoa mug","x":860,"y":1536,"r":21.5,"d":1,"i":[492,186,60,49]},{"n":"Orange camp kettle","x":66,"y":1556,"r":23.5,"d":0,"i":[254,124,60,59]},{"n":"Mini snowman","x":160,"y":1596,"r":21.5,"d":2,"i":[0,124,49,60]},{"n":"Left knit mitten","x":600,"y":1640,"r":24.5,"d":1,"i":[51,124,42,60]},{"n":"Warm camp lantern","x":737,"y":1682,"r":21.0,"d":2,"i":[95,124,30,60]},{"n":"Hot cocoa bear","x":936,"y":1732,"r":28.5,"d":0,"i":[127,124,36,60]},{"n":"Blue snow shovel","x":298,"y":1754,"r":23.5,"d":1,"i":[165,124,54,60]},{"n":"Sledding bean","x":412,"y":1755,"r":26.5,"d":0,"i":[310,186,60,52]},{"n":"Hibernating bear cub","x":462,"y":1862,"r":29.0,"d":0,"i":[460,244,60,34]},{"n":"Bean flask","x":726,"y":1886,"r":26.0,"d":0,"i":[221,124,31,60]}]}];
 const $ = id => document.getElementById(id);
 
-let S = { round: 1, scene: 0, found: [], misses: 0, hints: 0, seed: 0, muted: false, seenHelp: false, golds: 0 };
-try { const s = JSON.parse(localStorage.getItem('hideseek') || 'null'); if (s) S = Object.assign(S, s); } catch (e) {}
+let S = { v: 2, round: 1, scene: 0, found: [], misses: 0, hints: 0, seed: 0, muted: false, seenHelp: false, golds: 0 };
+try { const s = JSON.parse(localStorage.getItem('hideseek') || 'null'); if (s && s.v === 2) S = Object.assign(S, s); else if (s) { S.seenHelp = !!s.seenHelp; S.golds = s.golds || 0; } } catch (e) {}
+if (S.scene >= SCENES.length) S.scene = 0;
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;
 const save = () => { try { localStorage.setItem('hideseek', JSON.stringify(S)); } catch (e) {} };
 function fitApp() { const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight) || innerHeight; document.documentElement.style.setProperty('--app-h', h + 'px'); }
+const SC = () => SCENES[S.scene];
 
 /* ---------- theme and sound, shared by every game ---------- */
 const sysDark = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
@@ -253,149 +266,87 @@ const sHint = () => [0, 7, 12].forEach((s, i) => tone(660 * Math.pow(2, s / 12),
 const sWin = () => [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => tone(523 * Math.pow(2, s / 12), .28, 'triangle', .055, i * .08));
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
-/* ---------- a round: which things hide where (the same for everyone on a given round) ---------- */
+/* ---------- a round: a handful of the scene's things, easy ones first, harder ones as rounds go on ---------- */
 function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const plan = r => ({ count: Math.min(14, 7 + r), decoys: Math.min(14, 2 + Math.round(r * 1.5)), size: Math.max(22, 46 - r * 2.6) });
-let items = [], roundDone = false;   // { k (kind index), v (sprite), x, y, s (longest side), rot, target, found }
+const plan = r => ({ count: Math.min(14, 7 + r), weights: [Math.max(.3, 3 - r * .4), 2, Math.min(3.4, .25 + r * .45)] });
+let items = [], roundDone = false;   // { idx, n, x, y, r, d, i, found, el }
 function makeRound() {
-  const r = rng(S.round * 9973 + S.seed * 31 + S.scene * 7919 + 7), p = plan(S.round);
-  // themed things only hide in their own places (and never where the scene already has one)
-  const order = KINDS.map((_, i) => i).filter(i => !KINDS[i].sc || KINDS[i].sc.includes(S.scene)); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-  const pick = order.slice(0, p.count + p.decoys);
-  items = [];
-  pick.forEach((k, n) => {
-    const vs = KINDS[k].v, v = vs[Math.floor(r() * vs.length)], s = p.size * (.85 + r() * .3) * (n < p.count ? 1 : 1.05);
-    // try lots of spots and keep the sneakiest: plenty of detail around it, and colours like the thing itself
-    const col = spriteColour(v); let best = null;
-    for (let tries = 0; tries < 70; tries++) {
-      const x = 24 + r() * (SW - 48), y = 40 + r() * (SH - 80);
-      const gap = Math.min(...items.map(o => Math.hypot(o.x - x, o.y - y) - (o.s + s) * .55), 999);
-      const a = areaStats(x, y, s * .6), sim = 1 - Math.min(1, Math.hypot(col[0] - a.c[0], col[1] - a.c[1], col[2] - a.c[2]) / 170);
-      const score = a.detail * .6 + sim * .45 + r() * .18 - (gap < 4 ? 2 : 0);
-      if (!best || score > best.score) best = { x, y, score, tint: a.c };
-    }
-    const it = { k, v, x: best.x, y: best.y, s, rot: (r() - .5) * .7, target: n < p.count, found: false };
-    it.cv = blendSprite(v, s, best.tint, Math.min(.42, .18 + S.round * .03)); items.push(it);   // blends in more each round
-  });
-  items.forEach(it => { if (it.target && S.found.includes(KINDS[it.k].n)) it.found = true; });
+  const r = rng(S.round * 9973 + S.seed * 31 + S.scene * 7919 + 7), p = plan(S.round), pool = SC().items.map((it, idx) => idx), pick = [];
+  while (pick.length < p.count && pool.length) {
+    const tot = pool.reduce((a, k) => a + p.weights[SC().items[k].d], 0); let u = r() * tot, j = 0;
+    for (; j < pool.length - 1; j++) { u -= p.weights[SC().items[pool[j]].d]; if (u <= 0) break; }
+    pick.push(pool.splice(j, 1)[0]);
+  }
+  items = pick.map(idx => Object.assign({ idx, found: S.found.includes(idx) }, SC().items[idx]));
 }
-const targets = () => items.filter(i => i.target);
 
-/* ---------- view: pinch, drag and zoom over the camp ---------- */
+/* ---------- view: pinch, drag and zoom over the scene ---------- */
 const stage = $('stage'), cv = $('cv'), g = cv.getContext('2d'), fx = $('fx'), fg = fx.getContext('2d');
 let dpr = 1, VW = 300, VH = 400, view = { s: 1, x: 0, y: 0 }, minS = 1, dirty = true;
-const IMG = { sprites: new Image(), scenes: {} };
-const sceneImg = () => { const id = SCENES[S.scene].id; if (!IMG.scenes[id]) { const im = new Image(); im.onload = () => { dirty = true; }; im.src = id + '.webp'; IMG.scenes[id] = im; } return IMG.scenes[id]; };
-const ready = () => IMG.sprites.complete && IMG.sprites.naturalWidth && sceneImg().complete && sceneImg().naturalWidth;
-IMG.sprites.src = 'sprites.webp';
-const loadedImg = im => im.complete && im.naturalWidth ? Promise.resolve() : new Promise(res => { im.addEventListener('load', res, { once: true }); im.addEventListener('error', res, { once: true }); });
-const whenReady = () => Promise.all([loadedImg(IMG.sprites), loadedImg(sceneImg())]).then(() => { analyse(); });
-
-/* ---------- blending in: what each part of the scene looks like, and what colour each thing is ---------- */
-const CELL = 12, stats = {}; let spritePx = null;
-function analyse() {
-  const id = SCENES[S.scene].id; if (stats[id]) return;
-  const c = document.createElement('canvas'); c.width = SW; c.height = SH; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(sceneImg(), 0, 0, SW, SH);
-  const d = x.getImageData(0, 0, SW, SH).data, gw = Math.ceil(SW / CELL), gh = Math.ceil(SH / CELL), col = new Float32Array(gw * gh * 3), det = new Float32Array(gw * gh), cnt = new Float32Array(gw * gh);
-  const lum = i => d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11;
-  for (let y = 0; y < SH - 1; y += 2) for (let xx = 0; xx < SW - 1; xx += 2) {
-    const i = (y * SW + xx) * 4, k = Math.floor(y / CELL) * gw + Math.floor(xx / CELL);
-    col[k * 3] += d[i]; col[k * 3 + 1] += d[i + 1]; col[k * 3 + 2] += d[i + 2]; cnt[k]++;
-    det[k] += Math.abs(lum(i) - lum(i + 4)) + Math.abs(lum(i) - lum(i + SW * 4));
-  }
-  for (let k = 0; k < gw * gh; k++) { col[k * 3] /= cnt[k]; col[k * 3 + 1] /= cnt[k]; col[k * 3 + 2] /= cnt[k]; det[k] /= cnt[k]; }
-  const sorted = Array.from(det).sort((a, b) => a - b), top = sorted[Math.floor(sorted.length * .9)] || 1;
-  for (let k = 0; k < det.length; k++) det[k] = Math.min(1, det[k] / top);
-  stats[id] = { gw, gh, col, det };
-}
-function areaStats(x, y, r) {
-  const st = stats[SCENES[S.scene].id]; let c = [0, 0, 0], dd = 0, n = 0;
-  for (let gy = Math.max(0, Math.floor((y - r) / CELL)); gy <= Math.min(st.gh - 1, Math.floor((y + r) / CELL)); gy++)
-    for (let gx = Math.max(0, Math.floor((x - r) / CELL)); gx <= Math.min(st.gw - 1, Math.floor((x + r) / CELL)); gx++) {
-      const k = gy * st.gw + gx; c[0] += st.col[k * 3]; c[1] += st.col[k * 3 + 1]; c[2] += st.col[k * 3 + 2]; dd += st.det[k]; n++;
-    }
-  return { c: c.map(v => v / n), detail: dd / n };
-}
-const colCache = {};
-function spriteColour(v) {
-  const key = v.join(','); if (colCache[key]) return colCache[key];
-  if (!spritePx) { const c = document.createElement('canvas'); c.width = IMG.sprites.naturalWidth; c.height = IMG.sprites.naturalHeight; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(IMG.sprites, 0, 0); spritePx = x.getImageData(0, 0, c.width, c.height); }
-  const [sx, sy, w, h] = v, W2 = spritePx.width, d = spritePx.data; let r = 0, gg = 0, b = 0, n = 0;
-  for (let y = sy; y < sy + h; y += 2) for (let x = sx; x < sx + w; x += 2) { const i = (y * W2 + x) * 4, l = d[i] + d[i + 1] + d[i + 2]; if (d[i + 3] > 160 && l > 150) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; } }
-  return colCache[key] = n ? [r / n, gg / n, b / n] : [128, 128, 128];
-}
-// a copy of the sticker washed in the colours around its hiding place, so it sits in the scene's light
-function blendSprite(v, s, tint, amount = .24) {
-  const [sx, sy, w, h] = v, k = Math.min(2.2, (s * 2.2) / Math.max(w, h)), c = document.createElement('canvas');
-  c.width = Math.max(4, Math.round(w * k)); c.height = Math.max(4, Math.round(h * k)); const x = c.getContext('2d');
-  x.imageSmoothingQuality = 'high'; x.drawImage(IMG.sprites, sx, sy, w, h, 0, 0, c.width, c.height);
-  x.globalCompositeOperation = 'source-atop'; x.fillStyle = `rgba(${tint.map(Math.round).join(',')},${amount})`; x.fillRect(0, 0, c.width, c.height);
-  x.fillStyle = 'rgba(128,120,110,.06)'; x.fillRect(0, 0, c.width, c.height);
-  return c;
-}
+const imgs = {};
+function img(src) { if (!imgs[src]) { const im = new Image(); im.onload = () => { dirty = true; }; im.src = src; imgs[src] = im; } return imgs[src]; }
+const sceneImg = () => img(SC().id + '.webp'), iconImg = () => img(SC().id + '-icons.webp');
+const loaded = im => im.complete && im.naturalWidth ? Promise.resolve() : new Promise(res => { im.addEventListener('load', res, { once: true }); im.addEventListener('error', res, { once: true }); });
+const ready = () => sceneImg().complete && sceneImg().naturalWidth;
 function layout() {
   fitApp(); dpr = Math.min(3, devicePixelRatio || 1);
   const r = stage.getBoundingClientRect(); VW = r.width; VH = r.height;
   cv.width = Math.round(VW * dpr); cv.height = Math.round(VH * dpr);
   fx.width = Math.round(innerWidth * dpr); fx.height = Math.round(innerHeight * dpr);
-  const old = minS; minS = Math.min((VW - 8) / SW, (VH - 8) / SH);   // the whole camp fits on screen
-  if (!view.init) { view = { s: minS, x: (VW - SW * minS) / 2, y: (VH - SH * minS) / 2, init: true }; }
+  const old = minS; minS = Math.min((VW - 8) / SC().w, (VH - 8) / SC().h);   // the whole scene fits on screen
+  if (!view.init) { view = { s: minS, x: (VW - SC().w * minS) / 2, y: (VH - SC().h * minS) / 2, init: true }; }
   else { view.s = Math.max(minS, view.s * (minS / old)); }
   clampView(); dirty = true;
 }
 function clampView() {
-  view.s = Math.min(Math.max(view.s, minS), minS * 6);
-  const w = SW * view.s, h = SH * view.s;
+  view.s = Math.min(Math.max(view.s, minS), minS * 7);
+  const w = SC().w * view.s, h = SC().h * view.s;
   view.x = w <= VW ? (VW - w) / 2 : Math.min(0, Math.max(VW - w, view.x));
   view.y = h <= VH ? (VH - h) / 2 : Math.min(0, Math.max(VH - h, view.y));
 }
 function zoomAt(f, cx, cy) { const sx = (cx - view.x) / view.s, sy = (cy - view.y) / view.s; view.s *= f; clampView(); view.x = cx - sx * view.s; view.y = cy - sy * view.s; clampView(); dirty = true; }
-let glide = null;   // smooth moves for zoom buttons and hints
+let glide = null;
 function glideTo(s, sx, sy, ms = 450) {
-  const s2 = Math.min(Math.max(s, minS), minS * 6), to = { s: s2, x: VW / 2 - sx * s2, y: VH / 2 - sy * s2 };
-  const save = view; view = Object.assign({}, view, to); clampView(); const tgt = { s: view.s, x: view.x, y: view.y }; view = save;
-  glide = { from: { s: view.s, x: view.x, y: view.y }, to: tgt, t0: performance.now(), ms };
+  const s2 = Math.min(Math.max(s, minS), minS * 7), keep = view; view = Object.assign({}, view, { s: s2, x: VW / 2 - sx * s2, y: VH / 2 - sy * s2 }); clampView();
+  const tgt = { s: view.s, x: view.x, y: view.y }; view = keep; glide = { from: { s: view.s, x: view.x, y: view.y }, to: tgt, t0: performance.now(), ms };
 }
 
 /* ---------- drawing ---------- */
-function drawSprite(c, v, x, y, s, rot, alpha = 1) {
-  const [sx, sy, w, h] = v, k = s / Math.max(w, h);
-  c.save(); c.translate(x, y); c.rotate(rot); c.globalAlpha = alpha; c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(IMG.sprites, sx, sy, w, h, -w * k / 2, -h * k / 2, w * k, h * k); c.restore();
-}
 let hint = null, rings = [], flights = [], sparks = [];
+function drawIcon(c, it, x, y, s) { const [sx, sy, w, h] = it.i, k = s / Math.max(w, h); if (iconImg().naturalWidth) c.drawImage(iconImg(), sx, sy, w, h, x - w * k / 2, y - h * k / 2, w * k, h * k); }
 function draw(now) {
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, VW, VH);
-  if (!ready()) return;
-  const rad = 14 / view.s;
+  if (!ready()) { g.fillStyle = isDark() ? '#b39b78' : '#8e7f6c'; g.font = '700 15px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText('Unpacking the scene…', VW / 2, VH / 2); return; }
+  const W = SC().w, H = SC().h, rad = 14 / view.s;
   g.save(); g.translate(view.x, view.y); g.scale(view.s, view.s);
   g.save(); g.shadowColor = 'rgba(40,25,10,.3)'; g.shadowBlur = 14; g.shadowOffsetY = 4; g.fillStyle = '#2f4a2a';
-  g.beginPath(); g.roundRect ? g.roundRect(0, 0, SW, SH, rad) : g.rect(0, 0, SW, SH); g.fill(); g.restore();
-  g.beginPath(); g.roundRect ? g.roundRect(0, 0, SW, SH, rad) : g.rect(0, 0, SW, SH); g.clip();
-  g.drawImage(sceneImg(), 0, 0, SW, SH);
-  items.forEach(it => { if (it.found) return;
-    const w = it.wig ? Math.max(0, 1 - (now - it.wig) / 400) : 0;
-    const c = it.cv, k = it.s / Math.max(c.width, c.height); g.save(); g.translate(it.x, it.y); g.rotate(it.rot + Math.sin(now / 40) * .12 * w); g.drawImage(c, -c.width * k / 2, -c.height * k / 2, c.width * k, c.height * k); g.restore();
-  });
-  if (isDark()) { g.fillStyle = 'rgba(10,6,2,.16)'; g.fillRect(0, 0, SW, SH); }
+  g.beginPath(); g.roundRect ? g.roundRect(0, 0, W, H, rad) : g.rect(0, 0, W, H); g.fill(); g.restore();
+  g.beginPath(); g.roundRect ? g.roundRect(0, 0, W, H, rad) : g.rect(0, 0, W, H); g.clip();
+  g.drawImage(sceneImg(), 0, 0, W, H);
+  if (isDark()) { g.fillStyle = 'rgba(10,6,2,.16)'; g.fillRect(0, 0, W, H); }
+  // things already found keep a little green tick
+  items.forEach(it => { if (!it.found || it.flying) return; const rr = Math.max(it.r * 1.1, 10 / view.s);
+    g.lineWidth = 3 / view.s; g.strokeStyle = 'rgba(63,157,91,.95)'; g.fillStyle = 'rgba(63,157,91,.14)'; g.beginPath(); g.arc(it.x, it.y, rr, 0, 7); g.fill(); g.stroke();
+    const t = Math.max(7 / view.s, rr * .32); g.fillStyle = '#3f9d5b'; g.beginPath(); g.arc(it.x + rr * .72, it.y - rr * .72, t, 0, 7); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = t * .32; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(it.x + rr * .72 - t * .45, it.y - rr * .72); g.lineTo(it.x + rr * .72 - t * .1, it.y - rr * .72 + t * .38); g.lineTo(it.x + rr * .72 + t * .5, it.y - rr * .72 - t * .38); g.stroke(); });
   if (hint) {
     const k = Math.min(1, (now - hint.t0) / 400), life = 1 - Math.max(0, (now - hint.t0 - 3600) / 600);
     if (life <= 0) hint = null; else {
       const r = hint.r * (1 + Math.sin(now / 420) * .04);
-      g.save(); g.globalAlpha = k * life; g.lineWidth = 4 / view.s * 1.2; g.strokeStyle = '#fff4c2'; g.setLineDash([10 / view.s, 8 / view.s]);
+      g.save(); g.globalAlpha = k * life; g.lineWidth = 5 / view.s; g.strokeStyle = '#fff4c2'; g.setLineDash([12 / view.s, 9 / view.s]);
       g.beginPath(); g.arc(hint.x, hint.y, r, 0, 7); g.stroke(); g.fillStyle = 'rgba(255,240,180,.12)'; g.fill(); g.restore();
     }
   }
   rings = rings.filter(r => now - r.t0 < 500);
   rings.forEach(r => { const k = (now - r.t0) / 500; g.strokeStyle = r.ok ? `rgba(255,230,120,${1 - k})` : `rgba(255,255,255,${.8 * (1 - k)})`; g.lineWidth = 3 / view.s; g.beginPath(); g.arc(r.x, r.y, (r.ok ? 18 : 10) / view.s + k * 26 / view.s, 0, 7); g.stroke(); });
   g.restore();
-  // things flying down to the tray, drawn above everything
+  // a found thing's picture flies down to the list
   fg.setTransform(dpr, 0, 0, dpr, 0, 0); fg.clearRect(0, 0, innerWidth, innerHeight);
-  flights = flights.filter(f => now - f.t0 < f.ms);
+  flights = flights.filter(f => { if (now - f.t0 < f.ms) return true; f.it.flying = false; return false; });
   flights.forEach(f => {
-    const t = (now - f.t0) / f.ms, e = t < .35 ? 0 : (t - .35) / .65, q = e * e * (3 - 2 * e);
-    const pop = t < .35 ? 1 + Math.sin(t / .35 * Math.PI) * .45 : 1;
-    const x = f.x0 + (f.x1 - f.x0) * q, y = f.y0 + (f.y1 - f.y0) * q - Math.sin(q * Math.PI) * 60, s = (f.s0 + (f.s1 - f.s0) * q) * pop;
-    drawSprite(fg, f.v, x, y, s, f.rot * (1 - q));
+    const t = (now - f.t0) / f.ms, e = t < .3 ? 0 : (t - .3) / .7, q = e * e * (3 - 2 * e), pop = t < .3 ? 1 + Math.sin(t / .3 * Math.PI) * .45 : 1;
+    const x = f.x0 + (f.x1 - f.x0) * q, y = f.y0 + (f.y1 - f.y0) * q - Math.sin(q * Math.PI) * 60;
+    drawIcon(fg, f.it, x, y, (f.s0 + (f.s1 - f.s0) * q) * pop);
   });
   sparks = sparks.filter(p => p.life > 0);
   sparks.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .05; p.life -= .025; fg.globalAlpha = Math.max(0, p.life); fg.fillStyle = p.c; fg.beginPath(); fg.arc(p.x, p.y, p.r, 0, 7); fg.fill(); });
@@ -405,55 +356,56 @@ function frame(now) {
   requestAnimationFrame(frame);
   if (glide) { const t = Math.min(1, (now - glide.t0) / glide.ms), e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     ['s', 'x', 'y'].forEach(k => view[k] = glide.from[k] + (glide.to[k] - glide.from[k]) * e); if (t >= 1) glide = null; dirty = true; }
-  const busy = glide || hint || rings.length || flights.length || sparks.length || items.some(i => i.wig && now - i.wig < 400);
+  const busy = glide || hint || rings.length || flights.length || sparks.length;
   if (!busy && !dirty) return; dirty = false; draw(now);
 }
 
 /* ---------- the list of things to find ---------- */
 function buildTray() {
   const t = $('tray'); t.innerHTML = '';
-  targets().forEach(it => {
-    const d = document.createElement('div'); d.className = 'it' + (it.found ? ' got' : ''); d.dataset.k = it.k;
+  items.forEach(it => {
+    const d = document.createElement('div'); d.className = 'it' + (it.found ? ' got' : '');
     const c = document.createElement('canvas'); c.width = c.height = 76; d.appendChild(c);
-    const sp = document.createElement('span'); sp.textContent = KINDS[it.k].n; d.appendChild(sp); t.appendChild(d);
-    drawSprite(c.getContext('2d'), it.v, 38, 38, 66, 0);
-    it.el = d;
+    const sp = document.createElement('span'); sp.textContent = it.n; d.appendChild(sp); t.appendChild(d);
+    it.el = d; it.cv = c;
   });
-  renderInfo(); requestAnimationFrame(layout);
+  paintTray(); renderInfo(); requestAnimationFrame(layout);
 }
-function renderInfo() { const ts = targets(); $('rnd').textContent = S.round; $('scName').textContent = SCENES[S.scene].name; $('got').textContent = `${ts.filter(i => i.found).length}/${ts.length}`; $('got').setAttribute('aria-label', `${ts.filter(i => i.found).length} of ${ts.length} found`); }
+function paintTray() { items.forEach(it => { if (!it.cv) return; const x = it.cv.getContext('2d'); x.clearRect(0, 0, 76, 76); drawIcon(x, it, 38, 38, 68); }); }
+function renderInfo() { $('rnd').textContent = S.round; $('scName').textContent = SC().name; const n = items.filter(i => i.found).length; $('got').textContent = `${n}/${items.length}`; $('got').setAttribute('aria-label', `${n} of ${items.length} found`); }
 
 /* ---------- tapping ---------- */
 function tapAt(cx, cy) {
-  const sx = (cx - view.x) / view.s, sy = (cy - view.y) / view.s, now = performance.now();
-  const slack = 12 / view.s;   // a little forgiveness for fingers
+  if (!ready() || roundDone) return;
+  const sx = (cx - view.x) / view.s, sy = (cy - view.y) / view.s, now = performance.now(), slack = 14 / view.s;
   let best = null, bd = 1e9;
-  items.forEach(it => { if (it.found) return; const d = Math.hypot(it.x - sx, it.y - sy); if (d < it.s * .5 + slack && d < bd) { bd = d; best = it; } });
-  if (best && best.target) found(best, now);
-  else if (best) { best.wig = now; S.misses++; save(); sMiss(); buzz(20); note(`That ${KINDS[best.k].n} isn't on the list`); rings.push({ x: sx, y: sy, t0: now, ok: false }); }
-  else { S.misses++; save(); sMiss(); rings.push({ x: sx, y: sy, t0: now, ok: false }); }
+  items.forEach(it => { if (it.found) return; const d = Math.hypot(it.x - sx, it.y - sy); if (d < it.r + slack && d < bd) { bd = d; best = it; } });
+  if (best) { found(best, now); dirty = true; return; }
+  // not on the list? if it's another hidden thing, say what it is
+  let other = null; bd = 1e9;
+  SC().items.forEach((it, idx) => { if (items.some(o => o.idx === idx)) return; const d = Math.hypot(it.x - sx, it.y - sy); if (d < it.r + slack * .6 && d < bd) { bd = d; other = it; } });
+  S.misses++; save(); sMiss(); buzz(20); rings.push({ x: sx, y: sy, t0: now, ok: false });
+  if (other) note(`That ${other.n.toLowerCase()} isn't on the list`);
   dirty = true;
 }
 function found(it, now) {
-  it.found = true; S.found.push(KINDS[it.k].n); save();
-  const n = S.found.length - 1; sFound(n); buzz(12);
-  const r0 = stage.getBoundingClientRect(), x0 = r0.left + view.x + it.x * view.s, y0 = r0.top + view.y + it.y * view.s;
-  const tr = it.el.querySelector('canvas').getBoundingClientRect();
-  flights.push({ v: it.v, x0, y0, x1: tr.left + tr.width / 2, y1: tr.top + tr.height / 2, s0: it.s * view.s, s1: 34, rot: it.rot, t0: now, ms: 900 });
+  it.found = true; it.flying = true; S.found.push(it.idx); save();
+  sFound(S.found.length - 1); buzz(12);
+  const r0 = stage.getBoundingClientRect(), x0 = r0.left + view.x + it.x * view.s, y0 = r0.top + view.y + it.y * view.s, tr = it.cv.getBoundingClientRect();
+  flights.push({ it, x0, y0, x1: tr.left + tr.width / 2, y1: tr.top + tr.height / 2, s0: Math.max(30, it.r * 2.2 * view.s), s1: 32, t0: now, ms: 900 });
   for (let k = 0; k < 14; k++) sparks.push({ x: x0, y: y0, vx: (Math.random() - .5) * 4, vy: -1 - Math.random() * 2.5, r: 1.5 + Math.random() * 2, life: 1, c: ['#ffd34d', '#fff4c2', '#9cc63b'][k % 3] });
   rings.push({ x: it.x, y: it.y, t0: now, ok: true });
   if (hint && hint.it === it) hint = null;
-  const last = !roundDone && targets().every(i => i.found); if (last) roundDone = true;   // only the final find ends the round
+  const last = items.every(i => i.found); if (last) roundDone = true;
   setTimeout(() => { it.el.classList.add('got'); renderInfo(); if (last) setTimeout(win, 500); }, 850);
 }
 let noteT = 0;
-function note(t) { const n = $('note'); n.textContent = t; n.classList.add('show'); clearTimeout(noteT); noteT = setTimeout(() => n.classList.remove('show'), 1600); }
+function note(t) { const n = $('note'); n.textContent = t; n.classList.add('show'); clearTimeout(noteT); noteT = setTimeout(() => n.classList.remove('show'), 1800); }
 
-const ptrs = new Map(); let gest = null, lastTap = 0;
+const ptrs = new Map(); let gest = null;
 stage.addEventListener('pointerdown', e => {
   audio(); try { stage.setPointerCapture(e.pointerId); } catch (_) {}
-  const r = stage.getBoundingClientRect(); ptrs.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
-  glide = null;
+  const r = stage.getBoundingClientRect(); ptrs.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top }); glide = null;
   if (ptrs.size === 1) { const p = [...ptrs.values()][0]; gest = { kind: 'pan', x0: p.x, y0: p.y, vx: view.x, vy: view.y, moved: false, t0: performance.now() }; }
   else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; gest = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, s0: view.s, vx: view.x, vy: view.y }; }
 });
@@ -483,28 +435,28 @@ const centreScene = () => [(VW / 2 - view.x) / view.s, (VH / 2 - view.y) / view.
 $('bIn').onclick = () => { audio(); const [x, y] = centreScene(); glideTo(view.s * 1.6, x, y, 300); tone(700, .05, 'triangle', .025); };
 $('bOut').onclick = () => { audio(); const [x, y] = centreScene(); glideTo(view.s / 1.6, x, y, 300); tone(500, .05, 'triangle', .025); };
 $('bHint').onclick = () => {
-  audio(); const left = targets().filter(i => !i.found); if (!left.length) return;
-  const it = left[Math.floor(Math.random() * left.length)], a = Math.random() * 7, off = 26 + Math.random() * 14;
-  const hx = Math.min(SW - 40, Math.max(40, it.x + Math.cos(a) * off * .6)), hy = Math.min(SH - 40, Math.max(40, it.y + Math.sin(a) * off * .6));
-  hint = { x: hx, y: hy, r: 66, it, t0: performance.now() }; S.hints++; save(); sHint();
-  glideTo(Math.max(view.s, minS * 1.8), hx, hy, 500);
-  note(`Look around here for the ${KINDS[it.k].n}`);
+  audio(); const left = items.filter(i => !i.found); if (!left.length || !ready()) return;
+  const it = left[Math.floor(Math.random() * left.length)], a = Math.random() * 7, off = 40 + Math.random() * 30;
+  const W = SC().w, H = SC().h, hx = Math.min(W - 90, Math.max(90, it.x + Math.cos(a) * off)), hy = Math.min(H - 90, Math.max(90, it.y + Math.sin(a) * off));
+  hint = { x: hx, y: hy, r: 125, it, t0: performance.now() }; S.hints++; save(); sHint();
+  glideTo(Math.max(view.s, minS * 2.2), hx, hy, 500);
+  note(`Look around here for the ${it.n.toLowerCase()}`);
 };
-$('bNew').onclick = () => { audio(); if (targets().some(i => i.found) && !confirmNew) { confirmNew = true; note('Tap again to hide everything somewhere new'); setTimeout(() => confirmNew = false, 2000); return; } confirmNew = false; S.seed++; startRound(true); tone(440, .1, 'triangle', .04, 0, 220); };
 let confirmNew = false;
+$('bNew').onclick = () => { audio(); if (items.some(i => i.found) && !confirmNew) { confirmNew = true; note('Tap again for a new list'); setTimeout(() => confirmNew = false, 2000); return; } confirmNew = false; S.seed++; startRound(true); tone(440, .1, 'triangle', .04, 0, 220); };
 
 /* ---------- rounds ---------- */
+let roundToken = 0;
 function startRound(fresh) {
   if (fresh) { S.found = []; S.misses = 0; S.hints = 0; save(); }
-  const token = ++roundToken; items = []; $('tray').innerHTML = ''; view.init = false; layout();
-  whenReady().then(() => { if (token !== roundToken) return; roundDone = false; makeRound(); hint = null; flights = []; buildTray(); layout(); dirty = true; });
+  const token = ++roundToken; roundDone = false; hint = null; flights = []; makeRound(); buildTray(); view.init = false; layout();
+  Promise.all([loaded(sceneImg()), loaded(iconImg())]).then(() => { if (token !== roundToken) return; paintTray(); layout(); dirty = true; });
 }
-let roundToken = 0;
 function win() {
-  const ts = targets(), gold = S.misses <= 3 && !S.hints; if (gold) S.golds++;
+  const gold = S.misses <= 3 && !S.hints; if (gold) S.golds++;
   sWin(); buzz([20, 40, 60]);
-  $('winTitle').textContent = `Round ${S.round} cleared!`;
-  $('winStats').innerHTML = `<div><b>${ts.length}</b>found</div><div><b>${S.misses}</b>misses</div><div><b>${S.hints}</b>hints</div>`;
+  $('winTitle').textContent = `${SC().name} cleared!`;
+  $('winStats').innerHTML = `<div><b>${items.length}</b>found</div><div><b>${S.misses}</b>misses</div><div><b>${S.hints}</b>hints</div>`;
   $('winGold').innerHTML = gold ? '<span class="gold">🐾 Gold paw: sharp eyes!</span>' : '';
   S.round++; S.scene = (S.scene + 1) % SCENES.length; S.found = []; S.misses = 0; S.hints = 0; S.seed = 0; save();
   $('ovWin').classList.add('show');
@@ -512,7 +464,7 @@ function win() {
 $('bNext').onclick = () => { closeAll(); startRound(true); };
 $('bScene').onclick = () => {
   audio(); const box = $('scenes'); box.innerHTML = '';
-  SCENES.forEach((sc, i) => { const b = document.createElement('button'); b.className = i === S.scene ? 'on' : ''; b.innerHTML = `<img src="${sc.id}.webp" alt=""><span>${sc.name}</span>`;
+  SCENES.forEach((sc, i) => { const b = document.createElement('button'); b.className = i === S.scene ? 'on' : ''; b.innerHTML = `<img src="${sc.id}.webp" alt="" loading="lazy"><span>${sc.name}</span>`;
     b.onclick = () => { closeAll(); if (i !== S.scene) { S.scene = i; S.seed = 0; startRound(true); tone(660, .1, 'triangle', .04, 0, 220); } }; box.appendChild(b); });
   $('ovScene').classList.add('show');
 };
@@ -525,14 +477,20 @@ $('bTheme').onclick = () => { BB.theme = isDark() ? 'light' : 'dark'; applyTheme
 $('bSound').onclick = () => { S.muted = !S.muted; BB.muted = S.muted; save(); renderSound(); audio(); tone(660, .08, 'triangle'); };
 addEventListener('resize', layout); if (window.visualViewport) visualViewport.addEventListener('resize', layout);
 
-applyTheme(); renderSound(); startRound(false); layout();
+// once this game is open, quietly save every scene for offline play (the offline cache keeps what it fetches)
+const idle = window.requestIdleCallback || (f => setTimeout(f, 2500));
+idle(() => SCENES.forEach(sc => [sc.id + '.webp', sc.id + '-icons.webp'].forEach(u => fetch(u).catch(() => {}))));
+
+applyTheme(); renderSound(); startRound(false);
 if (!S.seenHelp) $('ovHelp').classList.add('show');
 requestAnimationFrame(frame);
 if (/[?&]debug\b/.test(location.search)) window.__hs = {
-  get items() { return items; }, get view() { return view; }, tapScene: (x, y) => { tapAt(view.x + x * view.s, view.y + y * view.s); }, startRound, get S() { return S; },
+  get items() { return items; }, get view() { return view; }, get S() { return S; }, SCENES, startRound,
+  tapScene: (x, y) => { tapAt(view.x + x * view.s, view.y + y * view.s); },
   screenOf: it => { const r = stage.getBoundingClientRect(); return [r.left + view.x + it.x * view.s, r.top + view.y + it.y * view.s]; },
 };
 })();
+
 </script>
 <script id="pub-kit-says">
 (() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };

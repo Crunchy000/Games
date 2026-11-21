@@ -13,7 +13,9 @@ files = ['./', './manifest.webmanifest'] + [f'./icons/{p.name}' for p in sorted(
 # pictures a game keeps next to its page (e.g. hide-and-seek/camp.webp) are saved for offline play too
 ASSET = ('.png', '.jpg', '.webp', '.svg')
 assets = [f'{g}/{p.name}' for g in games for p in sorted((root / g).iterdir()) if p.suffix in ASSET]
-files += [f'./{a}' for a in assets]
+# big pictures (over 60 KB) aren't downloaded up front for every visitor: the game that uses them saves them for
+# offline play when it's opened. They still count towards the version, so changes to them roll out.
+files += [f'./{a}' for a in assets if (root / a).stat().st_size <= 60 * 1024]
 h = hashlib.sha256()
 for f in ['index.html', 'manifest.webmanifest'] + [f'icons/{p.name}' for p in sorted(p for p in (root / 'icons').iterdir() if p.suffix in ('.png', '.jpg', '.webp', '.svg'))] + [f'{g}/index.html' for g in games] + assets:
     h.update((root / f).read_bytes())
