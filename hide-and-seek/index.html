@@ -50,6 +50,8 @@
   @media (max-width:340px) { #scName, .info .lbl2 { display:none; } }
   #stage { position:relative; flex:1 1 0; min-height:0; width:100%; overflow:hidden; touch-action:none; cursor:grab; }
   #stage canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #mini { position:absolute; left:10px; top:10px; z-index:2; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.35); border:2px solid #fffaf3; cursor:pointer; touch-action:none; }
+  #mini[hidden] { display:none; }
   .zoom { position:absolute; right:10px; bottom:10px; display:flex; flex-direction:column; gap:6px; z-index:2; }
   .zoom button { width:42px; height:42px; font-size:1.4rem; padding:0; justify-content:center; }
   /* they float over the picture, so they stay solid in light and dark */
@@ -184,6 +186,7 @@ window.BB = (() => {
   <div class="main">
   <div id="stage" aria-label="The scene. Pinch to zoom, drag to look around, tap to find things.">
     <canvas id="cv"></canvas>
+    <canvas id="mini" hidden aria-label="Map of the whole scene: tap to jump there"></canvas>
     <div class="note" id="note" role="status" aria-live="polite"></div>
     <div class="zoom"><button class="tool pk-chip" id="bIn" aria-label="Zoom in">＋</button><button class="tool pk-chip" id="bOut" aria-label="Zoom out">－</button></div>
   </div>
@@ -198,7 +201,7 @@ window.BB = (() => {
   <p>Bear, Bean and friends have left things all over the place!</p>
   <ul>
     <li>Find everything shown along the bottom.</li>
-    <li><b>Pinch</b> or use <b>＋</b> to zoom in, and <b>drag</b> to look around.</li>
+    <li><b>Pinch</b> or use <b>＋</b> to zoom in, and <b>drag</b> to look around. Once you're zoomed in, the little map in the corner shows where you are: tap it to jump.</li>
     <li><b>Tap</b> a thing when you spot it. Lots of other things are hiding too, but only the ones on the list count.</li>
     <li>Stuck? A <b>hint</b> shows you roughly where to look.</li>
   </ul>
@@ -352,12 +355,23 @@ function draw(now) {
   sparks.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .05; p.life -= .025; fg.globalAlpha = Math.max(0, p.life); fg.fillStyle = p.c; fg.beginPath(); fg.arc(p.x, p.y, p.r, 0, 7); fg.fill(); });
   fg.globalAlpha = 1;
 }
+const mini = $('mini'), mg = mini.getContext('2d');
+function drawMini() {
+  const zoomed = view.s > minS * 1.05 && ready(); mini.hidden = !zoomed; if (!zoomed) return;
+  const W = SC().w, H = SC().h, mw = 64, mh = Math.round(mw * H / W), d = Math.min(3, devicePixelRatio || 1);
+  if (mini.width !== mw * d) { mini.width = mw * d; mini.height = mh * d; mini.style.width = mw + 'px'; mini.style.height = mh + 'px'; }
+  mg.setTransform(d, 0, 0, d, 0, 0); mg.drawImage(sceneImg(), 0, 0, mw, mh);
+  const k = mw / W, x = -view.x / view.s * k, y = -view.y / view.s * k, w = VW / view.s * k, h = VH / view.s * k;
+  mg.fillStyle = 'rgba(20,12,4,.35)'; mg.fillRect(0, 0, mw, mh); mg.drawImage(sceneImg(), x / k, y / k, w / k, h / k, x, y, w, h);
+  mg.lineWidth = 2; mg.strokeStyle = '#fff'; mg.strokeRect(x, y, w, h);
+}
+mini.addEventListener('pointerdown', e => { e.stopPropagation(); audio(); const r = mini.getBoundingClientRect(), k = SC().w / r.width; glideTo(view.s, (e.clientX - r.left) * k, (e.clientY - r.top) * k, 350); });
 function frame(now) {
   requestAnimationFrame(frame);
   if (glide) { const t = Math.min(1, (now - glide.t0) / glide.ms), e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     ['s', 'x', 'y'].forEach(k => view[k] = glide.from[k] + (glide.to[k] - glide.from[k]) * e); if (t >= 1) glide = null; dirty = true; }
   const busy = glide || hint || rings.length || flights.length || sparks.length;
-  if (!busy && !dirty) return; dirty = false; draw(now);
+  if (!busy && !dirty) return; dirty = false; draw(now); drawMini();
 }
 
 /* ---------- the list of things to find ---------- */
@@ -436,10 +450,11 @@ $('bIn').onclick = () => { audio(); const [x, y] = centreScene(); glideTo(view.s
 $('bOut').onclick = () => { audio(); const [x, y] = centreScene(); glideTo(view.s / 1.6, x, y, 300); tone(500, .05, 'triangle', .025); };
 $('bHint').onclick = () => {
   audio(); const left = items.filter(i => !i.found); if (!left.length || !ready()) return;
-  const it = left[Math.floor(Math.random() * left.length)], a = Math.random() * 7, off = 40 + Math.random() * 30;
-  const W = SC().w, H = SC().h, hx = Math.min(W - 90, Math.max(90, it.x + Math.cos(a) * off)), hy = Math.min(H - 90, Math.max(90, it.y + Math.sin(a) * off));
-  hint = { x: hx, y: hy, r: 125, it, t0: performance.now() }; S.hints++; save(); sHint();
-  glideTo(Math.max(view.s, minS * 2.2), hx, hy, 500);
+  // a snug circle with the thing well inside it (a little off-centre, so you still have to look), and zoom in so it's easy to see
+  const it = left[Math.floor(Math.random() * left.length)], a = Math.random() * 7, off = it.r * .5;
+  const hx = it.x + Math.cos(a) * off, hy = it.y + Math.sin(a) * off, rad = Math.max(it.r * 2.6, 58);
+  hint = { x: hx, y: hy, r: rad, it, t0: performance.now() }; S.hints++; save(); sHint();
+  glideTo(Math.max(view.s, 1.1), hx, hy, 500);
   note(`Look around here for the ${it.n.toLowerCase()}`);
 };
 let confirmNew = false;
