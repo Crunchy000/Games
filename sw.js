@@ -3,7 +3,7 @@
    - fetch: pages come fresh from the network when online (so updates show straight away), falling back to the
      saved copy if the network is slow or offline; icons and other files answer from the saved copy and refresh quietly
    - activate: delete the copies saved by older versions */
-const VERSION = 'games-267f59f135ea';
+const VERSION = 'games-24c39d80e79a';
 const FILES = [
   './',
   './manifest.webmanifest',
@@ -76,7 +76,8 @@ self.addEventListener('fetch', event => {
     if (saved && req.mode === 'navigate') {
       // give the network a few seconds to bring the newest page; otherwise use the saved one
       const quick = await Promise.race([fresh, new Promise(r => setTimeout(() => r(null), 3000))]);
-      if (quick && quick.ok) return quick;
+      // a fresh page, or a redirect (the site moved): let the browser follow it rather than keep the old copy
+      if (quick && (quick.ok || quick.type === 'opaqueredirect' || quick.redirected)) return quick;
       event.waitUntil(fresh); return saved;
     }
     if (saved) { event.waitUntil(fresh); return saved; }

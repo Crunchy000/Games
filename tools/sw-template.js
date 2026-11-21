@@ -43,7 +43,8 @@ self.addEventListener('fetch', event => {
     if (saved && req.mode === 'navigate') {
       // give the network a few seconds to bring the newest page; otherwise use the saved one
       const quick = await Promise.race([fresh, new Promise(r => setTimeout(() => r(null), 3000))]);
-      if (quick && quick.ok) return quick;
+      // a fresh page, or a redirect (the site moved): let the browser follow it rather than keep the old copy
+      if (quick && (quick.ok || quick.type === 'opaqueredirect' || quick.redirected)) return quick;
       event.waitUntil(fresh); return saved;
     }
     if (saved) { event.waitUntil(fresh); return saved; }

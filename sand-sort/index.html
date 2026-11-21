@@ -10,7 +10,19 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
-<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
+<script>if ('serviceWorker' in navigator) {
+  // keep installed copies current: check for a new version whenever the app comes back to the front,
+  // and switch to it straight away if it lands just after opening, otherwise after the app has been away a while
+  const had = !!navigator.serviceWorker.controller, t0 = Date.now(); let swap = false, away = 0;
+  addEventListener('load', () => navigator.serviceWorker.register('../sw.js').then(reg => {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { away = Date.now(); return; }
+      if (swap && Date.now() - away > 30000) { location.reload(); return; }
+      reg.update().catch(() => {});
+    });
+  }).catch(() => {}));
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
+}</script>
 <title>Sand Sort</title>
 <meta name="description" content="Pour coloured sand between glass test tubes until every tube holds a single colour. Calm, endless levels, with mystery sand to uncover. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://www.bearandbean.uk/sand-sort/">
