@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#8fd3f4">
 <link rel="manifest" href="../manifest.webmanifest">
-<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" href="../icons/favicon-32.png?v=aada1fbe" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png?v=0ef76193">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
@@ -282,7 +282,7 @@ function drawBee() {
   ctx.save(); ctx.translate(2, -9); ctx.rotate(-.2 - flapA); ctx.beginPath(); ctx.ellipse(0, -7, 6.5, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
   ctx.restore();
 }
-const PKIMG = [new Image(), new Image()]; PKIMG[0].src = '../icons/bear.png'; PKIMG[1].src = '../icons/bean.png';
+const PKIMG = [new Image(), new Image()]; PKIMG[0].src = '../icons/bear.png?v=406624f3'; PKIMG[1].src = '../icons/bean.png?v=2ef68eca';
 function homeIcon(cx, cy) { PK.homeSign(ctx, cx - 19, cy - 19); }   // the wooden sign home; tapping it goes back to the arcade
 function txt(t, x, y, size, fill, stroke = '#3a2a1c', align = 'center') {
   ctx.font = `900 ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';

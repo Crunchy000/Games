@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#ffb3d1">
 <link rel="manifest" href="../manifest.webmanifest">
-<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" href="../icons/favicon-32.png?v=aada1fbe" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png?v=0ef76193">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
@@ -149,7 +149,7 @@ window.BB = (() => {
   <canvas id="c"></canvas>
 
   <div class="ov" id="ovMenu"><div class="panel pk-card">
-    <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
+    <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
     <h1>Gummy<br>Pop</h1>
     <p class="sub">Swap gummies, line up three or more, make specials!</p>
     <div class="levels" id="levels"></div>
@@ -197,7 +197,7 @@ window.BB = (() => {
     <div class="stars" id="endStars"><span>★</span><span>★</span><span>★</span></div>
     <p id="endScore" style="font-size:1.3rem;font-weight:900;margin:2px 0"></p>
     <p class="sub" id="endText"></p>
-    <div class="pk-says" data-lines='["Sticky fingers! Lovely work.", "Mmm, gummies. Another level?", "That's the spirit! Keep popping.", "Sweet as honey, that!"]'><img src="../icons/bear.png" alt=""><div><b>Bear says</b><span>Sticky fingers! Lovely work.</span></div></div>
+    <div class="pk-says" data-lines='["Sticky fingers! Lovely work.", "Mmm, gummies. Another level?", "That's the spirit! Keep popping.", "Sweet as honey, that!"]'><img src="../icons/bear.png?v=406624f3" alt=""><div><b>Bear says</b><span>Sticky fingers! Lovely work.</span></div></div>
     <div class="row" id="endBtns"></div>
   </div></div>
 </div>
@@ -220,7 +220,7 @@ let save = { unlocked: 1, stars: {}, muted: false, boost: { hammer: 3, swap: 3 }
 try { const s = JSON.parse(localStorage.getItem('gummypop')); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
 if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
 if (!save.boost) save.boost = { hammer: 3, swap: 3 };
-const IMG = { bear: new Image() }; IMG.bear.src = '../icons/bear.png';
+const IMG = { bear: new Image() }; IMG.bear.src = '../icons/bear.png?v=406624f3';
 const persist = () => { try { localStorage.setItem('gummypop', JSON.stringify(save)); } catch (e) {} };
 
 function resize() {
@@ -1057,7 +1057,7 @@ function show(id) { ovs.forEach(o => $(o).classList.toggle('show', o === id)); }
 function goalHTML(cfg) {
   if (cfg.kind === 'score') return `<div class="goal"><span style="font-size:2rem">⭐</span>${cfg.target.toLocaleString('en-GB')}</div>`;
   if (cfg.kind === 'collect') return cfg.collect.map(([t, k]) => `<div class="goal"><img src="${icons[t]}" alt="${NAMES[t]}">${k}</div>`).join('');
-  if (cfg.kind === 'honey') return `<div class="goal"><img src="../icons/bear.png" alt="Bear" style="border-radius:50%">Bear</div><div class="goal"><img src="${goalIcons.honey}" alt="honey pots">${cfg.honey}</div>`;
+  if (cfg.kind === 'honey') return `<div class="goal"><img src="../icons/bear.png?v=406624f3" alt="Bear" style="border-radius:50%">Bear</div><div class="goal"><img src="${goalIcons.honey}" alt="honey pots">${cfg.honey}</div>`;
   if (cfg.kind === 'ice' || cfg.kind === 'choc') { let n = 0; cfg.blocks.forEach(r => r.forEach(b => { if (b && b.k === cfg.kind) n++; })); return `<div class="goal"><img src="${goalIcons[cfg.kind]}" alt="${cfg.kind === 'ice' ? 'sugar cubes' : 'chocolate'}">${n}</div>`; }
   let n = 0; cfg.frost.forEach(r => r.forEach(v => n += v)); return `<div class="goal"><img src="${getFrostIcon()}" alt="frost">${n}</div>`;
 }

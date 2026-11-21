@@ -58,6 +58,8 @@ How it works: `sw.js` (the service worker) saves the home page, every game and t
 
 **After adding or changing a game**, run `python3 tools/update-sw.py`. It rebuilds `sw.js` with the full list of games and a new version stamp, so installed copies download the update in one go. Edit `tools/sw-template.js` rather than `sw.js` itself.
 
+It also **stamps every picture's address** with a fingerprint of its contents (`icons/bear.png?v=406624f3`), so a changed picture always gets a new address and can never be served stale by the phone, the offline copy or Cloudflare. Pages that build picture addresses in code add `<script id="asset-versions"></script>` and use `window.AV` (see Hide & Seek). Pages always load fresh when online; stamped files are kept in their own long-lived store. The home page footer shows the version a phone is running, with **Check for updates** and **Reset offline copy** (clears the saved copy, keeps scores and settings).
+
 ## Hosting on GitHub Pages
 
 Settings → Pages → Build and deployment → Source: **Deploy from a branch**, Branch: **main**, folder **/ (root)**.

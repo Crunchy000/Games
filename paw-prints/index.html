@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#f1e7d8">
 <link rel="manifest" href="../manifest.webmanifest">
-<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" href="../icons/favicon-32.png?v=aada1fbe" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png?v=0ef76193">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
@@ -234,7 +234,7 @@ window.BB = (() => {
 </section>
 
 <div class="ov" id="ovHelp"><div class="card pk-card">
-  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
+  <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>How to play</h2>
   <svg class="ex" width="170" height="110" viewBox="0 0 170 110" aria-hidden="true">
@@ -254,19 +254,19 @@ window.BB = (() => {
 </div></div>
 
 <div class="ov" id="ovWin"><div class="card pk-card">
-  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean<img src="../icons/bean.png" alt=""></div>
+  <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <canvas id="winArt" width="200" height="200"></canvas>
   <h2 id="winName">It's an acorn!</h2>
   <p id="winSub" style="margin-top:0;color:var(--muted)"></p>
-  <div class="pk-says" data-lines='["Ooh, I would hang that on the wall!", "Pixel perfect, that is.", "Square by square, lovely work.", "I had a feeling it was that!", "Another one for the album!"]'><img src="../icons/bean.png" alt=""><div><b>Bean says</b><span>Ooh, I would hang that on the wall!</span></div></div>
+  <div class="pk-says" data-lines='["Ooh, I would hang that on the wall!", "Pixel perfect, that is.", "Square by square, lovely work.", "I had a feeling it was that!", "Another one for the album!"]'><img src="../icons/bean.png?v=2ef68eca" alt=""><div><b>Bean says</b><span>Ooh, I would hang that on the wall!</span></div></div>
   <div class="row2"><button class="btn pk-btn" id="bNext">Next puzzle</button><button class="btn pk-btn pk-alt" id="bWinMap">Map</button></div>
 </div></div>
 
 <div class="ov" id="ovDone"><div class="card pk-card">
-  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean<img src="../icons/bean.png" alt=""></div>
+  <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <h2>Every picture found!</h2>
   <p>You've finished the whole map. Replay any puzzle from the map to chase a gold paw on each one.</p>
-  <div class="pk-says" data-lines='["What an album! Fancy a cuppa?", "The whole map! Bean, put the kettle on."]'><img src="../icons/bear.png" alt=""><div><b>Bear says</b><span>What an album! Fancy a cuppa?</span></div></div>
+  <div class="pk-says" data-lines='["What an album! Fancy a cuppa?", "The whole map! Bean, put the kettle on."]'><img src="../icons/bear.png?v=406624f3" alt=""><div><b>Bear says</b><span>What an album! Fancy a cuppa?</span></div></div>
   <div class="row2"><button class="btn pk-btn" data-close>Lovely</button></div>
 </div></div>
 
@@ -384,7 +384,7 @@ function buildMap() {
       if (unlocked(i)) el.onclick = () => { audio(); openPuzzle(i); };
       mapIn.appendChild(el);
       if (i === fo || (fo >= PUZ.length && i === PUZ.length - 1)) {
-        const t = document.createElement('img'); t.className = 'token'; t.src = '../icons/bear.png'; t.alt = '';
+        const t = document.createElement('img'); t.className = 'token'; t.src = '../icons/bear.png?v=406624f3'; t.alt = '';
         t.style.left = (x + (x > cx ? -58 : 58)) + 'px'; t.style.top = (y - 6) + 'px'; mapIn.appendChild(t);
       }
       y += 96;

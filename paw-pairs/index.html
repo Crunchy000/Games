@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#e6ebdc">
 <link rel="manifest" href="../manifest.webmanifest">
-<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" href="../icons/favicon-32.png?v=aada1fbe" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png?v=0ef76193">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
@@ -175,7 +175,7 @@ window.BB = (() => {
 </div>
 
 <div class="ov" id="ovHelp"><div class="card pk-card">
-  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
+  <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>How to play</h2>
   <svg class="ex" viewBox="0 0 220 100" aria-hidden="true">
@@ -203,11 +203,11 @@ window.BB = (() => {
 </div></div>
 
 <div class="ov" id="ovWin"><div class="card pk-card">
-  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean<img src="../icons/bean.png" alt=""></div>
+  <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <h2 id="winTitle">All cleared!</h2>
   <p class="big" id="winTime">0:00</p>
   <p id="winSub" style="margin-top:0">time</p>
-  <div class="pk-says" data-lines='["Paws-itively brilliant!", "Not a tile left. Tidy table, happy Bear!", "You have the memory of an elephant. A very cuddly one.", "Purr-fect pairing!", "That was the fur-st class matching.", "Bean is doing a little victory wiggle."]'><img src="../icons/bear.png" alt=""><div><b>Bear says</b><span>Paws-itively brilliant!</span></div></div>
+  <div class="pk-says" data-lines='["Paws-itively brilliant!", "Not a tile left. Tidy table, happy Bear!", "You have the memory of an elephant. A very cuddly one.", "Purr-fect pairing!", "That was the fur-st class matching.", "Bean is doing a little victory wiggle."]'><img src="../icons/bear.png?v=406624f3" alt=""><div><b>Bear says</b><span>Paws-itively brilliant!</span></div></div>
   <div class="row2"><button class="btn pk-btn" id="bNext">Next deal</button></div>
 </div></div>
 
@@ -215,7 +215,7 @@ window.BB = (() => {
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>No pairs left</h2>
   <p>None of the free tiles match. Shuffle what's left (it can always be cleared), or undo a few moves.</p>
-  <div class="pk-says" data-lines='["Even I get my paws in a tangle sometimes.", "Give them a good shuffle, I say!", "Hmm, no pairs. Time for a shuffle?"]'><img src="../icons/bean.png" alt=""><div><b>Bean says</b><span>Give them a good shuffle, I say!</span></div></div>
+  <div class="pk-says" data-lines='["Even I get my paws in a tangle sometimes.", "Give them a good shuffle, I say!", "Hmm, no pairs. Time for a shuffle?"]'><img src="../icons/bean.png?v=2ef68eca" alt=""><div><b>Bean says</b><span>Give them a good shuffle, I say!</span></div></div>
   <div class="row2"><button class="btn pk-btn" id="bStuckShuffle">⤨ Shuffle</button><button class="btn pk-btn pk-alt" id="bStuckUndo">↶ Undo</button></div>
 </div></div>
 
@@ -423,7 +423,7 @@ function tileAt(x, y) {
 }
 
 /* ---------- the faces: little drawings on each tile, painted once per size ---------- */
-const bearImg = new Image(), beanImg = new Image(); bearImg.src = '../icons/bear.png'; beanImg.src = '../icons/bean.png';
+const bearImg = new Image(), beanImg = new Image(); bearImg.src = '../icons/bear.png?v=406624f3'; beanImg.src = '../icons/bean.png?v=2ef68eca';
 bearImg.onload = beanImg.onload = () => { if (lay) { buildFaces(); dirty = true; } };
 function paw(x, col) { x.fillStyle = col; x.beginPath(); x.ellipse(0, .36, .42, .35, 0, 0, TAU); x.fill(); [[-.58, -.12, .17], [-.22, -.5, .19], [.22, -.5, .19], [.58, -.12, .17]].forEach(([a, b, r]) => { x.beginPath(); x.ellipse(a, b, r, r * 1.18, a * .5, 0, TAU); x.fill(); }); }
 function shine(x, cx, cy, rx, ry, a = .5) { x.fillStyle = `rgba(255,255,255,${a})`; x.beginPath(); x.ellipse(cx, cy, rx, ry, -.5, 0, TAU); x.fill(); }

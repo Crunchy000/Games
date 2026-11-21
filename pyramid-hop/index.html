@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="manifest" href="../manifest.webmanifest">
-<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" href="../icons/favicon-32.png?v=aada1fbe" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png?v=0ef76193">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
@@ -503,7 +503,7 @@ function drawToucan(x, y, s = 1, face = -1) {
 
 /* ---------- characters ---------- */
 function shadow(x, y, h, w = 10) { const k = clamp(1 - h / 40, .35, 1); ell(x, y + 1, w * k, w * .42 * k, `rgba(0,0,0,${.35 * k})`); }
-const IMG = { bear: new Image(), bean: new Image() }; IMG.bear.src = '../icons/bear.png'; IMG.bean.src = '../icons/bean.png';
+const IMG = { bear: new Image(), bean: new Image() }; IMG.bear.src = '../icons/bear.png?v=406624f3'; IMG.bean.src = '../icons/bean.png?v=2ef68eca';
 function beanShape(k) {
   ctx.beginPath(); ctx.moveTo(-6 * k, -15 * k);
   ctx.bezierCurveTo(6 * k, -19 * k, 15 * k, -9 * k, 12 * k, 3 * k); ctx.bezierCurveTo(10 * k, 12 * k, 2 * k, 17 * k, -6 * k, 15 * k);

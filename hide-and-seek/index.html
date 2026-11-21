@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#f1e7d8">
 <link rel="manifest" href="../manifest.webmanifest">
-<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" href="../icons/favicon-32.png?v=aada1fbe" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png?v=0ef76193">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
@@ -156,6 +156,7 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 .pk-home { background:color-mix(in srgb, currentColor 11%, transparent) !important; border:0 !important; border-radius:13px !important; box-shadow:none !important; }
 .pk-home:active { background:color-mix(in srgb, currentColor 20%, transparent) !important; }
 </style>
+<script id="asset-versions">window.AV = {"aztec-icons.webp":"d84f9034","aztec.webp":"d96ab3cb","beach-icons.webp":"b0a6a60f","beach.webp":"a96e05ad","egypt-icons.webp":"cd6f8c22","egypt.webp":"4d0513ea","icelake-icons.webp":"78dd4fee","icelake.webp":"fa0ea0f3","space-icons.webp":"93319a03","space.webp":"f7554c82","winter-icons.webp":"b7311c57","winter.webp":"16ef6419","woodland-icons.webp":"835dc044","woodland.webp":"b551695a"};</script>
 <script id="pub-kit-settings">
 window.BB = (() => {
   const KEY = 'bearbean-settings'; let s = {};
@@ -195,7 +196,7 @@ window.BB = (() => {
 </div>
 
 <div class="ov" id="ovHelp"><div class="card pk-card">
-  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png" alt=""></div>
+  <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>Hide &amp; Seek</h2>
   <p>Bear, Bean and friends have left things all over the place!</p>
@@ -217,11 +218,11 @@ window.BB = (() => {
 </div></div>
 
 <div class="ov" id="ovWin"><div class="card pk-card">
-  <div class="pk-presents"><img src="../icons/bear.png" alt="">The Bear &amp; Bean<img src="../icons/bean.png" alt=""></div>
+  <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <h2 id="winTitle">Round 1 cleared!</h2>
   <div class="stats" id="winStats"></div>
   <div id="winGold"></div>
-  <div class="pk-says" data-lines='["Eagle eyes! Nothing gets past you.", "Now where did I put my marshmallows?", "Everything packed. Time for cocoa!", "You could find a bean in a beanbag!"]'><img src="../icons/bear.png" alt=""><div><b>Bear says</b><span>Eagle eyes! Nothing gets past you.</span></div></div>
+  <div class="pk-says" data-lines='["Eagle eyes! Nothing gets past you.", "Now where did I put my marshmallows?", "Everything packed. Time for cocoa!", "You could find a bean in a beanbag!"]'><img src="../icons/bear.png?v=406624f3" alt=""><div><b>Bear says</b><span>Eagle eyes! Nothing gets past you.</span></div></div>
   <div class="row2"><button class="btn pk-btn" id="bNext">Next round</button></div>
 </div></div>
 
@@ -287,7 +288,9 @@ function makeRound() {
 const stage = $('stage'), cv = $('cv'), g = cv.getContext('2d'), fx = $('fx'), fg = fx.getContext('2d');
 let dpr = 1, VW = 300, VH = 400, view = { s: 1, x: 0, y: 0 }, minS = 1, dirty = true;
 const imgs = {};
-function img(src) { if (!imgs[src]) { const im = new Image(); im.onload = () => { dirty = true; }; im.src = src; imgs[src] = im; } return imgs[src]; }
+// picture addresses carry a fingerprint of their contents (filled in by tools/update-sw.py), so a changed picture is never served stale
+const av = f => f + (window.AV && AV[f] ? '?v=' + AV[f] : '');
+function img(src) { src = av(src); if (!imgs[src]) { const im = new Image(); im.onload = () => { dirty = true; }; im.src = src; imgs[src] = im; } return imgs[src]; }
 const sceneImg = () => img(SC().id + '.webp'), iconImg = () => img(SC().id + '-icons.webp');
 const loaded = im => im.complete && im.naturalWidth ? Promise.resolve() : new Promise(res => { im.addEventListener('load', res, { once: true }); im.addEventListener('error', res, { once: true }); });
 const ready = () => sceneImg().complete && sceneImg().naturalWidth;
@@ -479,7 +482,7 @@ function win() {
 $('bNext').onclick = () => { closeAll(); startRound(true); };
 $('bScene').onclick = () => {
   audio(); const box = $('scenes'); box.innerHTML = '';
-  SCENES.forEach((sc, i) => { const b = document.createElement('button'); b.className = i === S.scene ? 'on' : ''; b.innerHTML = `<img src="${sc.id}.webp" alt="" loading="lazy"><span>${sc.name}</span>`;
+  SCENES.forEach((sc, i) => { const b = document.createElement('button'); b.className = i === S.scene ? 'on' : ''; b.innerHTML = `<img src="${av(sc.id + '.webp')}" alt="" loading="lazy"><span>${sc.name}</span>`;
     b.onclick = () => { closeAll(); if (i !== S.scene) { S.scene = i; S.seed = 0; startRound(true); tone(660, .1, 'triangle', .04, 0, 220); } }; box.appendChild(b); });
   $('ovScene').classList.add('show');
 };
@@ -494,7 +497,7 @@ addEventListener('resize', layout); if (window.visualViewport) visualViewport.ad
 
 // once this game is open, quietly save every scene for offline play (the offline cache keeps what it fetches)
 const idle = window.requestIdleCallback || (f => setTimeout(f, 2500));
-idle(() => SCENES.forEach(sc => [sc.id + '.webp', sc.id + '-icons.webp'].forEach(u => fetch(u).catch(() => {}))));
+idle(() => SCENES.forEach(sc => [sc.id + '.webp', sc.id + '-icons.webp'].forEach(u => fetch(av(u)).catch(() => {}))));
 
 applyTheme(); renderSound(); startRound(false);
 if (!S.seenHelp) $('ovHelp').classList.add('show');

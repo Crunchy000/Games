@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#2b1a3d">
 <link rel="manifest" href="../manifest.webmanifest">
-<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="icon" href="../icons/favicon-32.png?v=aada1fbe" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png?v=0ef76193">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bear &amp; Bean">
@@ -119,7 +119,7 @@ window.PK = (() => {
   const DEBUG = /[?&]debug\b/.test(location.search), FAST = DEBUG && /[?&]fast\b/.test(location.search) ? 3 : 1;
   const W = 360; let H = 640, SC = 1, DPR = 1;
   const COL = ['#e8994a', '#ff5fa2'], NAMES = ['Bear', 'Bean'];
-  const imgs = [new Image(), new Image()]; imgs[0].src = '../icons/bear.png'; imgs[1].src = '../icons/bean.png';
+  const imgs = [new Image(), new Image()]; imgs[0].src = '../icons/bear.png?v=406624f3'; imgs[1].src = '../icons/bean.png?v=2ef68eca';
   let save = { wins: [0, 0], muted: false };
   try { save = Object.assign(save, JSON.parse(localStorage.getItem('beangrab') || '{}')); } catch (e) {}
   if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
