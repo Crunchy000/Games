@@ -30,13 +30,13 @@ Play at https://www.bearandbean.uk/
 | Ink Bounce | [`ink-bounce/`](ink-bounce/) | Blueprint brick breaker with no paddle: draw one line at a time with limited ink; neat lines refund ink, and falling ink drops and pots refill it. |
 | Pyramid Hop | [`pyramid-hop/`](pyramid-hop/) | Help the hedgehog light every cube of a mossy temple in the rainforest. Snakes slither up from the bottom (orange ones chase you); grab a power berry and they turn blue and nervous, so you can bump them off for Pac-Man style points. Hop off and a toucan always swoops in to catch you. |
 | Tile Burst | [`tile-burst/`](tile-burst/) | Block puzzle: drag pieces onto an 8×8 board, fill rows and columns to burst them, and chain combos. |
-| Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels plus a 60-second dash. |
+| Dot Loop | [`dot-loop/`](dot-loop/) | Connect same-coloured dots; close a loop to clear every dot of that colour. Levels (with plenty of moves) bring in frost to melt, acorns to drop out of the bottom and rainbow dots that link with any colour, plus a 60-second dash. |
 | Gummy Pop | [`gummy-pop/`](gummy-pop/) | Match-3 puzzle: make rockets, bombs and rainbow orbs; bring honey pots down to Bear, break liquorice locks, clear sugar cubes and spreading chocolate. Lolly Pop and Free Swap boosters, +5 moves once per level. |
 | Dots & Boxes | [`dots-and-boxes/`](dots-and-boxes/) | Two-player pass-and-play: Bear and Bean take turns joining dots; close a box to stamp it with a paw print or a bean and go again. Renamable players, win tally, undo. |
 
 Sound on/off and light/dark mode are house settings: change them in any game and every other game follows.
 
-On the home page, tap the heart on any game to make it a favourite: favourites come first in every row they're in, and are kept on the device.
+On the home page, tap the heart on any game to make it a favourite: favourites get their own row at the top of the page, kept on the device.
 
 Ideas for future games are in [`TODO.md`](TODO.md).
 

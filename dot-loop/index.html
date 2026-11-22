@@ -48,7 +48,11 @@
   .lv .st { position:absolute; left:0; right:0; bottom:-10px; font-size:.6rem; color:#f5a524; letter-spacing:-1px; }
   .goals { display:flex; gap:18px; justify-content:center; margin:14px 0 6px; }
   .goal { display:flex; flex-direction:column; align-items:center; gap:4px; font-weight:900; font-size:1.15rem; }
-  .goal i { width:30px; height:30px; border-radius:50%; display:block; }
+  .goal i { width:30px; height:30px; border-radius:50%; display:block; font-style:normal; font-size:22px; line-height:30px; }
+  .goal i.frost { border-radius:8px; background:linear-gradient(135deg,#e7f5ff,#a5d8ff); box-shadow:inset 0 0 0 2px #74c0fc; font-size:17px; }
+  .goal i.acorn, .goal i.wild { background:none; }
+  .newbit { display:none; background:#fff6d8; border-radius:14px; padding:8px 12px; color:#5a4a20 !important; font-weight:700; font-size:.9rem; }
+  .newbit.on { display:block; }
   .stars { font-size:2.4rem; letter-spacing:6px; margin:8px 0; }
   .stars span { color:#e4dccb; display:inline-block; transform:scale(.5); transition:transform .4s cubic-bezier(.3,1.8,.5,1), color .2s; }
   .stars span.on { color:#f5a524; transform:scale(1); }
@@ -175,6 +179,7 @@ window.BB = (() => {
   <div class="pk-steps">
     <section class="pk-step"><div class=pk-step-art>🔴</div><h3>Link the dots</h3><p>Drag across neighbouring dots of the <b>same colour</b> (up, down, left or right), and let go to clear them. Drag back to undo a link.</p></section>
     <section class="pk-step"><div class=pk-step-art>⭕</div><h3>Close a loop</h3><p>Join back onto your own line to make a <b>loop</b>: it clears <b>every</b> dot of that colour, and any dots trapped inside.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🌰</div><h3>Tricky bits</h3><p>❄️ <b>Frost</b> melts when you clear the dots on it.<br>🌰 <b>Acorns</b> can’t be linked: drop them out of the bottom.<br>🌈 <b>Rainbow dots</b> link up with any colour.</p></section>
     <section class="pk-step"><div class=pk-step-art>⏱️</div><h3>Two ways to play</h3><p><b>Levels:</b> collect the dots shown before you run out of moves; spare moves earn stars.</p><p><b>60-second dash:</b> clear all you can. Every loop adds 2 seconds.</p></section>
   </div>
   <div style="text-align:center"><button class="btn pk-btn" id="btnHowOk">Got it</button></div>
@@ -184,6 +189,7 @@ window.BB = (() => {
     <h2 id="stTitle">Level 1</h2>
     <p id="stText"></p>
     <div class="goals" id="stGoals"></div>
+    <p class="newbit" id="stNew"></p>
     <button class="btn pk-btn" id="btnGo">Start</button>
   </div></div>
 
@@ -242,39 +248,87 @@ function note(semi, d = .35, vol = .09, delay = 0) {
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
 /* ---------- levels ---------- */
+// frost patterns on the 6x6 board
+const FROST = [
+  [[2, 2], [2, 3], [3, 2], [3, 3]],
+  [[2, 0], [2, 1], [2, 2], [2, 3], [2, 4], [2, 5], [3, 0], [3, 1], [3, 2], [3, 3], [3, 4], [3, 5]],
+  [[1, 1], [1, 2], [1, 3], [1, 4], [2, 1], [2, 4], [3, 1], [3, 4], [4, 1], [4, 2], [4, 3], [4, 4]],
+  [[4, 0], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 0], [5, 1], [5, 2], [5, 3], [5, 4], [5, 5]],
+  [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [0, 5], [1, 4], [2, 3], [3, 2], [4, 1], [5, 0]],
+];
+const NEW = {
+  5: '❄️ New: frost! Clear the dots sitting on frosty squares to melt it.',
+  9: '🌰 New: acorns! They can’t be linked. Clear the dots below to drop them out of the bottom.',
+  13: '🌈 New: rainbow dots link up with any colour.',
+  16: '❄️ Thick frost takes two goes to melt.',
+};
 function levelCfg(n) {
   const colors = n <= 4 ? 4 : 5;
-  const moves = clamp(22 - Math.floor(n / 3), 14, 22);
-  const kinds = n <= 2 ? 2 : n <= 8 ? 3 : 4;
-  const picks = [...Array(colors).keys()].sort(() => Math.random() - .5).slice(0, Math.min(kinds, colors));
-  const amt = 10 + Math.min(22, n * 2);
+  const moves = clamp(44 - 2 * Math.floor(n / 3), 28, 44);   // twice the moves they used to have
   const holes = new Set(), shape = n >= 4 ? n % 4 : -1;
   if (shape === 0) [[0, 0], [0, 5], [5, 0], [5, 5]].forEach(([r, c]) => holes.add(r * N + c));
   if (shape === 1) [[0, 2], [0, 3], [5, 2], [5, 3]].forEach(([r, c]) => holes.add(r * N + c));
   if (shape === 2) [[0, 0], [0, 1], [0, 4], [0, 5], [1, 0], [1, 5]].forEach(([r, c]) => holes.add(r * N + c));
-  return { n, colors, moves, goals: picks.map(t => [t, amt]), holes, timed: false };
+  // which extras this level has: frost from 5, acorns from 9, both mixed in from 12, rainbow dots from 13
+  const mix = n < 12 ? (n >= 9 ? 'acorn' : n >= 5 ? 'frost' : '') : ['frost', 'acorn', 'both'][n % 3];
+  const frost = new Map();
+  if (mix === 'frost' || mix === 'both') {
+    const pat = n === 5 ? FROST[0] : FROST[(n * 7) % FROST.length], thick = n >= 16 ? 2 : 1;
+    pat.forEach(([r, c]) => { if (!holes.has(r * N + c)) frost.set(r * N + c, thick); });
+  }
+  const acorns = mix === 'acorn' || mix === 'both' ? clamp(2 + Math.floor((n - 9) / 4), 2, 5) : 0;
+  // colour goals: fewer kinds when there's frost or acorns to deal with too
+  const kinds = !mix ? (n <= 2 ? 2 : 3) : mix === 'both' ? 1 : 2;
+  const amt = mix ? 12 + Math.min(16, n) : 10 + Math.min(22, n * 2);
+  const picks = [...Array(colors).keys()].sort(() => Math.random() - .5).slice(0, Math.min(kinds, colors));
+  const goals = picks.map(t => [t, amt]);
+  if (frost.size) goals.push(['frost', frost.size]);
+  if (acorns) goals.push(['acorn', acorns]);
+  return { n, colors, moves, goals, holes, frost, acorns, wild: n >= 13, intro: NEW[n] || '', timed: false };
 }
 
 /* ---------- state ---------- */
 let L = null, grid = [], state = 'menu', moves = 0, score = 0, collected = [0, 0, 0, 0, 0], timeLeft = 0, time = 0;
+let frost = new Map(), frostMelted = 0, acornsToDrop = 0, acornsGot = 0, harvesting = false;
+let melts = [];
 let path = [], loop = false, drag = null, pointer = null, tint = 0, tintCol = 0, rings = [], parts = [], popups = [], callout = null, pause = false;
 const hole = (r, c) => L && L.holes.has(r * N + c);
 const cx = c => BX + c * CS + CS / 2, cy = r => BY + r * CS + CS / 2;
-const mk = (t, r, y) => ({ t, y, tr: r, vy: 0, s: 1, sq: 0, dying: 0, pulse: 0 });
+const mk = (t, r, y, k = 'dot') => ({ k, t, y, tr: r, vy: 0, s: 1, sq: 0, dying: 0, pulse: 0 });
+const dotColor = t => t >= 0 ? COLORS[t] : '#9a92ad';
+const linkable = d => d && d.k !== 'acorn';
+// the path's colour: the first ordinary dot in it (rainbow dots take on whatever they join)
+const pathCol = () => { for (const [r, c] of path) { const d = grid[r][c]; if (d && d.k === 'dot') return d.t; } return -1; };
+// a new piece from the top: now and then an acorn (while the level has some to come) or a rainbow dot
+function spawn(avoid, r, y) {
+  const onBoard = grid.flat().filter(d => d && d.k === 'acorn').length;
+  if (acornsToDrop > 0 && onBoard < 2 && Math.random() < .14) { acornsToDrop--; return mk(-1, r, y, 'acorn'); }
+  if (L.wild && Math.random() < .045) return mk(-1, r, y, 'wild');
+  return mk(newColor(avoid), r, y);
+}
 
 function newColor(avoid) { let t, g = 0; do { t = ri(L.colors); g++; } while (t === avoid && g < 20); return t; }
 function fill() {
   grid = Array.from({ length: N }, () => Array(N).fill(null));
   for (let c = 0; c < N; c++) for (let r = 0; r < N; r++) if (!hole(r, c)) grid[r][c] = mk(ri(L.colors), r, r - N - 1 - c * .3);
+  // the first acorns start near the top, in different columns
+  const cols = [...Array(N).keys()].sort(() => Math.random() - .5);
+  for (let i = 0; i < Math.min(2, acornsToDrop); i++) {
+    const c = cols[i], r = [0, 1, 2].find(r => !hole(r, c));
+    if (r !== undefined) { grid[r][c] = mk(-1, r, r - N - 1 - c * .3, 'acorn'); }
+  }
+  acornsToDrop -= grid.flat().filter(d => d && d.k === 'acorn').length;
   if (!hasMove()) fill();
 }
 function hasMove() {
-  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const p = grid[r][c]; if (!p) continue;
-    if (c < N - 1 && grid[r][c + 1] && grid[r][c + 1].t === p.t) return true; if (r < N - 1 && grid[r + 1][c] && grid[r + 1][c].t === p.t) return true; }
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const p = grid[r][c]; if (!linkable(p)) continue;
+    for (const q of [c < N - 1 ? grid[r][c + 1] : null, r < N - 1 ? grid[r + 1][c] : null])
+      if (linkable(q) && (q.t === p.t || p.k === 'wild' || q.k === 'wild')) return true; }
   return false;
 }
 function begin(cfg) {
   L = cfg; moves = cfg.moves || 0; score = 0; collected = [0, 0, 0, 0, 0]; path = []; loop = false; drag = null;
+  frost = new Map(cfg.frost || []); frostMelted = 0; acornsToDrop = cfg.acorns || 0; acornsGot = 0; harvesting = false;
   rings = []; parts = []; popups = []; callout = null; tint = 0; timeLeft = cfg.timed ? 60 : 0; state = 'play'; pause = false; fill();
 }
 
@@ -291,22 +345,24 @@ function extend(cell) {
   if (!cell || !path.length) return;
   const last = path[path.length - 1]; if (same(cell, last)) return;
   if (Math.abs(cell[0] - last[0]) + Math.abs(cell[1] - last[1]) !== 1) return;
-  const col = grid[last[0]][last[1]].t; if (grid[cell[0]][cell[1]].t !== col) return;
+  const g = grid[cell[0]][cell[1]]; if (!linkable(g)) return;
+  const col = pathCol();
+  if (g.k === 'dot' && col >= 0 && g.t !== col) return;
   if (path.length >= 2 && same(cell, path[path.length - 2])) { path.pop(); loop = false; note(SCALE[Math.min(path.length - 1, 15)], .2, .05); return; }
   if (loop) return;
   const idx = path.findIndex(p => same(p, cell));
-  if (idx >= 0) { if (path.length >= 3) { path.push(cell); loop = true; tintCol = col; note(SCALE[0] + 12, .6, .08); note(SCALE[4] + 12, .6, .06, .05); note(SCALE[7] + 12, .6, .05, .1); buzz(20); } return; }
-  path.push(cell); const g = grid[cell[0]][cell[1]]; g.pulse = 1; rings.push({ x: cx(cell[1]), y: cy(cell[0]), t: col, life: .45, max: .45 });
+  if (idx >= 0) { if (path.length >= 3 && col >= 0) { path.push(cell); loop = true; tintCol = col; note(SCALE[0] + 12, .6, .08); note(SCALE[4] + 12, .6, .06, .05); note(SCALE[7] + 12, .6, .05, .1); buzz(20); } return; }
+  path.push(cell); g.pulse = 1; rings.push({ x: cx(cell[1]), y: cy(cell[0]), t: g.k === 'dot' ? g.t : col, life: .45, max: .45 });
   note(SCALE[Math.min(path.length - 1, 15)]); buzz(5);
 }
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); const p = local(e);
   if (p.y < 70 && p.x < 64 && state === 'play') { openPause(); return; }
-  if (state !== 'play' || pause) return;
-  const cell = cellAt(p.x, p.y, .5); if (!cell || grid[cell[0]][cell[1]].dying || grid[cell[0]][cell[1]].y !== cell[0]) return;
+  if (state !== 'play' || pause || (!L.timed && moves <= 0)) return;   // out of moves: the level is ending
+  const cell = cellAt(p.x, p.y, .5); if (!cell || !linkable(grid[cell[0]][cell[1]]) || grid[cell[0]][cell[1]].dying || grid[cell[0]][cell[1]].y !== cell[0]) return;
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   path = [cell]; loop = false; drag = true; pointer = p; grid[cell[0]][cell[1]].pulse = 1;
-  rings.push({ x: cx(cell[1]), y: cy(cell[0]), t: grid[cell[0]][cell[1]].t, life: .45, max: .45 }); note(SCALE[0]);
+  rings.push({ x: cx(cell[1]), y: cy(cell[0]), t: grid[cell[0]][cell[1]].k === 'dot' ? grid[cell[0]][cell[1]].t : -1, life: .45, max: .45 }); note(SCALE[0]);
 });
 cv.addEventListener('pointermove', e => {
   if (!drag) return; const p = local(e);
@@ -335,23 +391,25 @@ function enclosed(col) {
 function commit() {
   const uniq = path.filter((p, i) => path.findIndex(q => same(p, q)) === i);
   if (uniq.length < 2) { path = []; loop = false; return; }
-  const col = grid[uniq[0][0]][uniq[0][1]].t;
+  const col = pathCol();
   let clear = uniq.slice();
   if (loop) {
     const inside = enclosed(col);
-    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] && grid[r][c].t === col && !clear.some(p => same(p, [r, c]))) clear.push([r, c]);
-    inside.forEach(p => { if (!clear.some(q => same(p, q))) clear.push(p); });
-    callout = { t: inside.length ? 'Loop + trap!' : 'Loop!', c: COLORS[col], life: 1 };
-    if (L.timed) { timeLeft += 2; popups.push({ t: '+2s', x: W / 2, y: BY - 18, life: 1, c: COLORS[col] }); }
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] && grid[r][c].k === 'dot' && grid[r][c].t === col && !clear.some(p => same(p, [r, c]))) clear.push([r, c]);
+    inside.forEach(p => { if (grid[p[0]][p[1]].k !== 'acorn' && !clear.some(q => same(p, q))) clear.push(p); });
+    callout = { t: inside.length ? 'Loop + trap!' : 'Loop!', c: dotColor(col), life: 1 };
+    if (L.timed) { timeLeft += 2; popups.push({ t: '+2s', x: W / 2, y: BY - 18, life: 1, c: dotColor(col) }); }
   }
   let i = 0;
   for (const [r, c] of clear) {
     const p = grid[r][c]; p.dying = .0001; p.delay = i++ * .018;
-    collected[p.t]++;
+    if (p.k === 'dot') collected[p.t]++; else if (col >= 0) collected[col]++;
+    const f = frost.get(r * N + c);   // frost under a cleared dot melts a layer
+    if (f) { if (f > 1) frost.set(r * N + c, f - 1); else { frost.delete(r * N + c); frostMelted++; } melts.push({ x: cx(c), y: cy(r), life: .5 }); }
   }
   const pts = clear.length * 10 * (loop ? 2 : 1); score += pts;
-  popups.push({ t: '+' + pts, x: cx(uniq[uniq.length - 1][1]), y: cy(uniq[uniq.length - 1][0]) - 20, life: .9, c: COLORS[col] });
-  if (clear.length >= 15) setTimeout(() => callout = { t: clear.length >= 25 ? 'Incredible!' : 'Superb!', c: COLORS[col], life: 1 }, 250);
+  popups.push({ t: '+' + pts, x: cx(uniq[uniq.length - 1][1]), y: cy(uniq[uniq.length - 1][0]) - 20, life: .9, c: dotColor(col) });
+  if (clear.length >= 15) setTimeout(() => callout = { t: clear.length >= 25 ? 'Incredible!' : 'Superb!', c: dotColor(col), life: 1 }, 250);
   if (!L.timed) moves--;
   const avoid = loop ? col : -1; path = []; loop = false;
   setTimeout(() => { collapse(avoid); setTimeout(checkEnd, 380); }, 260 + clear.length * 18);
@@ -367,14 +425,26 @@ function collapse(avoid) {
     for (let i = cells.length - 1; i >= 0; i--) {
       const r = cells[i];
       if (k >= 0) { const d = dots[k--]; d.tr = r; grid[r][c] = d; }
-      else { const d = mk(newColor(avoid), r, cells[0] - (i + 1) - .4); grid[r][c] = d; }
+      else { const d = spawn(avoid, r, cells[0] - (i + 1) - .4); grid[r][c] = d; }
     }
   }
-  if (!hasMove()) setTimeout(() => { callout = { t: 'Shuffle', c: '#3b3550', life: 1 }; for (const row of grid) for (const d of row) if (d) { d.t = ri(L.colors); d.s = .3; } if (!hasMove()) collapse(-1); }, 450);
+  // an acorn sitting at the bottom of its column drops out and is collected
+  const out = [];
+  for (let c = 0; c < N; c++) { let r = N - 1; while (r >= 0 && hole(r, c)) r--; const d = r >= 0 && grid[r][c]; if (d && d.k === 'acorn') out.push([r, c]); }
+  if (out.length) {
+    harvesting = true;
+    setTimeout(() => {
+      out.forEach(([r, c]) => { const d = grid[r][c]; if (!d) return; d.dying = .0001; d.delay = 0; acornsGot++; popups.push({ t: '🌰', x: cx(c), y: cy(r) - 10, life: 1, c: '#8a5a2b' }); });
+      note(SCALE[7] + 12, .4, .07); note(SCALE[11] + 12, .4, .05, .08); buzz(15);
+      setTimeout(() => { collapse(-1); harvesting = false; setTimeout(checkEnd, 380); }, 280);
+    }, 380);
+  }
+  if (!hasMove()) setTimeout(() => { callout = { t: 'Shuffle', c: '#3b3550', life: 1 }; for (const row of grid) for (const d of row) if (d && d.k === 'dot') { d.t = ri(L.colors); d.s = .3; } if (!hasMove()) collapse(-1); }, 450);
 }
-function goalsDone() { return L.goals.every(([t, k]) => collected[t] >= k); }
+const progress = key => key === 'frost' ? frostMelted : key === 'acorn' ? acornsGot : collected[key];
+function goalsDone() { return L.goals.every(([t, k]) => progress(t) >= k); }
 function checkEnd() {
-  if (state !== 'play' || L.timed) return;
+  if (state !== 'play' || L.timed || harvesting) return;
   if (goalsDone()) return endLevel(true);
   if (moves <= 0) return endLevel(false);
 }
@@ -382,6 +452,27 @@ function checkEnd() {
 /* ---------- draw ---------- */
 function text(t, x, y, size, col, align = 'center', w = 800) { ctx.font = `${w} ${size}px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(t, x, y); }
 function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function drawAcorn(x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.beginPath(); ctx.ellipse(0, 3, 9, 10.5, 0, 0, Math.PI * 2); ctx.fillStyle = '#c98b4b'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-3, 3, 2.6, 5.5, -.2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, -4, 11, 6.5, 0, Math.PI, 0); ctx.lineTo(11, -3); ctx.quadraticCurveTo(0, 0, -11, -3); ctx.closePath(); ctx.fillStyle = '#6b4423'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1; for (const k of [-6, -1, 4]) { ctx.beginPath(); ctx.moveTo(k, -9); ctx.lineTo(k + 3, -3); ctx.stroke(); }
+  ctx.strokeStyle = '#6b4423'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -9); ctx.quadraticCurveTo(1, -13, 4, -14); ctx.stroke();
+  ctx.restore();
+}
+function drawWild(x, y, rad) {
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, rad, -Math.PI / 2 + i * Math.PI * 2 / 5 + time * .8, -Math.PI / 2 + (i + 1) * Math.PI * 2 / 5 + time * .8); ctx.closePath(); ctx.fillStyle = COLORS[i]; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(x, y, rad * .42, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+}
+function drawFrostTile(x, y, layers, size) {
+  rr(x - size / 2, y - size / 2, size, size, size * .22); ctx.fillStyle = layers > 1 ? 'rgba(116,192,252,.55)' : 'rgba(165,216,255,.45)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+  const a = size * .34; ctx.beginPath();
+  for (let k = 0; k < 3; k++) { const t = k * Math.PI / 3; ctx.moveTo(x - Math.cos(t) * a, y - Math.sin(t) * a); ctx.lineTo(x + Math.cos(t) * a, y + Math.sin(t) * a); }
+  ctx.stroke();
+  if (layers > 1) { rr(x - size / 2 + 2, y - size / 2 + 2, size - 4, size - 4, size * .2); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.stroke(); }
+}
 function drawHUD() {
   rr(16, 18, 40, 40, 14); ctx.fillStyle = '#ece4d6'; ctx.fill(); ctx.fillStyle = '#3b3550'; [0, 1, 2].forEach(i => { rr(27, 29 + i * 7, 18, 3.4, 1.7); ctx.fill(); });
   if (L.timed) {
@@ -395,11 +486,13 @@ function drawHUD() {
   text('Level ' + L.n, 66, 38, 15, '#3b3550', 'left', 800);
   const g = L.goals, gap = 62, x0 = W / 2 - (g.length - 1) * gap / 2;
   g.forEach(([t, k], i) => {
-    const x = x0 + i * gap, y = 112, left = Math.max(0, k - collected[t]), fr = clamp(collected[t] / k, 0, 1);
-    ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.strokeStyle = TINTS[t]; ctx.lineWidth = 4; ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, 18, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.strokeStyle = COLORS[t]; ctx.lineCap = 'round'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fillStyle = COLORS[t]; ctx.fill();
-    text(left ? left + '' : '✓', x, y + 32, 14, left ? '#3b3550' : COLORS[t], 'center', 900);
+    const x = x0 + i * gap, y = 112, got = progress(t), left = Math.max(0, k - got), fr = clamp(got / k, 0, 1);
+    const main = t === 'frost' ? '#74c0fc' : t === 'acorn' ? '#a0672f' : COLORS[t], soft = t === 'frost' ? '#e7f5ff' : t === 'acorn' ? '#f1e3d0' : TINTS[t];
+    ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.strokeStyle = soft; ctx.lineWidth = 4; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 18, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.strokeStyle = main; ctx.lineCap = 'round'; ctx.stroke();
+    if (t === 'frost') drawFrostTile(x, y, 1, 20); else if (t === 'acorn') drawAcorn(x, y + 1, .75);
+    else { ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fillStyle = COLORS[t]; ctx.fill(); }
+    text(left ? left + '' : '✓', x, y + 32, 14, left ? '#3b3550' : main, 'center', 900);
   });
 }
 function draw(dt) {
@@ -410,15 +503,18 @@ function draw(dt) {
   drawHUD();
   // board guides
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!hole(r, c)) { ctx.beginPath(); ctx.arc(cx(c), cy(r), 3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(59,53,80,.07)'; ctx.fill(); }
+  // frost under the dots, and little bursts where it melts
+  frost.forEach((layers, key) => drawFrostTile(cx(key % N), cy(Math.floor(key / N)), layers, CS - 8));
+  for (const m of melts) { const t = 1 - m.life / .5; ctx.globalAlpha = 1 - t; ctx.strokeStyle = '#a5d8ff'; ctx.lineWidth = 3; rr(m.x - (CS - 8) / 2 - t * 8, m.y - (CS - 8) / 2 - t * 8, CS - 8 + t * 16, CS - 8 + t * 16, 12); ctx.stroke(); ctx.globalAlpha = 1; }
   // path line
   if (path.length) {
-    const col = COLORS[grid[path[0][0]][path[0][1]].t];
+    const col = dotColor(pathCol());
     ctx.strokeStyle = col; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
     path.forEach(([r, c], i) => i ? ctx.lineTo(cx(c), cy(r)) : ctx.moveTo(cx(c), cy(r)));
     if (pointer && drag && !loop) ctx.lineTo(pointer.x, pointer.y);
     ctx.stroke();
   }
-  const loopCol = loop ? grid[path[0][0]][path[0][1]].t : -1;
+  const loopCol = loop ? pathCol() : -2;
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
     const d = grid[r][c]; if (!d) continue;
     const x = cx(c), y = BY + d.y * CS + CS / 2;
@@ -428,10 +524,12 @@ function draw(dt) {
     if (d.dying) { const k = clamp(1 - (d.dying - (d.delay || 0)) / .22, 0, 1); s *= k; }
     if (s <= 0.01) continue;
     ctx.beginPath(); ctx.ellipse(x, y + 2.5, R * s, R * s * (1 - d.sq * .15), 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(59,53,80,.12)'; ctx.fill();
+    if (d.k === 'acorn') { drawAcorn(x, y, s); continue; }
+    if (d.k === 'wild') { drawWild(x, y, R * s * 1.05); continue; }
     ctx.beginPath(); ctx.ellipse(x, y, R * s * (1 + d.sq * .1), R * s * (1 - d.sq * .12), 0, 0, Math.PI * 2); ctx.fillStyle = COLORS[d.t]; ctx.fill();
     ctx.beginPath(); ctx.arc(x - R * .35 * s, y - R * .38 * s, R * .22 * s, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fill();
   }
-  for (const q of rings) { const t = 1 - q.life / q.max; ctx.beginPath(); ctx.arc(q.x, q.y, R + t * 16, 0, Math.PI * 2); ctx.strokeStyle = COLORS[q.t]; ctx.globalAlpha = 1 - t; ctx.lineWidth = 3; ctx.stroke(); }
+  for (const q of rings) { const t = 1 - q.life / q.max; ctx.beginPath(); ctx.arc(q.x, q.y, R + t * 16, 0, Math.PI * 2); ctx.strokeStyle = dotColor(q.t); ctx.globalAlpha = 1 - t; ctx.lineWidth = 3; ctx.stroke(); }
   for (const q of parts) { ctx.globalAlpha = clamp(q.life / q.max * 1.4, 0, 1); ctx.beginPath(); ctx.arc(q.x, q.y, q.s, 0, Math.PI * 2); ctx.fillStyle = q.c; ctx.fill(); }
   ctx.globalAlpha = 1;
   for (const u of popups) { ctx.globalAlpha = clamp(u.life * 2, 0, 1); text(u.t, u.x, u.y, 16, u.c, 'center', 900); } ctx.globalAlpha = 1;
@@ -453,9 +551,10 @@ function update(dt) {
     if (d.dying) d.dying += dt;
   }
   // particle bursts for dots as they start dying
-  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const d = grid[r][c]; if (d && d.dying && !d.burst && d.dying >= (d.delay || 0)) { d.burst = true; rings.push({ x: cx(c), y: cy(r), t: d.t, life: .4, max: .4 }); for (let i = 0; i < 5; i++) { const a = rnd(0, 6.28), sp = rnd(40, 130); parts.push({ x: cx(c), y: cy(r), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rnd(.3, .5), max: .5, s: rnd(2, 3.5), c: COLORS[d.t] }); } } }
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const d = grid[r][c]; if (d && d.dying && !d.burst && d.dying >= (d.delay || 0)) { d.burst = true; rings.push({ x: cx(c), y: cy(r), t: d.t, life: .4, max: .4 }); for (let i = 0; i < 5; i++) { const a = rnd(0, 6.28), sp = rnd(40, 130); parts.push({ x: cx(c), y: cy(r), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rnd(.3, .5), max: .5, s: rnd(2, 3.5), c: d.k === 'acorn' ? '#a0672f' : dotColor(d.t) }); } } }
   for (const q of parts) { q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= .94; q.vy *= .94; } parts = parts.filter(q => q.life > 0);
   rings.forEach(q => q.life -= dt); rings = rings.filter(q => q.life > 0);
+  melts.forEach(m => m.life -= dt); melts = melts.filter(m => m.life > 0);
   popups.forEach(u => { u.life -= dt; u.y -= 26 * dt; }); popups = popups.filter(u => u.life > 0);
   if (callout) { callout.life -= dt; if (callout.life <= 0) callout = null; }
   if (state === 'play' && L.timed && !pause) {
@@ -481,8 +580,9 @@ function openMenu() {
 }
 function openStart(n) {
   const cfg = levelCfg(n); state = 'start';
-  $('stTitle').textContent = 'Level ' + n; $('stText').textContent = `Collect these dots in ${cfg.moves} moves`;
-  $('stGoals').innerHTML = cfg.goals.map(([t, k]) => `<div class="goal"><i style="background:${COLORS[t]}"></i>${k}</div>`).join('');
+  $('stTitle').textContent = 'Level ' + n; $('stText').textContent = `${cfg.frost.size || cfg.acorns ? 'Reach these goals' : 'Collect these dots'} in ${cfg.moves} moves`;
+  $('stNew').textContent = cfg.intro; $('stNew').classList.toggle('on', !!cfg.intro);
+  $('stGoals').innerHTML = cfg.goals.map(([t, k]) => `<div class="goal">${t === 'frost' ? '<i class="frost">❄️</i>' : t === 'acorn' ? '<i class="acorn">🌰</i>' : `<i style="background:${COLORS[t]}"></i>`}${k}</div>`).join('');
   $('btnGo').onclick = () => { show(null); begin(cfg); note(0); note(7, .4, .06, .08); };
   show('ovStart');
 }
@@ -525,7 +625,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && sta
 addEventListener('resize', resize); resize();
 L = levelCfg(1); fill(); for (const row of grid) for (const d of row) if (d) d.y = d.tr;
 openMenu();
-if (/[?&]debug\b/.test(location.search)) window.__dl = { get state() { return state; }, get grid() { return grid; }, get moves() { return moves; }, get L() { return L; }, get score() { return score; }, collected: () => collected, BX, CS, get BY() { return BY; } };
+if (/[?&]debug\b/.test(location.search)) window.__dl = { get frost() { return frost; }, get acornsGot() { return acornsGot; }, get harvesting() { return harvesting; }, openStart, levelCfg, get path() { return path; }, get state() { return state; }, get grid() { return grid; }, get moves() { return moves; }, get L() { return L; }, get score() { return score; }, collected: () => collected, BX, CS, get BY() { return BY; } };
 requestAnimationFrame(frame);
 })();
 </script>

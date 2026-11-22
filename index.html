@@ -253,6 +253,7 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
   </div>
 </header>
 <main id="main">
+  <div id="favRow"></div>
   <section aria-label="Featured games">
     <div class="rowwrap">
       <button class="arrow l" aria-label="Previous featured game">‹</button>
@@ -546,27 +547,28 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
   const FAV_KEY = 'bearbean-favourites';
   let favs = []; try { favs = JSON.parse(localStorage.getItem(FAV_KEY) || '[]').filter(s => bySlug[s]); } catch (e) {}
   const isFav = s => favs.includes(s);
-  const favFirst = list => list.filter(isFav).sort((a, b) => favs.indexOf(a) - favs.indexOf(b)).concat(list.filter(s => !isFav(s)));
   const heart = on => `<svg viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>`;
 
-  // category rows
-  const catsEl = document.getElementById('cats');
-  function renderCats() {
-  catsEl.innerHTML = CATS.map(([name, blurb, list], ci) => `
-    <section class="cat" aria-labelledby="cat${ci}">
+  // category rows, with your favourites in a row of their own at the very top
+  const catsEl = document.getElementById('cats'), favEl = document.getElementById('favRow');
+  const rowHtml = ([name, blurb, list], ci) => `
+    <section class="cat${ci === 'f' ? ' favs' : ''}" aria-labelledby="cat${ci}">
       <div class="cathead"><h2 id="cat${ci}">${esc(name)}</h2><span><span class="blurb">${esc(blurb)} · </span>${list.length} game${list.length > 1 ? 's' : ''}</span></div>
       <div class="rowwrap">
         <button class="arrow l" aria-label="Scroll ${esc(name)} left">‹</button>
-        <div class="scroller">${favFirst(list).map(s => { const g = bySlug[s], on = isFav(s); return `
+        <div class="scroller">${list.map(s => { const g = bySlug[s], on = isFav(s); return `
           <div class="tilebox"><a class="tile" href="${g.slug}/"><span class="art">${art(s)}</span>${g.isNew ? '<span class="badge">NEW</span>' : ''}
             <span class="meta"><h3>${esc(g.title)}</h3><span class="tag">${esc(g.tag)}</span></span></a>
             <button class="fav" data-slug="${s}" aria-pressed="${on}" aria-label="${on ? 'Remove ' + esc(g.title) + ' from favourites' : 'Add ' + esc(g.title) + ' to favourites'}">${heart(on)}</button></div>`; }).join('')}</div>
         <button class="arrow r" aria-label="Scroll ${esc(name)} right">›</button>
       </div>
-    </section>`).join('');
-  catsEl.querySelectorAll('.rowwrap').forEach(bindArrows);
+    </section>`;
+  function renderCats() {
+    favEl.innerHTML = favs.length ? rowHtml(['Your favourites', 'Tap ♥ to add or remove', favs], 'f') : '';
+    catsEl.innerHTML = CATS.map(rowHtml).join('');
+    document.querySelectorAll('#favRow .rowwrap, #cats .rowwrap').forEach(bindArrows);
   }
-  catsEl.addEventListener('click', e => {
+  document.getElementById('main').addEventListener('click', e => {
     const b = e.target.closest('.fav'); if (!b) return;
     e.preventDefault();
     const slug = b.dataset.slug, adding = !isFav(slug);
@@ -574,12 +576,8 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
     try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); } catch (err) {}
     const keep = [...catsEl.querySelectorAll('.scroller')].map(sc => sc.scrollLeft);
     renderCats();
-    catsEl.querySelectorAll('.scroller').forEach((sc, i) => {
-      sc.scrollLeft = keep[i];
-      // a new favourite slides to the front of its rows: scroll there so you see it arrive
-      if (adding && CATS[i][2].includes(slug)) sc.scrollTo({ left: 0, behavior: 'smooth' });
-    });
-    catsEl.querySelectorAll(`.fav[data-slug="${slug}"]`).forEach(f => f.classList.add('pop'));
+    catsEl.querySelectorAll('.scroller').forEach((sc, i) => { sc.scrollLeft = keep[i]; });
+    document.querySelectorAll(`.fav[data-slug="${slug}"]`).forEach(f => f.classList.add('pop'));
   });
 
   // arrows for every scroller
