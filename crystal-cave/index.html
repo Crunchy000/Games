@@ -602,9 +602,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 15, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 16, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 15) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 16) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -640,45 +640,47 @@ function planCave() {
   // sizes on a bell curve: most near the middle of each ring's range, few at the ends, and the ranges kept narrow
   const bell = (a, b) => a + (b - a) * (rnd() + rnd() + rnd()) / 3;
   const stals = [], SIZES = [[29, 41], [32, 47], [36, 54], [41, 63]], GAP = [1.75, 1.55, 1.4, 1.3];   // room between neighbours round each rim
-  // place up to max formations on layer li's visible rock face, clear of the ones already there; they go in before index first
-  const scatter = (li, first, max, sizeOf) => {
-    const L = layers[li], mine = slots.slice(first), band = [];
-    for (let tries = 0; band.length < max && tries < max * 40; tries++) {
-      const t = R(0, Math.PI * 2), [x, y] = inRock(L.sh, t, R(18, 420) * scale), size = sizeOf(), r = size * .55;
-      if (x < r || x > W - r || y < r || y > H - r) continue;
-      const ang = Math.atan2(L.sh.cy - y, L.sh.cx - x) + R(-.6, .6), cx = x + Math.cos(ang) * size * .4, cy = y + Math.sin(ang) * size * .4;
-      if (!layers.every((M, j) => j <= li || [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => inPoly(M.sh.pts, cx + a * r * .8, cy + b * r * .8)))) continue;
-      if (mine.concat(band).some(o => Math.hypot(o.cx - cx, o.cy - cy) < (o.r + r) * 1.15)) continue;   // a clear gap all round
-      band.push({ li, x, y, ang, size, seed: seedOf(), cx, cy, r });
+  // scatter formations evenly over everything that can be seen of a ring's rock face: random spots by area, each kept clear of every formation already placed
+  const overlap = (r1, r2, d) => { if (d >= r1 + r2) return 0; if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
+    const a = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)), b = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2)); return a + b - .5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)); };
+  // a new formation may overlap its neighbours a little, but never cover more than a quarter of one (or be a quarter covered itself)
+  const crowds = (cx, cy, r) => slots.some(o => Math.abs(o.cy - cy) < o.r + r && overlap(o.r, r, Math.hypot(o.cx - cx, o.cy - cy)) > .25 * Math.PI * Math.min(o.r, r) ** 2);
+  const visibleOn = (li, x, y) => !inPoly(layers[li].sh.pts, x, y) && layers.every((M, j) => j <= li || inPoly(M.sh.pts, x, y));
+  const scatter = (li, tries, max, sizeOf) => {
+    for (let k = 0, got = 0; k < tries && got < max; k++) {
+      const cx = R(0, W), cy = R(0, H), size = sizeOf(), r = size * .55;
+      if (cx < r || cx > W - r || cy < r || cy > H - r) continue;
+      if (![[0, 0], [.75, 0], [-.75, 0], [0, .75], [0, -.75]].every(([a, b]) => visibleOn(li, cx + a * r, cy + b * r))) continue;
+      if (crowds(cx, cy, r)) continue;
+      const L = layers[li].sh, ang = Math.atan2(L.cy - cy, L.cx - cx) + R(-.6, .6);
+      slots.push({ li, x: cx - Math.cos(ang) * size * .4, y: cy - Math.sin(ang) * size * .4, ang, size, seed: seedOf(), cx, cy, r }); got++;
     }
-    slots.splice(first, 0, ...band);
   };
   layers.forEach((L, li) => {
     for (let i = 0; i < RI(7, 12) * (1 + li * .7); i++) { const x = R(L.sh.x0 + 20, L.sh.x1 - 20), y = L.sh.ceil(x); if (y > 0) stals.push({ li, x, y, len: R(14, 40) * (1 + li * .3) * scale, w: R(4, 9) * (1 + li * .25) * scale }); }
     if (li === NEAR) return;
     // as many as fit around the ring, spaced for their size
     const sz = SIZES[li], perim = Math.PI * Math.sqrt(2 * (L.sh.rx ** 2 + L.sh.ry ** 2)) * 1.08;
-    const n = Math.round(perim / ((sz[0] + sz[1]) / 2 * scale * GAP[li]) * R(.92, 1.08)), start = R(0, Math.PI * 2);
-    const first = slots.length;
-    for (let i = 0; i < n; i++) {
-      const t = start + i / n * Math.PI * 2 + R(-.06, .06), [x, y] = inRock(L.sh, t, R(-6, 2)), inward = Math.atan2(L.sh.cy - y, L.sh.cx - x);
+    const n = Math.round(perim / ((sz[0] + sz[1]) / 2 * scale * GAP[li] * 1.35) * R(.92, 1.08)), start = R(0, Math.PI * 2);
+    for (let i = 0; i < n; i++) {   // round the rim, alternately right at the edge and set back a little, so it isn't a neat line
+      const t = start + i / n * Math.PI * 2 + R(-.08, .08), [x, y] = inRock(L.sh, t, i % 2 ? R(-6, 2) : R(12, 30) * scale), inward = Math.atan2(L.sh.cy - y, L.sh.cx - x);
       if (x > 6 && x < W - 6 && y > 6 && y < H - 6) put(li, x, y, inward + R(-.35, .35), bell(sz[0], sz[1]) * scale);
     }
     // and a row along each ledge's floor
-    for (let i = 0, nf = Math.round(L.sh.rx * 1.2 / ((sz[0] + sz[1]) / 2 * scale * 1.5)); i < nf; i++) {
-      const x = R(L.sh.x0 + L.sh.rx * .2, L.sh.x1 - L.sh.rx * .2), y = L.sh.floor(x) + R(2, 10);
+    for (let i = 0, nf = Math.round(L.sh.rx * 1.2 / ((sz[0] + sz[1]) / 2 * scale * 2.2)); i < nf; i++) {
+      const x = R(L.sh.x0 + L.sh.rx * .2, L.sh.x1 - L.sh.rx * .2), y = L.sh.floor(x) + (i % 2 ? R(2, 10) : R(16, 34) * scale);
       if (y < H - 6) put(li, x, y, -Math.PI / 2 + R(-.5, .5), bell(sz[0] * .9, sz[1] * .88) * scale);
     }
     if (li === NEAR - 1) { const x = L.sh.cx + R(-1, 1) * L.sh.rx * .3; put(li, x, L.sh.floor(x) + 5, -Math.PI / 2 + R(-.15, .15), 190); slots[slots.length - 1].centre = true; }
-    // crystals scattered across the rock face between this ring and the next, drawn first so the rim's crystals sit over them
-    scatter(li, first, Math.round(n * .8), () => bell(sz[0], sz[1]) * scale);
   });
-  { const sh = layers[NEAR].sh, perim = Math.PI * Math.sqrt(2 * (sh.rx ** 2 + sh.ry ** 2)), n = Math.round(perim / (92 * scale * 1.2)), start = R(0, Math.PI * 2), first = slots.length;
+  { const sh = layers[NEAR].sh, perim = Math.PI * Math.sqrt(2 * (sh.rx ** 2 + sh.ry ** 2)), n = Math.round(perim / (92 * scale * 1.5)), start = R(0, Math.PI * 2);
     for (let i = 0; i < n; i++) {
       const t = start + i / n * Math.PI * 2 + R(-.1, .1), [x, y] = inRock(sh, t, R(-4, 10)), inward = Math.atan2(sh.cy - y, sh.cx - x);
       if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(NEAR, x, y, inward + R(-.4, .4), bell(70, 104) * scale);
     }
-    scatter(NEAR, first, 12, () => bell(58, 86) * scale); }
+  }
+  // then the rock between the rims, ring by ring from the back
+  layers.forEach((L, li) => li < NEAR ? scatter(li, 4000, 999, () => bell(SIZES[li][0], SIZES[li][1]) * scale) : scatter(li, 1200, 14, () => bell(58, 86) * scale));
   // drawn from the back of the cave to the front: ring by ring, and within a ring from the top of the screen down
   slots.sort((a, b) => a.li - b.li || a.y - b.y);
   // how much of each formation is hidden: by nearer rock in front of it, and by formations drawn over it
