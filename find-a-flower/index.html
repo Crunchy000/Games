@@ -1412,6 +1412,7 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
     }
 
 // a little clearing for the picnic blanket (flowers in front can still hide Bear and Bean: finding them is a bonus)
+const inClearing = (x, y) => Math.abs(x - campPos.x) < 92 * campPos.scale && Math.abs(y - campPos.y) < 34 * campPos.scale;   // the picnic's patch of short grass
 function inPicnic(fx, fy) { return Math.abs(fx - campPos.x) < 68 * campPos.scale && Math.abs(fy - campPos.y) < 34 * campPos.scale; }
 
 function initCampPos() {
@@ -2125,7 +2126,8 @@ function drawBearAndBeanCampStatic(targetCtx) {
     }
 
     function bakeStaticBackdrop(staticFlowers) {
-      return seeded(S.seed * 7 + 1, () => bakeMeadow(staticFlowers));
+      // every bake starts from the same drawing settings, so a re-bake (or a patch of one) matches the first exactly
+      bCtx.save(); try { return seeded(S.seed * 7 + 1, () => bakeMeadow(staticFlowers)); } finally { bCtx.restore(); }
     }
     function bakeMeadow(staticFlowers) {
       drawScenicHillsAndSky();
@@ -2192,10 +2194,18 @@ function drawBearAndBeanCampStatic(targetCtx) {
         items.push({ kind: "flower", depth: fl.depth, flower: fl });
       }
 
+      // the flowers still to be found are baked in at their own depth, so grass and nearer flowers grow in front
+      // of their stems; picking one re-bakes just that patch (rebakeAround)
+      for (const fl of huntFlowers) if (!fl.found) items.push({ kind: "flower", depth: fl.depth, flower: fl, hunt: true });
       items.push({ kind: "camp", depth: campPos.depth });
       items.sort((a, b) => a.depth - b.depth);
 
       for (const item of items) {
+        // re-baking one patch: skip anything that can't reach it (drawing uses no randomness, so the rest is unchanged)
+        if (bakeClip && item.kind !== "camp") {
+          const ix = item.xNorm * worldW, iy = depthToWorldY(item.depth, item.xNorm);
+          if (ix < bakeClip.x0 - 90 || ix > bakeClip.x1 + 90 || iy < bakeClip.y0 - 10 || iy - 250 > bakeClip.y1) continue;
+        }
         if (item.kind === "camp") {
           drawBearAndBeanCampStatic(bCtx);
           continue;
@@ -2203,7 +2213,7 @@ function drawBearAndBeanCampStatic(targetCtx) {
         // Keep the picnic blanket clearing free of tall grass/cattails/flowers
         const ix = item.xNorm * worldW;
         const iy = depthToWorldY(item.depth, item.xNorm);
-        if (Math.abs(ix - campPos.x) < 92 * campPos.scale && Math.abs(iy - campPos.y) < 34 * campPos.scale) {
+        if (!item.hunt && inClearing(ix, iy)) {
           continue;
         }
         if (item.kind === "grass") {
@@ -2253,7 +2263,19 @@ function drawBearAndBeanCampStatic(targetCtx) {
       bCtx.restore();
     }
 
+let bakeClip = null;
 function rebake() { bakeStaticBackdrop(cachedStaticFlowers); paintMiniArt(); }
+// re-bake just the patch of meadow a flower stood in (after it's picked): the same seed draws the same meadow
+function rebakeAround(fl) {
+  const h = headShape(fl), s = depthToScale(fl.depth), bx = fl.xNorm * worldW, by = depthToWorldY(fl.depth, fl.xNorm), pad = 8 + 34 * s;   // room for leaves and the tip of a spire
+  // snapped to whole pixels of the baked meadow, so the patch has no soft edge where it meets the rest
+  const sn = (v, up) => (up ? Math.ceil(v * bdpr) : Math.floor(v * bdpr)) / bdpr;
+  const x0 = sn(Math.min(bx, h.x - h.rx) - pad), x1 = sn(Math.max(bx, h.x + h.rx) + pad, 1), y0 = sn(h.y - h.ry - pad), y1 = sn(by + pad, 1);
+  bCtx.save(); bCtx.beginPath(); bCtx.rect(x0, y0, x1 - x0, y1 - y0); bCtx.clip(); bCtx.clearRect(x0, y0, x1 - x0, y1 - y0);
+  bakeClip = { x0, y0, x1, y1 };
+  try { bakeStaticBackdrop(cachedStaticFlowers); } finally { bakeClip = null; }
+  bCtx.restore(); paintMiniArt();
+}
 
 /* ---------- rounds ---------- */
 /* ---------- meadows and hunts: each meadow has 20 flowers to hunt, one after another ---------- */
@@ -2292,7 +2314,9 @@ function newMeadow(fresh) {
     movingFlowers = [];
     for (let i = 0; i < 980; i++) {
       const isAnimated = i < 24;
-      const depth = isAnimated ? rand(0.25, 0.94) : Math.pow(rng(), 1.75);
+      // the swaying ones stand in the very front row, their stems running off the bottom of the meadow,
+      // because they're drawn over the baked meadow and nothing baked may stand in front of them
+      const depth = isAnimated ? 0.955 + (rand(0.25, 0.94) - 0.25) * 0.065 : Math.pow(rng(), 1.75);
       let dArch, dPalette;
       do { dArch = pick(ARCHETYPES); dPalette = pick(PALETTES); } while (taken.has(dArch.key + '|' + dPalette.label));
       const fl = makeFlower(rng(), depth, { arch: dArch, palette: dPalette, speckles: rng() < 0.45 }, false, isAnimated);
@@ -2333,13 +2357,26 @@ function headShape(fl) {
   const s = depthToScale(fl.depth), x = fl.xNorm * worldW + fl.stemCurve * s, y = depthToWorldY(fl.depth, fl.xNorm) - fl.stemHeight * s;
   return fl.arch.key === 'lupine' ? { x, y: y - 26 * s, rx: 14 * s, ry: 32 * s } : { x, y, rx: fl.arch.len * s, ry: fl.arch.len * s };
 }
-const inShape = (h, px, py, pad = 1) => ((px - h.x) / (h.rx * pad)) ** 2 + ((py - h.y) / (h.ry * pad)) ** 2 <= 1;
+const inShape = (h, px, py, pad = 1) => h.box ? Math.abs(px - h.x) <= h.rx * pad && Math.abs(py - h.y) <= h.ry * pad
+  : ((px - h.x) / (h.rx * pad)) ** 2 + ((py - h.y) / (h.ry * pad)) ** 2 <= 1;
 const HEAD_SPOTS = [[0, 0]];   // 25 points spread over a flower's head
 for (const [r, n] of [[0.4, 8], [0.8, 16]]) for (let k = 0; k < n; k++) HEAD_SPOTS.push([Math.cos(k / n * 6.2832) * r, Math.sin(k / n * 6.2832) * r]);
 const near = (a, b) => Math.abs(a.x - b.x) < a.rx * 1.1 + b.rx && Math.abs(a.y - b.y) < a.ry * 1.1 + b.ry;
+let frontGrid = null;   // baked flowers by where their heads are, so the check only looks at near ones
+function buildFrontGrid() {
+  frontGrid = new Map();
+  for (const fl of cachedStaticFlowers) {
+    const bx = fl.xNorm * worldW, by = depthToWorldY(fl.depth, fl.xNorm); if (inPicnic(bx, by) || inClearing(bx, by)) continue;   // not baked
+    const h = headShape(fl), key = Math.floor(h.x / 120) + ',' + Math.floor(h.y / 120);
+    (frontGrid.get(key) || frontGrid.set(key, []).get(key)).push(fl);
+  }
+}
 function hiddenShare(fl, live, keepOut) {
-  const h = headShape(fl), front = [];
-  for (const o of live) if (o !== fl && o.depth > fl.depth) { const oh = headShape(o); if (near(oh, h)) front.push(oh); }
+  if (inClearing(fl.xNorm * worldW, depthToWorldY(fl.depth, fl.xNorm))) return 1;
+  const h = headShape(fl), front = [], cx = Math.floor(h.x / 120), cy = Math.floor(h.y / 120);
+  const consider = o => { if (o !== fl && o.depth > fl.depth) { const oh = headShape(o); if (near(oh, h)) front.push(oh); } };
+  for (const o of live) consider(o);
+  for (let i = cx - 1; i <= cx + 1; i++) for (let j = cy - 1; j <= cy + 1; j++) { const c = frontGrid && frontGrid.get(i + ',' + j); if (c) c.forEach(consider); }
   const blocks = keepOut.filter(k => near(k, h));
   let hid = 0;
   for (const [u, v] of HEAD_SPOTS) {
@@ -2350,9 +2387,10 @@ function hiddenShare(fl, live, keepOut) {
 }
 function unhideHuntFlowers() {
   const { x, y, scale: cs } = campPos, pw = 240 * cs, ph = pw * (picnicReady() ? picnicImg.naturalHeight / picnicImg.naturalWidth : 0.75);
-  const keepOut = [{ x, y: y - ph * 0.28, rx: pw * 0.5, ry: ph * 0.5 }]
+  const keepOut = [{ x, y: y - ph * 0.28, rx: pw * 0.5, ry: ph * 0.5, box: true }]   // the whole picnic picture
     .concat(luckyClovers.map(lc => { const r = Math.max(3.6, 6.6 * depthToScale(lc.depth)) * 2.2; return { x: lc.worldX, y: lc.worldY, rx: r, ry: r }; }));
-  const live = movingFlowers.concat(huntFlowers), OK = 0.45;   // a little under half hidden at most, to allow for swaying
+  buildFrontGrid();
+  const live = movingFlowers.concat(huntFlowers), OK = 0.36;   // well under half, leaving room for the grass and bulrushes in front, which this leaves out
   // moving this flower mustn't hide one of the others behind it
   const fine = fl => { const h = headShape(fl); return huntFlowers.every(o => o === fl || o.depth >= fl.depth || !near(headShape(o), h) || hiddenShare(o, live, keepOut) <= OK); };
   seeded((S.seed ^ 0x5bd1e995) >>> 0, () => {
@@ -2364,7 +2402,7 @@ function unhideHuntFlowers() {
         for (let t = 0; t < 60 && !placed; t++) {
           const was = [fl.xNorm, fl.depth];
           fl.xNorm = rand(0.06, 0.94); fl.depth = rand(0.28, 0.92);
-          placed = hiddenShare(fl, live, keepOut) <= 0.3 && fine(fl);
+          placed = hiddenShare(fl, live, keepOut) <= 0.24 && fine(fl);
           if (!placed) [fl.xNorm, fl.depth] = was;
         }
         if (!placed) still++;
@@ -2621,7 +2659,7 @@ function loop(now) {
 
   for (let i = 0; i < liveFlowers.length; i++) {
     const mf = liveFlowers[i];
-    if (mf.found) continue;   // picked: it's in the basket now
+    if (mf.found || mf.hunt !== undefined) continue;   // picked, or baked into the meadow
     const approxX = mf.xNorm * worldW;
     const approxY = depthToWorldY(mf.depth, mf.xNorm);
     if (approxX < camX - 110 || approxX > camX + visibleW + 110 || approxY < camY - 150 || approxY > camY + visibleH + 150) continue;
@@ -2742,7 +2780,7 @@ function evaluatePickAtWorld(wx, wy) {
   }
 
   if (hitTarget) {
-    hitTarget.found = true;
+    hitTarget.found = true; { const fl = hitTarget; setTimeout(() => rebakeAround(fl), 0); }   // the sound and sparkles first, then the patch
     pickedFlowers.push(hitTarget); S.found.push(hitTarget.slot);
     if (hitTarget === hintedFlower) { hintedFlower = null; hintTimer = 0; }
     targetsRemaining--;
@@ -2982,7 +3020,7 @@ Promise.race([Promise.all([picnicImg, ...faces].map(settle)), new Promise(res =>
 if (/[?&]debug\b/.test(location.search)) window.__ff = {
   get targets() { return targetFlowers; }, get clovers() { return luckyClovers; }, get S() { return S; },
   get cam() { return { camX, camY, zoom, viewW, viewH, worldW, worldH }; }, newMeadow, freshMeadow, get hunts() { return hunts; }, get live() { return liveFlowers; }, get picked() { return pickedFlowers; }, get MP() { return MP; }, get camp() { return campPos; }, wl: getLiveTargetWorldPos, live2: getLiveTargetWorldPos,
-  pickAt: evaluatePickAtWorld, drawFlowerTo, drawCloverPatch, drawBearAndBeanBasket, hiddenShare, get liveAll() { return liveFlowers; }, lookAt(x, y, z = 1.2) { targetZoom = zoom = clampZoom(z); const c = clampCam(x - viewW / zoom / 2, y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; },
+  pickAt: evaluatePickAtWorld, drawFlowerTo, drawCloverPatch, drawBearAndBeanBasket, hiddenShare, rebakeAround, rebake, get backdrop() { return backdropCanvas; }, get bdpr() { return bdpr; }, get moving() { return movingFlowers; }, get liveAll() { return liveFlowers; }, lookAt(x, y, z = 1.2) { targetZoom = zoom = clampZoom(z); const c = clampCam(x - viewW / zoom / 2, y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; },
 };
 })();
 </script>
