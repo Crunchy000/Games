@@ -638,9 +638,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 30, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 31, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 30) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 31) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -848,9 +848,9 @@ function planFloor(T) {
   }
   const nearFossil = it => fossils.some(f => Math.hypot(f.x - it.cx, f.y - it.cy) < f.r + it.r + 8 || Math.hypot(f.x - it.x, f.y - it.y) < f.r + it.size * .3 + 8);
   // a staggered row along the back edge, leaning out into the cave
-  for (let x = W / 2 - hwBack + R(10, 30), i = 0; x < W / 2 + hwBack - 10; x += R(52, 80), i++) {
+  for (let x = W / 2 - hwBack + R(10, 30), i = 0; x < W / 2 + hwBack - 10; x += R(70, 100), i++) {
     const y = baseY(x) + (i % 2 ? R(4, 10) : R(16, 30)); if (inPond(x, y, 30)) continue;
-    const lean = clamp((W / 2 - x) / (W / 2), -1, 1) * .5, it = mk('f', x, y, -Math.PI / 2 + lean + R(-.35, .35), bell(40, 50) * persp(y));
+    const lean = clamp((W / 2 - x) / (W / 2), -1, 1) * .5, it = mk('f', x, y, -Math.PI / 2 + lean + R(-.35, .35), bell(48, 58) * persp(y));
     if (inPond(it.cx, it.cy, it.r + 10)) continue;
     if (!crowds(floorI, it)) floorI.push(it);
   }
@@ -862,9 +862,9 @@ function planFloor(T) {
   }
   for (let i = 0, n = 0; i < 14000 && n < 380; i++) {
     const x = R(0, W), y = R(y0 + 6, yF); if (!onFloor(x, y, 12)) continue;
-    const it = mk('f', x, y, -Math.PI / 2 + R(-.45, .45), bell(44, 54) * persp(y));
+    const it = mk('f', x, y, -Math.PI / 2 + R(-.45, .45), bell(52, 64) * persp(y));
     if (inPond(it.cx, it.cy, it.r + 10) || inPond(x, y, 24)) continue;   // nothing standing in the pond
-    if (!crowds(floorI, it) && !nearFossil(it) && !floorI.some(o => Math.hypot(o.cx - it.cx, o.cy - it.cy) < (o.r + it.r) * .85)) { floorI.push(it); n++; }
+    if (!crowds(floorI, it) && !nearFossil(it) && !floorI.some(o => Math.hypot(o.cx - it.cx, o.cy - it.cy) < (o.r + it.r) * .78)) { floorI.push(it); n++; }
   }
   floorI.sort((a, b) => a.y - b.y);   // back to front, so nearer things are drawn over farther ones
   const items = floorI;
