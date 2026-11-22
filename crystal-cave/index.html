@@ -24,7 +24,7 @@
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
 }</script>
 <title>Crystal Cave</title>
-<meta name="description" content="A cosy hidden-crystal hunt in a glittering cave. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, among dozens of lookalikes, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A cosy hidden-crystal hunt in a wide, glittering cave. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, among dozens of lookalikes, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://www.bearandbean.uk/crystal-cave/">
 <style>
   :root { --bg:#efe7f1; --ink:#33283f; --muted:#85789a; --panel:#e2d6e8; --card:#fbf7fc; --accent:#8a4fd0; }
@@ -47,8 +47,13 @@
   .tool.sm { padding:7px 10px; font-size:.85rem; border-radius:12px; white-space:nowrap; }
   @media (max-width:380px) { .info { gap:6px; padding:0 10px 6px; } }
   .main { flex:1 1 0; min-height:0; width:100%; display:flex; flex-direction:column; }
-  #stage { position:relative; flex:1 1 0; min-height:0; margin:0 8px; overflow:hidden; touch-action:manipulation; cursor:pointer; border-radius:16px; background:#0b0912; box-shadow:0 4px 14px rgba(30,15,45,.35); }
-  #stage canvas#game { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #stage { position:relative; flex:1 1 0; min-height:0; margin:0 8px; overflow:hidden; touch-action:none; border-radius:16px; background:#0b0912; box-shadow:0 4px 14px rgba(30,15,45,.35); }
+  #stage canvas#game { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
+  #stage.dragging canvas#game { cursor:grabbing; }
+  #mini { position:absolute; left:10px; bottom:10px; z-index:2; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.45); border:2px solid rgba(251,247,252,.9); cursor:pointer; touch-action:none; }
+  .zoom { position:absolute; right:10px; bottom:10px; display:flex; flex-direction:column; gap:6px; z-index:2; }
+  .zoom button { width:42px; height:42px; font-size:1.4rem; padding:0; justify-content:center; }
+  body .zoom button.pk-chip { background:rgba(251,247,252,.95) !important; color:#33283f !important; box-shadow:0 2px 8px rgba(0,0,0,.4) !important; }
   /* the crystal to find, with the fossil count */
   #tray { width:100%; display:flex; align-items:center; gap:12px; padding:8px 14px 12px; flex:none; }
   #want { width:64px; height:64px; flex:none; border-radius:14px; background:#100c18; box-shadow:inset 0 0 0 1px rgba(60,30,90,.2); }
@@ -262,10 +267,12 @@ document.addEventListener('click', e => {
       <button class="ib pk-home" id="bSound" aria-label="Sound"></button>
     </div>
   </header>
-  <div class="info"><div><small>Hunt</small><span id="rnd">1/10</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="A new cave">↻</button></div>
+  <div class="info"><div><small>Hunt</small><span id="rnd">1/12</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="A new cave">↻</button></div>
   <div class="main">
-  <div id="stage" aria-label="The cave. Tap a matching crystal to collect it.">
+  <div id="stage" aria-label="The cave. Pinch to zoom, drag to look around, tap a matching crystal to collect it.">
     <canvas id="game"></canvas>
+    <canvas id="mini" aria-label="Map of the whole cave: tap or drag to look there"></canvas>
+    <div class="zoom"><button class="tool pk-chip" id="bIn" aria-label="Zoom in">＋</button><button class="tool pk-chip" id="bOut" aria-label="Zoom out">－</button></div>
     <div class="note" id="note" role="status" aria-live="polite"></div>
     <div id="loading" class="show" role="status"><div><svg viewBox="-20 -20 40 40" aria-hidden="true"><g class="spin"><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#9b5bd6" transform="rotate(0)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#4cc9e6" transform="rotate(60)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#f095bd" transform="rotate(120)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#2fbf71" transform="rotate(180)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#f2ae3a" transform="rotate(240)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#3a63e0" transform="rotate(300)"/><circle r="3" fill="#fff"/></g></svg><span>Lighting the lanterns…</span></div></div>
   </div>
@@ -282,10 +289,11 @@ document.addEventListener('click', e => {
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>Crystal Cave</h2>
   <div class="pk-steps">
-    <section class="pk-step"><div class=pk-step-art>💎</div><h3>Find the crystal</h3><p>Bear and Bean are collecting one special crystal. Find every one that matches it: same <b>shape, colour and markings</b>.</p></section>
+    <section class="pk-step"><div class=pk-step-art>💎</div><h3>Find the crystal</h3><p>Bear and Bean are collecting one special crystal. Find every one hidden in the cave that matches it: same <b>shape, colour and markings</b>.</p></section>
     <section class="pk-step"><div class=pk-step-art>👀</div><h3>Watch for lookalikes</h3><p>The cave is full of crystals that <b>almost</b> match: the same colour in another shape, or the same shape with other markings.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p>The cave is wide! <b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom in close. Tap the little map to jump.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Tap to collect</h3><p><b>Tap</b> a match to collect it. A wrong tap costs 10 points; a hint 🔍 costs 25. Fossils 🐚 hidden in the rock are a bonus.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🔦</div><h3>10 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a whole new cave.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔦</div><h3>12 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a whole new cave.</p></section>
   </div>
   <div class="row2"><button class="btn pk-btn" data-close>Let's explore</button></div>
 </div></div>
@@ -304,7 +312,9 @@ document.addEventListener('click', e => {
 'use strict';
 const $ = id => document.getElementById(id);
 const stage = $('stage'), cv = $('game'), ctx = cv.getContext('2d'), wantCv = $('want'), wctx = wantCv.getContext('2d');
-let W = 0, H = 0, DPR = 1, sparks = [], motes = [];
+// the cave is a wide world of its own; the screen is a camera on it
+const WORLD_W = 1900, WORLD_H = 1150;
+let W = WORLD_W, H = WORLD_H, DPR = 1, BDPR = 1, sparks = [], motes = [];
 /* ---------- seeded randomness and noise ---------- */
 let rnd = Math.random;
 const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -373,7 +383,7 @@ function rockTexture(base) {
 
 /* ---------- the cave's shape: for each depth layer, an organic oval opening in the rock with a flatter floor ---------- */
 function layerShape(depth) {
-  const cx = W / 2 + R(-1, 1) * W * .04, cy = H * lerp(.5, .46, depth), rx = W * lerp(.62, .22, depth), ry = H * lerp(.47, .2, depth), off = R(0, 100);
+  const cx = W / 2 + R(-1, 1) * W * .04, cy = H * lerp(.5, .46, depth), rx = W * lerp(.6, .11, depth), ry = H * lerp(.47, .15, depth), off = R(0, 100);
   const floorY = cy + ry * R(.62, .74), pts = [];
   for (let i = 0; i < 160; i++) {
     const t = i / 160 * Math.PI * 2, w = 1 + fbm1(off + Math.cos(t) * 1.7 + Math.sin(t) * 2.3, 4) * .22 + fbm1(off + t * 5, 2) * .05;
@@ -570,10 +580,10 @@ function stalactite(g, x, y, len, w, col) {
 
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
-const HUNTS = 10, huntSize = h => 3 + Math.floor((h - 1) / 4);   // 3, 3, 3, 3, 4, 4, 4, 4, 5, 5
-let S = { v: 1, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
+let S = { v: 2, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 1) S = Object.assign(S, s); } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 2) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp;   // caves from the first version don't carry over } catch (e) {}
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -585,7 +595,7 @@ const inPoly = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 
 // plan a cave from its seed: its hunts, the lookalikes, where every formation grows and which ones are hunted
 function planCave() {
   rnd = mulberry(S.seed); makeNoise();
-  const scale = Math.min(1.3, Math.min(W, H) / 560), rock = pick(ROCKS).map(hex);
+  W = WORLD_W; H = WORLD_H; const scale = 1.15, MORE = 1.8, rock = pick(ROCKS).map(hex);
   const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => TRAITS.forEach(trait => combos.push({ shape, pal, trait })))); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
@@ -601,29 +611,33 @@ function planCave() {
   const fillers = combos.filter(c => !isHunt(c)).slice(0, 16);
   const theme = [hunts[0].pal, hunts[1].pal, hunts[2].pal];
   // four rings of rock, far to near
-  const layers = [.84, .6, .34, 0].map(d => ({ d, sh: layerShape(d) }));
+  // five rings of rock, from a small deep pocket out to the rocks right in front of you
+  const layers = [.9, .7, .48, .25, 0].map(d => ({ d, sh: layerShape(d) })), NL = layers.length, NEAR = NL - 1;
   // every formation: where it grows, which way, how big, and its own seed so it's drawn the same every time
   const slots = [], seedOf = () => (rnd() * 2147483647) | 0;
   const put = (li, x, y, ang, size) => slots.push({ li, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 });
-  const stals = [];
+  const stals = [], SIZES = [[10, 20], [13, 28], [18, 38], [26, 56]], GAP = [2.3, 1.9, 1.55, 1.35];
   layers.forEach((L, li) => {
-    for (let i = 0; i < RI(4, 8) * (li + 1); i++) { const x = R(L.sh.x0 + 20, L.sh.x1 - 20), y = L.sh.ceil(x); if (y > 0) stals.push({ li, x, y, len: R(14, 44) * (1 + li * .35) * scale, w: R(4, 10) * (1 + li * .3) * scale }); }
-    if (li === 3) return;
-    const n = [RI(24, 30), RI(30, 36), RI(28, 34)][li], start = R(0, Math.PI * 2), sz = [[10, 24], [20, 42], [30, 66]][li];
+    for (let i = 0; i < RI(7, 12) * (1 + li * .7); i++) { const x = R(L.sh.x0 + 20, L.sh.x1 - 20), y = L.sh.ceil(x); if (y > 0) stals.push({ li, x, y, len: R(14, 40) * (1 + li * .3) * scale, w: R(4, 9) * (1 + li * .25) * scale }); }
+    if (li === NEAR) return;
+    // as many as fit around the ring, spaced for their size
+    const sz = SIZES[li], perim = Math.PI * Math.sqrt(2 * (L.sh.rx ** 2 + L.sh.ry ** 2)) * 1.08;
+    const n = Math.round(perim / ((sz[0] + sz[1]) / 2 * scale * GAP[li]) * R(.92, 1.08)), start = R(0, Math.PI * 2);
     for (let i = 0; i < n; i++) {
       const t = start + i / n * Math.PI * 2 + R(-.06, .06), [x, y] = inRock(L.sh, t, R(-6, 2)), inward = Math.atan2(L.sh.cy - y, L.sh.cx - x);
       if (x > 6 && x < W - 6 && y > 6 && y < H - 6) put(li, x, y, inward + R(-.35, .35), R(sz[0], sz[1]) * scale);
     }
-    for (let i = 0; i < [RI(6, 9), RI(8, 12), RI(7, 10)][li]; i++) {
+    // and a row along each ledge's floor
+    for (let i = 0, nf = Math.round(L.sh.rx * 1.2 / ((sz[0] + sz[1]) / 2 * scale * 1.7)); i < nf; i++) {
       const x = R(L.sh.x0 + L.sh.rx * .2, L.sh.x1 - L.sh.rx * .2), y = L.sh.floor(x) + R(2, 10);
       if (y < H - 6) put(li, x, y, -Math.PI / 2 + R(-.5, .5), R(sz[0] * .8, sz[1] * .7) * scale);
     }
-    if (li === 2) { const x = L.sh.cx + R(-1, 1) * L.sh.rx * .3; put(li, x, L.sh.floor(x) + 5, -Math.PI / 2 + R(-.15, .15), Math.min(W * .2, H * .24, 170)); slots[slots.length - 1].centre = true; }
+    if (li === NEAR - 1) { const x = L.sh.cx + R(-1, 1) * L.sh.rx * .3; put(li, x, L.sh.floor(x) + 5, -Math.PI / 2 + R(-.15, .15), 190); slots[slots.length - 1].centre = true; }
   });
-  { const sh = layers[3].sh, n = RI(11, 15), start = R(0, Math.PI * 2);
+  { const sh = layers[NEAR].sh, perim = Math.PI * Math.sqrt(2 * (sh.rx ** 2 + sh.ry ** 2)), n = Math.round(perim / (80 * scale * 1.15)), start = R(0, Math.PI * 2);
     for (let i = 0; i < n; i++) {
       const t = start + i / n * Math.PI * 2 + R(-.1, .1), [x, y] = inRock(sh, t, R(-4, 10)), inward = Math.atan2(sh.cy - y, sh.cx - x);
-      if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(3, x, y, inward + R(-.4, .4), R(56, 104) * scale);
+      if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(NEAR, x, y, inward + R(-.4, .4), R(56, 104) * scale);
     } }
   // which formations can be hunted: big enough to tap, on screen, and not mostly behind nearer rock or crystals
   slots.forEach((s, i) => {
@@ -638,7 +652,7 @@ function planCave() {
   const pool = shuffle(slots.filter(s => s.huntable)).concat(shuffle(slots.filter(s => s.spare && !s.huntable))), counts = [];
   hunts.forEach((h, k) => {
     const want = huntSize(k + 1), got = [];
-    for (const gap of [44, 24, 0]) for (const s of pool) {   // spread them out, but never leave a hunt short
+    for (const gap of [160, 70, 0]) for (const s of pool) {   // spread them out, but never leave a hunt short
       if (got.length >= want) break; if (s.type || got.some(o => Math.hypot(o.cx - s.cx, o.cy - s.cy) < gap)) continue; s.type = h; s.hunt = k; s.slot = got.length; got.push(s);
     }
     counts.push(got.length);
@@ -647,7 +661,7 @@ function planCave() {
   // three fossils pressed into the rock, just behind the rim of the middle rings
   const fossils = [];
   for (let tries = 0; fossils.length < 3 && tries < 200; tries++) {
-    const li = RI(1, 2), L = layers[li], [x, y] = inRock(L.sh, R(0, Math.PI * 2), R(10, 26) * scale), r = R(9, 12) * scale;
+    const li = RI(1, NL - 2), L = layers[li], [x, y] = inRock(L.sh, R(0, Math.PI * 2), R(10, 26) * scale), r = R(9, 12) * scale;
     if (x < 20 || x > W - 20 || y < 20 || y > H - 20) continue;
     if (!layers.every((M, j) => j <= li || inPoly(M.sh.pts, x, y))) continue;
     if (slots.some(s => s.li >= li && Math.hypot(s.cx - x, s.cy - y) < s.r + r + 6) || fossils.some(f => Math.hypot(f.x - x, f.y - y) < 60)) continue;
@@ -674,8 +688,8 @@ function fossil(g, f, rockCol) {
 
 // paint a planned cave into one picture, a few milliseconds at a time so the page stays responsive; resolves when done
 function paintCave(plan) {
-  const S2 = document.createElement('canvas'); S2.width = Math.round(W * DPR); S2.height = Math.round(H * DPR);
-  const g = S2.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const S2 = document.createElement('canvas'); S2.width = Math.round(W * BDPR); S2.height = Math.round(H * BDPR);
+  const g = S2.getContext('2d'); g.setTransform(BDPR, 0, 0, BDPR, 0, 0);
   const glows = [], ops = [], { layers, rock, theme, scale } = plan;
   sparks = []; motes = [];
   ops.push(() => {
@@ -690,22 +704,21 @@ function paintCave(plan) {
       const gl = g.createRadialGradient(x, y, 0, x, y, R(2, 5)); gl.addColorStop(0, rgba(c, R(.35, .8))); gl.addColorStop(1, rgba(c, 0)); g.fillStyle = gl; g.fillRect(x - 6, y - 6, 12, 12); }
   });
   layers.forEach((L, li) => {
-    const col = rock[Math.min(2, Math.max(0, li - 1))], lit = hex(theme[li % 3].glow);
+    const col = rock[[0, 0, 1, 1, 2][li]], lit = hex(theme[li % 3].glow);
     ops.push(() => {
       rnd = mulberry((S.seed + li * 7919) | 0);
       const path = rockPath(g, L.sh);
       g.save(); g.fillStyle = rockTexture('#' + shade(col, li === 0 ? .08 : 0).map(v => Math.round(v).toString(16).padStart(2, '0')).join('')); g.fill(path, 'evenodd');
       g.clip(path, 'evenodd'); g.lineJoin = 'round';
-      g.globalCompositeOperation = 'screen'; g.filter = 'blur(12px)';
-      g.strokeStyle = rgba(mix(lit, [255, 255, 255], .1), .16 - li * .025); g.lineWidth = 28 + li * 14; g.stroke(openingPath(L.sh));
-      g.filter = 'none'; g.globalCompositeOperation = 'source-over';
-      g.strokeStyle = rgba(mix(lit, [255, 255, 255], .25), .24 - li * .04); g.lineWidth = 2 + li * 1.2; g.stroke(openingPath(L.sh));
-      g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 34 + li * 24; g.globalCompositeOperation = 'multiply'; g.filter = 'blur(10px)'; g.stroke(openingPath(L.sh));
-      g.filter = 'none'; g.globalCompositeOperation = 'source-over';
+      // soft glow and shadow along the edge: stacked strokes, widest and faintest first (a blur filter over the whole cave is far too slow on a phone)
+      const edge = openingPath(L.sh), soft = (col, a, w0, w1, op) => { g.globalCompositeOperation = op; for (let k = 0; k < 3; k++) { g.strokeStyle = rgba(col, a / 2.2); g.lineWidth = w1 - (w1 - w0) * k / 2; g.stroke(edge); } g.globalCompositeOperation = 'source-over'; };
+      soft(mix(lit, [255, 255, 255], .1), .16 - li * .02, 8 + li * 4, 46 + li * 18, 'screen');
+      g.strokeStyle = rgba(mix(lit, [255, 255, 255], .25), .24 - li * .03); g.lineWidth = 2 + li; g.stroke(edge);
+      soft([0, 0, 0], .3, 14 + li * 10, 58 + li * 34, 'multiply');
       const lip = g.createRadialGradient(L.sh.cx, L.sh.cy, Math.min(L.sh.rx, L.sh.ry), L.sh.cx, L.sh.cy, Math.max(W, H) * .8);
-      lip.addColorStop(0, 'rgba(0,0,0,0)'); lip.addColorStop(1, `rgba(0,0,0,${.3 + li * .12})`); g.fillStyle = lip; g.fillRect(0, 0, W, H);
+      lip.addColorStop(0, 'rgba(0,0,0,0)'); lip.addColorStop(1, `rgba(0,0,0,${.3 + li * .09})`); g.fillStyle = lip; g.fillRect(0, 0, W, H);
       g.restore();
-      if (li < 3) { g.fillStyle = rgba(mix(lit, [10, 8, 20], .88), .22); g.fillRect(0, 0, W, H); }
+      if (li < layers.length - 1) { g.fillStyle = rgba(mix(lit, [10, 8, 20], .88), .18); g.fillRect(0, 0, W, H); }
       for (const f of plan.fossils) if (f.li === li) fossil(g, f, col);
       for (const st of plan.stals) if (st.li === li) stalactite(g, st.x, st.y, st.len, st.w, shade(col, .12));
     });
@@ -718,12 +731,12 @@ function paintCave(plan) {
     const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.max(W, H) * .78);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
     rnd = mulberry(S.seed ^ 0x51ed27);
-    for (let i = 0; i < 46; i++) motes.push({ x: R(0, W), y: R(0, H), v: R(4, 12), a: R(.15, .4), r: R(.6, 1.6), c: pick(theme).glow, p: rnd() * 6.3 });
-    if (sparks.length > 260) sparks = shuffle(sparks).slice(0, 260);
+    for (let i = 0; i < 150; i++) motes.push({ x: R(0, W), y: R(0, H), v: R(4, 12), a: R(.15, .4), r: R(.6, 1.6), c: pick(theme).glow, p: rnd() * 6.3 });
+    if (sparks.length > 700) sparks = shuffle(sparks).slice(0, 700);
   });
   return new Promise(resolve => {
     let i = 0;
-    const step = () => { const t0 = performance.now(); while (i < ops.length && performance.now() - t0 < 12) ops[i++](); if (i < ops.length) setTimeout(step, 0); else resolve(S2); };
+    const step = () => { const t0 = performance.now(); while (i < ops.length && performance.now() - t0 < 12) { ops[i++](); } if (i < ops.length) setTimeout(step, 0); else resolve(S2); };
     step();
   });
 }
@@ -790,11 +803,11 @@ function tapAt(x, y) {
   if (!cave || busyGen) return;
   audio();
   // a fossil first: they're small
-  const f = cave.plan.fossils.find((f, i) => !S.fossils.includes(i) && Math.hypot(f.x - x, f.y - y) < Math.max(18, f.r * 1.7));
+  const f = cave.plan.fossils.find((f, i) => !S.fossils.includes(i) && Math.hypot(f.x - x, f.y - y) < Math.max(16 / zoom, f.r * 1.7));
   if (f) { const i = cave.plan.fossils.indexOf(f); S.fossils.push(i); S.score += 75; save(); sFossil(); buzz(15); burst(f.x, f.y, '#f2dfb0'); note('A fossil! +75'); renderHud(); return; }
   // the crystal in front under the tap
   // a crystal still to find wins any tie, so a neighbour's glow never steals a fair tap
-  let hit = cave.plan.slots.find(s => s.hunt === S.hunt - 1 && !S.found.includes(s.slot) && Math.hypot(s.cx - x, s.cy - y) < s.r) || null;
+  let hit = cave.plan.slots.find(s => s.hunt === S.hunt - 1 && !S.found.includes(s.slot) && Math.hypot(s.cx - x, s.cy - y) < Math.max(s.r, 16 / zoom)) || null;
   if (!hit) for (let i = cave.plan.slots.length - 1; i >= 0; i--) { const s = cave.plan.slots[i]; if (Math.hypot(s.cx - x, s.cy - y) < s.r) { hit = s; break; } }
   if (!hit) return;
   if (hit.hunt === S.hunt - 1) {
@@ -819,6 +832,7 @@ function hint() {
   const left = targetsNow().filter(s => !S.found.includes(s.slot)); if (!left.length) return;
   hintSlot = left[Math.floor(Math.random() * left.length)]; hintT = performance.now();
   S.hints++; S.score = Math.max(0, S.score - 25); save(); renderHud(); sHint(); note('Look around the glow…');
+  lookAt(hintSlot.cx, hintSlot.cy, Math.max(targetZoom, 1));
 }
 function win() {
   S.caves++; if (S.score > S.best) S.best = S.score; save(); sWin(); buzz([20, 40, 60]);
@@ -832,14 +846,15 @@ let busyGen = false, genId = 0;
 const loadingEl = $('loading');
 function makeCave(fresh) {
   if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.fossils = []; S.score = 0; S.misses = 0; S.hints = 0; save(); }
-  const r = stage.getBoundingClientRect(); W = Math.max(200, Math.round(r.width)); H = Math.max(200, Math.round(r.height)); DPR = Math.min(window.devicePixelRatio || 1, 2);
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(5.2e6 / (WORLD_W * WORLD_H)));   // the painted cave's resolution, capped to spare a phone's memory
   busyGen = true; loadingEl.classList.add('show'); const id = ++genId;
   const plan = planCave();
   return paintCave(plan).then(pic => {
     if (id !== genId) return;
-    cave = { plan, pic, w: W, h: H }; busyGen = false; hintSlot = null;
+    if (cave && cave.pic) { cave.pic.width = cave.pic.height = 0; }   // let the old picture go straight away
+    cave = { plan, pic }; busyGen = false; hintSlot = null;
     S.found = S.found.filter(i => i < plan.counts[S.hunt - 1]); S.fossils = S.fossils.filter(i => i < plan.fossils.length);
+    paintMiniArt(); centreCamera();
     loadingEl.classList.remove('show'); showTarget();
   });
 }
@@ -856,22 +871,102 @@ document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click
 $('ovHelp').addEventListener('pointerdown', e => { if (e.target === $('ovHelp')) { $('ovHelp').classList.remove('show'); S.seenHelp = true; save(); } });
 $('bTheme').onclick = () => { BB.theme = isDark() ? 'light' : 'dark'; applyTheme(); };
 $('bSound').onclick = () => { S.muted = !S.muted; BB.muted = S.muted; save(); renderSound(); audio(); tone(880, .08, 'sine'); };
-// taps on the cave (a tap, not a drag)
-let down = null;
-stage.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
-stage.addEventListener('pointerup', e => {
-  if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null; if (moved > 12) return;
-  const r = cv.getBoundingClientRect(); tapAt(e.clientX - r.left, e.clientY - r.top);
-});
-// a new size (turning the phone): the same cave, laid out again for the new shape
-let lastSize = '';
-const fitApp = () => { const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight) || innerHeight; document.documentElement.style.setProperty('--app-h', h + 'px'); };
-let rt = 0;
-function onResize() {
-  fitApp(); const r = stage.getBoundingClientRect(), key = Math.round(r.width) + 'x' + Math.round(r.height);
-  if (!cave || key === lastSize) return; lastSize = key; clearTimeout(rt); rt = setTimeout(() => makeCave(false), 300);
+/* ---------- the camera: drag to look around, pinch or ＋/－ to zoom, the little map to jump ---------- */
+let viewW = 1, viewH = 1, zoom = 1, targetZoom = 1, camX = 0, camY = 0, targetCamX = 0, targetCamY = 0;
+const minZoom = () => Math.max(viewW / WORLD_W, viewH / WORLD_H);
+const maxZoom = () => Math.max(minZoom() * 1.5, 1.8);
+const clampZoom = z => Math.max(minZoom(), Math.min(maxZoom(), z));
+function clampCam(x, y, z) { return { x: Math.max(0, Math.min(WORLD_W - viewW / z, x)), y: Math.max(0, Math.min(WORLD_H - viewH / z, y)) }; }
+function zoomAt(z, sx, sy, now) {
+  const nz = clampZoom(z), wx = sx / zoom + camX, wy = sy / zoom + camY, c = clampCam(wx - sx / nz, wy - sy / nz, nz);
+  targetZoom = nz; targetCamX = c.x; targetCamY = c.y; if (now) { zoom = nz; camX = c.x; camY = c.y; }
 }
-addEventListener('resize', onResize); if (window.visualViewport) visualViewport.addEventListener('resize', onResize);
+function lookAt(x, y, z) { const nz = clampZoom(z), c = clampCam(x - viewW / nz / 2, y - viewH / nz / 2, nz); targetZoom = nz; targetCamX = c.x; targetCamY = c.y; }
+// open zoomed right out, looking into the heart of the cave
+function centreCamera() { zoom = targetZoom = minZoom(); const c = clampCam(WORLD_W / 2 - viewW / zoom / 2, WORLD_H / 2 - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; }
+const fitApp = () => { const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight) || innerHeight; document.documentElement.style.setProperty('--app-h', h + 'px'); };
+function layout() {
+  fitApp();
+  const r = stage.getBoundingClientRect(); viewW = Math.max(1, r.width); viewH = Math.max(1, r.height);
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const cw = Math.round(viewW * DPR), ch = Math.round(viewH * DPR);
+  if (cv.width !== cw) cv.width = cw; if (cv.height !== ch) cv.height = ch;   // only when it really changes
+  zoom = clampZoom(zoom); targetZoom = clampZoom(targetZoom);
+  let c = clampCam(camX, camY, zoom); camX = c.x; camY = c.y; c = clampCam(targetCamX, targetCamY, targetZoom); targetCamX = c.x; targetCamY = c.y;
+  sizeMini();
+}
+// turning the phone just moves the camera: the cave itself never changes
+addEventListener('resize', layout); if (window.visualViewport) visualViewport.addEventListener('resize', layout);
+
+const pointers = new Map(); let dragging = false, pinching = false, dragX = 0, dragY = 0, dragCamX = 0, dragCamY = 0, pinchD = 0, pinchZ = 1, pinchWX = 0, pinchWY = 0;
+const pair = () => { const [a, b] = [...pointers.values()]; return { d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault(); audio(); try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) { dragging = pinching = false; dragX = e.clientX; dragY = e.clientY; dragCamX = targetCamX; dragCamY = targetCamY; }
+  else if (pointers.size === 2) { pinching = dragging = true; const r = cv.getBoundingClientRect(), p = pair(); pinchD = p.d; pinchZ = zoom; pinchWX = (p.x - r.left) / zoom + camX; pinchWY = (p.y - r.top) / zoom + camY; }
+});
+cv.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const r = cv.getBoundingClientRect();
+  if (pointers.size >= 2) { const p = pair(), nz = clampZoom(pinchZ * p.d / pinchD), c = clampCam(pinchWX - (p.x - r.left) / nz, pinchWY - (p.y - r.top) / nz, nz); zoom = targetZoom = nz; camX = targetCamX = c.x; camY = targetCamY = c.y; return; }
+  if (pinching) return;
+  const dx = e.clientX - dragX, dy = e.clientY - dragY;
+  if (!dragging && Math.hypot(dx, dy) > 8) { dragging = true; stage.classList.add('dragging'); }
+  if (dragging) { const c = clampCam(dragCamX - dx / zoom, dragCamY - dy / zoom, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; }
+});
+function release(e) {
+  if (!pointers.has(e.pointerId)) return;
+  const was = { dragging, pinching, n: pointers.size }; pointers.delete(e.pointerId);
+  if (pointers.size === 1) { const p = [...pointers.values()][0]; dragX = p.x; dragY = p.y; dragCamX = targetCamX; dragCamY = targetCamY; pinching = false; dragging = true; return; }
+  if (pointers.size) return;
+  stage.classList.remove('dragging');
+  if (was.n === 1 && !was.dragging && !was.pinching && e.type === 'pointerup') { const r = cv.getBoundingClientRect(); tapAt((e.clientX - r.left) / zoom + camX, (e.clientY - r.top) / zoom + camY); }
+  dragging = pinching = false;
+}
+cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(targetZoom * Math.exp(-e.deltaY * (e.ctrlKey || e.metaKey ? .008 : .0015)), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+$('bIn').onclick = () => { audio(); zoomAt(targetZoom * 1.4, viewW / 2, viewH / 2); tone(700, .05, 'triangle', .025); };
+$('bOut').onclick = () => { audio(); zoomAt(targetZoom / 1.4, viewW / 2, viewH / 2); tone(500, .05, 'triangle', .025); };
+const keys = new Set();
+addEventListener('keydown', e => { if (!document.querySelector('.ov.show') && /^Arrow/.test(e.code)) { keys.add(e.code); e.preventDefault(); } });
+addEventListener('keyup', e => keys.delete(e.code));
+
+// the little map of the whole cave
+const mini = $('mini'), mctx = mini.getContext('2d'), miniArt = document.createElement('canvas');
+let miniW = 120, miniH = 73;
+function sizeMini() {
+  const d = Math.min(2, window.devicePixelRatio || 1); miniW = viewW < 420 ? 104 : 136; miniH = Math.round(miniW * WORLD_H / WORLD_W);
+  if (mini.width !== miniW * d) { mini.width = miniW * d; mini.height = miniH * d; mini.style.width = miniW + 'px'; mini.style.height = miniH + 'px'; paintMiniArt(); }
+}
+function paintMiniArt() {
+  if (!cave || !mini.width) return;
+  miniArt.width = mini.width; miniArt.height = mini.height;
+  let src = cave.pic;   // halve a step at a time so the small map stays smooth
+  while (src.width > miniArt.width * 2.5) { const h = document.createElement('canvas'); h.width = Math.ceil(src.width / 2); h.height = Math.ceil(src.height / 2); h.getContext('2d').drawImage(src, 0, 0, h.width, h.height); if (src !== cave.pic) src.width = 0; src = h; }
+  miniArt.getContext('2d').drawImage(src, 0, 0, miniArt.width, miniArt.height); if (src !== cave.pic) src.width = 0;
+}
+function drawMini(t) {
+  if (!miniArt.width) return;
+  const d = mini.width / miniW, k = miniW / WORLD_W;
+  mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.drawImage(miniArt, 0, 0);
+  const vx = camX * k, vy = camY * k, vw = Math.min(miniW - vx, viewW / zoom * k), vh = Math.min(miniH - vy, viewH / zoom * k);
+  mctx.fillStyle = 'rgba(8,4,16,.45)'; mctx.fillRect(0, 0, mini.width, mini.height);
+  mctx.drawImage(miniArt, vx * d, vy * d, vw * d, vh * d, vx * d, vy * d, vw * d, vh * d);
+  mctx.setTransform(d, 0, 0, d, 0, 0);
+  for (const s of cave.plan.slots) {
+    if (s.hunt === undefined) continue;
+    const done = s.hunt < S.hunt - 1 || (s.hunt === S.hunt - 1 && S.found.includes(s.slot));
+    if (done && s.hunt === S.hunt - 1) { mctx.fillStyle = '#6fe39a'; mctx.beginPath(); mctx.arc(s.cx * k, s.cy * k, 2.2, 0, 6.3); mctx.fill(); }
+  }
+  if (hintSlot) { mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.5; mctx.beginPath(); mctx.arc(hintSlot.cx * k, hintSlot.cy * k, 4 + Math.sin(t * 6), 0, 6.3); mctx.stroke(); }
+  mctx.strokeStyle = 'rgba(255,255,255,.95)'; mctx.lineWidth = 1.5; mctx.strokeRect(vx + .75, vy + .75, Math.max(2, vw - 1.5), Math.max(2, vh - 1.5));
+}
+let miniDrag = false;
+function miniJump(e) { const r = mini.getBoundingClientRect(); lookAt((e.clientX - r.left) / r.width * WORLD_W, (e.clientY - r.top) / r.height * WORLD_H, targetZoom); }
+mini.addEventListener('pointerdown', e => { e.stopPropagation(); audio(); miniDrag = true; try { mini.setPointerCapture(e.pointerId); } catch (_) {} miniJump(e); });
+mini.addEventListener('pointermove', e => { if (miniDrag) miniJump(e); });
+['pointerup', 'pointercancel'].forEach(t => mini.addEventListener(t, () => miniDrag = false));
 
 /* ---------- drawing each frame: the cave, then sparkles, dust, ticks, the hint and bursts ---------- */
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -890,44 +985,57 @@ function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (document.hidden || !cave || loadingEl.classList.contains('show')) return;
   const t = now / 1000;
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(cave.pic, 0, 0); ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // glide the camera towards where it's heading (arrow keys nudge it)
+  if (keys.size) { const sp = 520 * dt / zoom, c = clampCam(targetCamX + ((keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0)) * sp, targetCamY + ((keys.has('ArrowDown') ? 1 : 0) - (keys.has('ArrowUp') ? 1 : 0)) * sp, targetZoom); targetCamX = c.x; targetCamY = c.y; }
+  const ease = Math.min(1, dt * 10);
+  zoom += (targetZoom - zoom) * ease; camX += (targetCamX - camX) * ease; camY += (targetCamY - camY) * ease;
+  if (Math.abs(targetZoom - zoom) < 1e-4) zoom = targetZoom;
+  const vx0 = camX - 20, vy0 = camY - 20, vx1 = camX + viewW / zoom + 20, vy1 = camY + viewH / zoom + 20, seen = (x, y) => x > vx0 && x < vx1 && y > vy0 && y < vy1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#05040a'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const z = DPR * zoom; ctx.setTransform(z, 0, 0, z, -camX * z, -camY * z);
+    // only the part of the painted cave that's on screen
+  { const sx = Math.max(0, camX), sy = Math.max(0, camY), sw = Math.min(WORLD_W - sx, viewW / zoom), sh = Math.min(WORLD_H - sy, viewH / zoom);
+    ctx.drawImage(cave.pic, sx * BDPR, sy * BDPR, sw * BDPR, sh * BDPR, sx, sy, sw, sh); }
   ctx.globalCompositeOperation = 'lighter';
   for (const m of motes) {
     if (!reduceMotion) { m.y -= m.v * dt; m.x += Math.sin(t * .6 + m.p) * .15; if (m.y < -5) { m.y = H + 5; m.x = Math.random() * W; } }
+    if (!seen(m.x, m.y)) continue;
     ctx.globalAlpha = m.a * (.6 + .4 * Math.sin(t * 1.3 + m.p)); ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 6.3); ctx.fill();
   }
-  if (!reduceMotion) for (const s of sparks) { const v = Math.sin(t * s.f + s.p); if (v > .6) star(s.x, s.y, s.s * (v - .6) / .4 * .5, s.c, Math.min(1, (v - .6) * 2.4)); }
+  if (!reduceMotion) for (const s of sparks) { if (!seen(s.x, s.y)) continue; const v = Math.sin(t * s.f + s.p); if (v > .6) star(s.x, s.y, s.s * (v - .6) / .4 * .5, s.c, Math.min(1, (v - .6) * 2.4)); }
   ctx.globalAlpha = 1;
   // the current hunt's finds glow; every collected crystal wears a tick
   for (const s of cave.plan.slots) {
     if (s.hunt === undefined) continue;
     const done = s.hunt < S.hunt - 1 || (s.hunt === S.hunt - 1 && S.found.includes(s.slot)); if (!done) continue;
-    if (s.hunt === S.hunt - 1) { const gl = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r * 1.3); gl.addColorStop(0, rgba(hex(s.type.pal.glow), .35)); gl.addColorStop(1, rgba(hex(s.type.pal.glow), 0)); ctx.fillStyle = gl; ctx.fillRect(s.cx - s.r * 1.3, s.cy - s.r * 1.3, s.r * 2.6, s.r * 2.6); }
+    if (s.hunt === S.hunt - 1 && seen(s.cx, s.cy)) { const gl = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r * 1.3); gl.addColorStop(0, rgba(hex(s.type.pal.glow), .35)); gl.addColorStop(1, rgba(hex(s.type.pal.glow), 0)); ctx.fillStyle = gl; ctx.fillRect(s.cx - s.r * 1.3, s.cy - s.r * 1.3, s.r * 2.6, s.r * 2.6); }
   }
   ctx.globalCompositeOperation = 'source-over';
   for (const s of cave.plan.slots) {
     if (s.hunt === undefined) continue;
     const done = s.hunt < S.hunt - 1 || (s.hunt === S.hunt - 1 && S.found.includes(s.slot));
-    if (done) tick(s.cx + s.r * .45, s.cy - s.r * .45, s.hunt === S.hunt - 1 ? 8 : 5.5);
+    if (done && seen(s.cx, s.cy)) tick(s.cx + s.r * .45, s.cy - s.r * .45, (s.hunt === S.hunt - 1 ? 9 : 6.5) / Math.max(.6, zoom));
   }
-  cave.plan.fossils.forEach((f, i) => { if (S.fossils.includes(i)) tick(f.x + f.r, f.y - f.r, 5.5); });
+  cave.plan.fossils.forEach((f, i) => { if (S.fossils.includes(i)) tick(f.x + f.r, f.y - f.r, 6.5 / Math.max(.6, zoom)); });
   // the hint: a soft pulsing ring that narrows in
   if (hintSlot) {
-    const age = (now - hintT) / 1000; if (age > 4) hintSlot = null;
-    else { const s = hintSlot, rr = s.r * (2.6 - Math.min(1, age) * 1.2) + Math.sin(t * 6) * 3; ctx.strokeStyle = `rgba(255,255,255,${.85 - age * .15})`; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.arc(s.cx + (1 - Math.min(1, age)) * 14, s.cy, rr, 0, 6.3); ctx.stroke(); ctx.setLineDash([]); }
+    const age = (now - hintT) / 1000; if (age > 5) hintSlot = null;
+    else { const s = hintSlot, rr = s.r * (2.6 - Math.min(1, age) * 1.2) + Math.sin(t * 6) * 3; ctx.strokeStyle = `rgba(255,255,255,${.85 - age * .15})`; ctx.lineWidth = 3 / zoom; ctx.setLineDash([8 / zoom, 6 / zoom]); ctx.beginPath(); ctx.arc(s.cx + (1 - Math.min(1, age)) * 14, s.cy, rr, 0, 6.3); ctx.stroke(); ctx.setLineDash([]); }
   }
-  for (const b of bursts) { b.life -= dt * 1.6; b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 120 * dt; ctx.globalAlpha = Math.max(0, b.life); ctx.fillStyle = b.c; ctx.beginPath(); ctx.arc(b.x, b.y, 2.6, 0, 6.3); ctx.fill(); }
+  for (const b of bursts) { b.life -= dt * 1.6; b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 120 * dt; ctx.globalAlpha = Math.max(0, b.life); ctx.fillStyle = b.c; ctx.beginPath(); ctx.arc(b.x, b.y, 2.6 / Math.max(.6, zoom), 0, 6.3); ctx.fill(); }
   bursts = bursts.filter(b => b.life > 0); ctx.globalAlpha = 1;
+  drawMini(t);
 }
 
 /* ---------- off we go ---------- */
-applyTheme(); renderSound(); fitApp(); renderHud();
+applyTheme(); renderSound(); layout(); renderHud();
 const firstHelp = firstVisit && !S.seenHelp;
 if (firstHelp) $('ovHelp').classList.add('show');
-requestAnimationFrame(() => { lastSize = Math.round(stage.getBoundingClientRect().width) + 'x' + Math.round(stage.getBoundingClientRect().height); makeCave(!S.seed); });
+requestAnimationFrame(() => { layout(); makeCave(!S.seed); });
 requestAnimationFrame(frame);
 if (/[?&]debug\b/.test(location.search)) window.__cc = {
-  get S() { return S; }, get cave() { return cave; }, get targets() { return targetsNow(); }, tapAt, makeCave, nextHunt, hint, get busy() { return busyGen; },
+  get S() { return S; }, get cave() { return cave; }, get targets() { return targetsNow(); }, tapAt, makeCave, nextHunt, hint, get busy() { return busyGen; }, lookAt, get cam() { return { x: camX, y: camY, z: zoom, tz: targetZoom }; },
+  toScreen: (x, y) => [(x - camX) * zoom, (y - camY) * zoom], settle() { zoom = targetZoom; camX = targetCamX; camY = targetCamY; },
 };
 
 })();
