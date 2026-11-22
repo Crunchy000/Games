@@ -160,7 +160,7 @@ window.BB = (() => {
     home(href = '../') { if (BB.leaveRisk && BB.leaveRisk()) askLeave(href); else location.href = href; },
   };
 })();
-function askLeave(href) {
+function askLeave(href, byBack) {
   let d = document.getElementById('pk-leave');
   if (!d) {
     d = document.createElement('div'); d.id = 'pk-leave'; d.className = 'pk-leave';
@@ -168,14 +168,35 @@ function askLeave(href) {
       + '<h2 id="pk-leave-t">Leave this game?</h2><p id="pk-leave-d">The game you’re playing won’t be saved.</p>'
       + '<div class="pk-leave-row"><button type="button" class="pk-btn pk-small" data-stay>Keep playing</button><button type="button" class="pk-btn pk-alt pk-small" data-go>Leave</button></div></div>';
     document.body.appendChild(d);
-    const close = () => { d.classList.remove('show'); BB.asking = false; };
+    const close = () => { d.classList.remove('show'); BB.asking = false; armBack(); };   // staying: the back gesture is guarded again
+    const go = () => {
+      if (d.dataset.back !== '1') { location.href = d.dataset.href; return; }
+      // came by the back gesture: carry on back, or home if there's nowhere to go back to
+      const t = setTimeout(() => { location.href = d.dataset.href; }, 500); addEventListener('pagehide', () => clearTimeout(t), { once: true }); history.back();
+    };
     d.addEventListener('pointerdown', e => e.stopPropagation());
     d.addEventListener('click', e => { e.stopPropagation(); if (performance.now() - d.opened < 400) return;   // the tap that opened it
-      if (e.target === d || e.target.closest('[data-stay]')) close(); else if (e.target.closest('[data-go]')) location.href = d.dataset.href; });
+      if (e.target === d || e.target.closest('[data-stay]')) close(); else if (e.target.closest('[data-go]')) go(); });
     addEventListener('keydown', e => { if (e.key === 'Escape' && d.classList.contains('show')) { e.stopPropagation(); close(); } }, true);
   }
-  d.dataset.href = href; d.opened = performance.now(); d.classList.add('show'); BB.asking = true; d.querySelector('[data-stay]').focus();
+  d.dataset.href = href; d.dataset.back = byBack ? '1' : ''; d.opened = performance.now(); d.classList.add('show'); BB.asking = true; d.querySelector('[data-stay]').focus();
 }
+// the phone's back gesture (or back button): a game page keeps one extra history entry, so going back lands here first.
+// It's added on a tap, because browsers skip entries added without one. Landing on it with a game in progress asks the
+// same question; with nothing to lose it simply carries on back.
+let backArmed = false;
+function armBack() {
+  const d = document.getElementById('pk-leave');
+  if (backArmed || (d && d.classList.contains('show'))) return;
+  try { history.pushState({ bbStay: 1 }, ''); backArmed = true; } catch (e) {}
+}
+['pointerup', 'keydown'].forEach(t => addEventListener(t, armBack, true));
+addEventListener('popstate', e => {
+  if (e.state && e.state.bbStay) { backArmed = true; return; }   // forward again onto the extra entry
+  backArmed = false;
+  if (BB.leaveRisk && BB.leaveRisk()) { askLeave('../', true); return; }
+  const t = setTimeout(() => { location.href = '../'; }, 500); addEventListener('pagehide', () => clearTimeout(t), { once: true }); history.back();
+});
 document.addEventListener('click', e => {
   const a = e.target.closest && e.target.closest('a[href="../"]');
   if (a && BB.leaveRisk && BB.leaveRisk()) { e.preventDefault(); askLeave(a.getAttribute('href')); }
