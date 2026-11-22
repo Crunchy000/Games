@@ -333,7 +333,7 @@ document.addEventListener('click', e => {
   /* ---------- sound ---------- */
   let ac = null;
   function tone(f, d = .12, type = 'sine', vol = .06, delay = 0, slide = 0) {
-    if (muted) return;
+    if (muted || quiet) return;
     try {
       ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume();
       const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + delay;
@@ -342,7 +342,7 @@ document.addEventListener('click', e => {
       o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + .02);
     } catch (e) {}
   }
-  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+  const buzz = ms => { if (quiet) return; try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
   /* ---------- board ---------- */
   let gGuide, gBox, gLine, gDot, preview;
@@ -383,14 +383,25 @@ document.addEventListener('click', e => {
   }
 
   /* ---------- game ---------- */
-  // leaving now would lose the game in progress (the shared kit asks first)
-  BB.leaveRisk = () => hist.length > 0 && !over;
+  // the game in progress: its moves are saved after each one and whenever the page is hidden or closed, and replayed
+  // (quietly) next time, which rebuilds the board, the scores and undo exactly
+  let gameFirst = 0, quiet = false;
+  const storeGame = () => { try { if (hist.length && !over) localStorage.setItem('dab-game', JSON.stringify({ n, first: gameFirst, starter, moves: hist.map(h => h.e) })); else localStorage.removeItem('dab-game'); } catch (e) {} };
+  addEventListener('visibilitychange', () => { if (document.hidden) storeGame(); });
+  addEventListener('pagehide', storeGame);
+  function resumeGame() {
+    let g = null; try { g = JSON.parse(localStorage.getItem('dab-game') || 'null'); } catch (e) {}
+    if (!g || !g.moves || !g.moves.length) return false;
+    setSize(g.n); turn = gameFirst = g.first; starter = g.starter;
+    quiet = true; try { g.moves.forEach(e => play(e)); } finally { quiet = false; }
+    render(); return true;
+  }
   function newGame() {
     Hz = Array.from({ length: n + 1 }, () => Array(n).fill(-1));
     Vt = Array.from({ length: n }, () => Array(n + 1).fill(-1));
     Bx = Array.from({ length: n }, () => Array(n).fill(-1));
     score = [0, 0]; hist = []; over = false; lastWinner = null; extra = false;
-    turn = starter; starter = 1 - starter;
+    turn = gameFirst = starter; starter = 1 - starter; try { localStorage.removeItem('dab-game'); } catch (e) {}
     build(); svg.classList.remove('over'); render();
   }
 
@@ -412,7 +423,7 @@ document.addEventListener('click', e => {
       h.boxes.forEach((_, i) => tone(660 + i * 220, .16, 'triangle', .07, i * .08, 220));
     } else { extra = false; turn = 1 - turn; tone(turn ? 420 : 500, .07, 'sine', .05, 0, 80); buzz(6); }
     if (score[0] + score[1] === n * n) finish();
-    render();
+    render(); if (!quiet) storeGame();
   }
 
   function drawBox(r, c, p) {
@@ -445,7 +456,7 @@ document.addEventListener('click', e => {
     turn = h.player; extra = false;
     gLine.querySelectorAll('.last').forEach(l => l.classList.remove('last'));
     const prev = hist[hist.length - 1]; if (prev) prev.line.classList.add('last');
-    tone(300, .08, 'sine', .04, 0, -80); render();
+    tone(300, .08, 'sine', .04, 0, -80); render(); storeGame();
   }
 
   function bump(id) { const e = $(id); e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump'); }
@@ -530,7 +541,7 @@ document.addEventListener('click', e => {
     raf = bits.length ? requestAnimationFrame(tick) : (cx.clearRect(0, 0, innerWidth, innerHeight), 0);
   }
 
-  setSoundIcon(); setSize(n);
+  setSoundIcon(); if (!resumeGame()) setSize(n);
 })();
 </script>
 <div class="ov" id="ovHelp"><div class="card pk-card">

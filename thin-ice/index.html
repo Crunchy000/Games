@@ -360,12 +360,26 @@ document.addEventListener('click', e => {
   let falling = [], rings = [], pip = null, hover = -1, cpuTimer = 0;
   const isCpu = p => mode === 'cpu' && p === 1;
 
-  // leaving now would lose the game in progress (the shared kit asks first)
-  BB.leaveRisk = () => hist.length > 0 && !over;
+  // the game in progress is saved after each move and whenever the page is hidden or closed, and picked up next time
+  let gameFirst = 0;
+  const storeGame = () => { try {
+    if (hist.length && !over) localStorage.setItem('thinice-game', JSON.stringify({ n, mode, pip: PIP, alive: Array.from(alive), turn, first: gameFirst, starter, hist: hist.map(h => ({ prev: Array.from(h.prev), player: h.player })) }));
+    else localStorage.removeItem('thinice-game');
+  } catch (e) {} };
+  addEventListener('visibilitychange', () => { if (document.hidden && !busy) storeGame(); });
+  addEventListener('pagehide', () => { if (!busy) storeGame(); });
+  function resumeGame() {
+    let g = null; try { g = JSON.parse(localStorage.getItem('thinice-game') || 'null'); } catch (e) {}
+    if (!g || !g.hist || !g.hist.length) return false;
+    n = g.n; mode = g.mode; segs(); newGame();
+    clearTimeout(cpuTimer); PIP = g.pip; alive = Uint8Array.from(g.alive); turn = g.turn; gameFirst = g.first; starter = g.starter;
+    hist = g.hist.map(h => ({ prev: Uint8Array.from(h.prev), player: h.player }));
+    layout(); render(); maybeCpu(); return true;
+  }
   function newGame() {
     clearTimeout(cpuTimer);
     alive = new Uint8Array(n * n).fill(1); placePip();
-    turn = starter; starter = 1 - starter;
+    turn = gameFirst = starter; starter = 1 - starter; try { localStorage.removeItem('thinice-game'); } catch (e) {}
     hist = []; over = false; loser = -1; busy = false; falling = []; rings = []; lastMsg = '';
     pip = { state: 'stand', t: 0, y: 0 };
     layout(); render(); maybeCpu();
@@ -395,7 +409,7 @@ document.addEventListener('click', e => {
       setTimeout(() => { sSplash(); buzz([30, 40, 30]); }, (end - .1) * 1000);
       setTimeout(() => { [523, 659, 784, 1047].forEach((f, k) => tone(f, .22, 'triangle', .07, k * .09)); confetti(1 - who); }, (end + .9) * 1000);
     } else turn = 1 - who;
-    setTimeout(() => { busy = false; render(); maybeCpu(); }, end * 1000);
+    setTimeout(() => { busy = false; render(); storeGame(); maybeCpu(); }, end * 1000);
     render();
     return true;
   }
@@ -408,7 +422,7 @@ document.addEventListener('click', e => {
     if (!h) return;
     if (over) { wins[1 - loser]--; save(); over = false; loser = -1; }
     alive = h.prev; turn = h.player; falling = []; rings = []; pip = { state: 'stand', t: 0, y: 0 }; lastMsg = '';
-    tone(300, .08, 'sine', .04, 0, -80); render(); maybeCpu();
+    tone(300, .08, 'sine', .04, 0, -80); render(); storeGame(); maybeCpu();
   }
 
   /* ---------- computer (plays Bean) ---------- */
@@ -700,7 +714,7 @@ document.addEventListener('click', e => {
     play: i => play(i), safeMoves: () => safeMoves(alive), cpuPick, P, get n() { return n; },
     centre: i => { const b = cv.getBoundingClientRect(); return [b.left + (tx(i % n) + s / 2) * SC, b.top + (ty((i / n) | 0) + s * K / 2) * SC]; } };
 
-  setSoundIcon(); segs(); newGame(); requestAnimationFrame(frame);
+  setSoundIcon(); segs(); if (!resumeGame()) newGame(); requestAnimationFrame(frame);
 })();
 </script>
 <div class="ov" id="ovHelp"><div class="card pk-card">

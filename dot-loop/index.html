@@ -380,8 +380,7 @@ function levelCfg(n) {
 
 /* ---------- state ---------- */
 let inLevel = false;   // a level has been started and not yet won or lost
-// leaving now would lose the game in progress (the shared kit asks first)
-BB.leaveRisk = () => inLevel && score > 0;
+let settledSnap = null, lastKey = '';   // the level as it stood when the board last came to rest
 let L = null, grid = [], state = 'menu', moves = 0, score = 0, collected = [0, 0, 0, 0, 0], timeLeft = 0, time = 0;
 let frost = new Map(), frostMelted = 0, acornsToDrop = 0, acornsGot = 0, harvesting = false;
 let melts = [];
@@ -434,6 +433,29 @@ function begin(cfg) {
   frost = new Map(cfg.frost || []); frostMelted = 0; acornsToDrop = cfg.acorns || 0; acornsGot = 0; harvesting = false;
   powers = Object.fromEntries(POWERS.map(q => [q.id, POWER_EACH])); armed = null;
   rings = []; parts = []; popups = []; callout = null; tint = 0; timeLeft = cfg.timed ? 60 : 0; state = 'play'; pause = false; fill();
+}
+
+/* ---------- keeping a level in progress ---------- */
+// saved whenever the page is hidden or closed and each time the board comes to rest after a move, and picked up again
+// next time the game opens (a timed game comes back paused)
+const settledNow = () => state === 'play' && !blasting && !harvesting && !drag && grid.every(row => row.every(d => !d || (!d.dying && d.y === d.tr)));
+function levelSnapshot() {
+  return { n: L.n, timed: !!L.timed, moves, score, collected: collected.slice(), timeLeft, frost: [...frost], frostMelted, acornsToDrop, acornsGot,
+    powers: { ...powers }, grid: grid.map(row => row.map(d => d ? [d.t, d.k] : null)) };
+}
+function storeLevel() {
+  if (inLevel && L && settledNow()) settledSnap = levelSnapshot();
+  save.cur = inLevel ? settledSnap : null; persist();
+}
+addEventListener('visibilitychange', () => { if (document.hidden) storeLevel(); });
+addEventListener('pagehide', storeLevel);
+function resumeLevel(c) {
+  begin(c.timed ? { n: 0, colors: 5, moves: 0, goals: [], holes: new Set(), timed: true } : levelCfg(c.n));
+  moves = c.moves; score = c.score; collected = c.collected.slice(); timeLeft = c.timeLeft; frost = new Map(c.frost); frostMelted = c.frostMelted;
+  acornsToDrop = c.acornsToDrop; acornsGot = c.acornsGot; powers = { ...c.powers };
+  grid = c.grid.map((row, r) => row.map((q, cc) => q ? mk(q[0], r, r - N - 1 - cc * .3, q[1]) : null));
+  settledSnap = c; lastKey = '';
+  if (L.timed) openPause();   // the clock waits until you're ready
 }
 
 /* ---------- input ---------- */
@@ -729,6 +751,8 @@ function draw(dt) {
 /* ---------- loop ---------- */
 function update(dt) {
   time += dt;
+  // the board has come to rest after a move: keep the level as it stands now
+  if (inLevel && settledNow()) { const key = moves + '|' + score + '|' + Math.ceil(timeLeft / 5); if (key !== lastKey) { lastKey = key; settledSnap = levelSnapshot(); save.cur = settledSnap; persist(); } }
   tint += ((loop ? .85 : 0) - tint) * Math.min(1, dt * 10);
   if (!L) return;
   for (const row of grid) for (const d of row) {
@@ -776,7 +800,7 @@ function openStart(n) {
 function startTimed() { show(null); begin({ n: 0, colors: 5, moves: 0, goals: [], holes: new Set(), timed: true }); note(0); note(7, .4, .06, .08); }
 function openPause() { pause = true; $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); show('ovPause'); }
 function endLevel(won) {
-  state = 'end'; inLevel = false;
+  state = 'end'; inLevel = false; save.cur = null; persist();
   const frac = moves / L.moves, stars = won ? (frac >= .3 ? 3 : frac >= .12 ? 2 : 1) : 0;
   if (won) { save.stars[L.n] = Math.max(save.stars[L.n] || 0, stars); save.unlocked = Math.max(save.unlocked, L.n + 1); persist(); [0, 4, 7, 12].forEach((s, i) => note(s, .5, .07, i * .1)); }
   else [7, 4, 0].forEach((s, i) => note(s - 5, .5, .06, i * .14));
@@ -790,7 +814,7 @@ function endLevel(won) {
   setTimeout(() => show('ovEnd'), 400);
 }
 function endTimed() {
-  state = 'end'; inLevel = false; const nb = score > save.best; if (nb) { save.best = score; persist(); }
+  state = 'end'; inLevel = false; save.cur = null; persist(); const nb = score > save.best; if (nb) { save.best = score; persist(); }
   $('endTitle').textContent = "Time's up!"; $('endText').textContent = `${score.toLocaleString('en-GB')} points${nb ? ' · new best!' : ' · best ' + save.best.toLocaleString('en-GB')}`;
   setStars(-1); [0, 4, 7, 12].forEach((s, i) => note(s, .5, .07, i * .1));
   $('endBtns').innerHTML = '<button class="btn pk-btn" id="eAgain">Play again</button><button class="btn soft pk-btn pk-alt" id="eMenu">Menu</button>';
@@ -810,9 +834,10 @@ $('btnSound').onclick = () => { save.muted = !save.muted; BB.muted = save.muted;
 addEventListener('keydown', e => { if (e.key === 'Escape' && state === 'play') openPause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play' && L && L.timed && !pause) openPause(); if (ac) document.hidden ? ac.suspend() : ac.resume(); });
 addEventListener('resize', resize); resize();
-L = levelCfg(1); fill(); for (const row of grid) for (const d of row) if (d) d.y = d.tr;
-openMenu();
-if (/[?&]debug\b/.test(location.search)) window.__dl = { get blasting() { return blasting; }, get powers() { return powers; }, get armed() { return armed; }, powerX, powerY, get H() { return H; }, get frost() { return frost; }, get acornsGot() { return acornsGot; }, get harvesting() { return harvesting; }, openStart, levelCfg, get path() { return path; }, get state() { return state; }, get grid() { return grid; }, get moves() { return moves; }, get L() { return L; }, get score() { return score; }, collected: () => collected, BX, CS, get BY() { return BY; } };
+let resumed = false;
+if (save.cur && save.cur.grid) { try { resumeLevel(save.cur); resumed = true; } catch (e) { save.cur = null; persist(); } }
+if (!resumed) { L = levelCfg(1); fill(); for (const row of grid) for (const d of row) if (d) d.y = d.tr; openMenu(); }
+if (/[?&]debug\b/.test(location.search)) window.__dl = { storeLevel, levelSnapshot, begin, get inLevel() { return inLevel; }, get blasting() { return blasting; }, get powers() { return powers; }, get armed() { return armed; }, powerX, powerY, get H() { return H; }, get frost() { return frost; }, get acornsGot() { return acornsGot; }, get harvesting() { return harvesting; }, openStart, levelCfg, get path() { return path; }, get state() { return state; }, get grid() { return grid; }, get moves() { return moves; }, get L() { return L; }, get score() { return score; }, collected: () => collected, BX, CS, get BY() { return BY; } };
 requestAnimationFrame(frame);
 })();
 </script>

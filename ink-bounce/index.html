@@ -657,6 +657,7 @@ function draw() {
 
 /* ---------- loop ---------- */
 function update(dt) {
+  if (state === 'play' && (storeT += dt) > 4) { storeT = 0; storeGame(); }   // now and then, in case the phone gives out
   time += dt; shake *= Math.pow(.01, dt);
   for (const q of parts) { q.life -= dt; if (!q.ring) { q.vy += 300 * dt; q.x += q.vx * dt; q.y += q.vy * dt; } } parts = parts.filter(q => q.life > 0);
   for (const u of pops) { u.life -= dt; u.y -= 26 * dt; } pops = pops.filter(u => u.life > 0);
@@ -686,7 +687,7 @@ function update(dt) {
   const before = balls.length; balls = balls.filter(b => b.y < H + 20);
   if (served && before && !balls.length) {
     lives--; sLose(); buzz(60); served = false; combo = 0; strokes.forEach(s => { s.alive = false; s.pop = 0; }); endStroke();
-    if (lives <= 0) { state = 'over'; overT = 0; if (score > save.best) save.best = score; persist(); setTimeout(showOver, 700); }
+    if (lives <= 0) { state = 'over'; overT = 0; save.cur = null; if (score > save.best) save.best = score; persist(); setTimeout(showOver, 700); }
     else callout = { t: 'Missed!', sub: lives + (lives > 1 ? ' balls left' : ' ball left') + ' · tap to serve', life: 1.8 };
   }
   if (!breakable()) {
@@ -700,8 +701,23 @@ function showOver() {
 }
 let last = performance.now();
 function frame(now) { const dt = Math.min(.033, Math.max(0, (now - last) / 1000)); last = now; update(BB.asking ? 0 : dt); draw(); requestAnimationFrame(frame); }
-// leaving now would lose the game in progress (the shared kit asks first)
-BB.leaveRisk = () => state === 'play' || state === 'clear';
+/* ---------- keeping a game in progress ---------- */
+// the level, bricks left, score, lives and ink are saved whenever the page is hidden or closed (and every few seconds
+// while playing), and picked up again next time: the ball waits to be served, so nothing happens until you're ready
+function gameSnapshot() {
+  if (state === 'clear') return { level: level + 1, score, lives };   // between levels: carry on with the next one
+  return { level, score, lives, ink: Math.round(ink), BY, bricks: bricks.map(b => ({ ...b })) };
+}
+function storeGame() { save.cur = state === 'play' || state === 'clear' ? gameSnapshot() : null; persist(); }
+addEventListener('visibilitychange', () => { if (document.hidden) storeGame(); });
+addEventListener('pagehide', storeGame);
+let storeT = 0;
+function resumeGame(c) {
+  $('ovTitle').classList.remove('show');
+  startLevel(c.level, true); score = c.score; lives = c.lives;
+  if (c.bricks) { const dy = BY - c.BY; bricks = c.bricks.map(b => ({ ...b, y: b.y + dy })); ink = c.ink; }
+  callout = { t: 'Level ' + c.level, sub: 'Tap to serve', life: 2.2 };
+}
 
 $('bStart').onclick = () => { audio(); $('ovTitle').classList.remove('show'); startLevel(1, true); };
 $('bCont').onclick = () => { audio(); $('ovTitle').classList.remove('show'); startLevel(save.level, true); };
@@ -713,7 +729,8 @@ addEventListener('resize', resize); if (window.visualViewport) visualViewport.ad
 // if the phone runs short of graphics memory it can take the canvas away; when it gives it back, draw everything afresh
 cv.addEventListener('contextrestored', () => { paper = null; });
 bricks = buildLevel(1);
-if (/[?&]debug\b/.test(location.search)) window.__ib = { get state() { return state; }, get balls() { return balls; }, get bricks() { return bricks; }, get ink() { return ink; }, set ink(v) { ink = v; }, get score() { return score; }, get level() { return level; }, get lives() { return lives; }, get ZONE() { return ZONE; }, get drops() { return drops; }, get strokes() { return strokes; }, get H() { return H; }, serve };
+if (save.cur && save.cur.level) { try { resumeGame(save.cur); } catch (e) { save.cur = null; persist(); } }
+if (/[?&]debug\b/.test(location.search)) window.__ib = { gameSnapshot, get state() { return state; }, get balls() { return balls; }, get bricks() { return bricks; }, get ink() { return ink; }, set ink(v) { ink = v; }, get score() { return score; }, get level() { return level; }, get lives() { return lives; }, get ZONE() { return ZONE; }, get drops() { return drops; }, get strokes() { return strokes; }, get H() { return H; }, serve };
 requestAnimationFrame(frame);
 })();
 </script>
