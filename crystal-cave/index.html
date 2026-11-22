@@ -638,9 +638,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 27, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 28, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 27) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 28) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -679,7 +679,8 @@ function planCave() {
   const layers = [.9, .7, .48, .25, 0].map(d => ({ d, sh: layerShape(d) })), NL = layers.length, NEAR = NL - 1;
   // every formation: where it grows, which way, how big, and its own seed so it's drawn the same every time
   const slots = [], seedOf = () => (rnd() * 2147483647) | 0;
-  const put = (li, x, y, ang, size) => { const cx = x + Math.cos(ang) * size * .4, cy = y + Math.sin(ang) * size * .4, r = size * .55; if (!underControls(cx, cy, r) && !underControls(x, y, 4)) slots.push({ li, x, y, ang, size, seed: seedOf(), cx, cy, r }); };
+  const roofOf = (li, y) => y < layers[li].sh.cy - layers[li].sh.ry * .3;   // the upper part of a ring: its roof, kept clear
+  const put = (li, x, y, ang, size) => { const cx = x + Math.cos(ang) * size * .4, cy = y + Math.sin(ang) * size * .4, r = size * .55; if (!underControls(cx, cy, r) && !underControls(x, y, 4) && !roofOf(li, y)) slots.push({ li, x, y, ang, size, seed: seedOf(), cx, cy, r }); };
   // sizes on a bell curve: most near the middle of each ring's range, few at the ends, and the ranges kept narrow
   const SIZES = [[29, 37], [31, 41], [34, 46], [38, 52]], GAP = [1.75, 1.55, 1.4, 1.3];   // room between neighbours round each rim
   // scatter formations evenly over everything that can be seen of a ring's rock face: random spots by area, each kept clear of every formation already placed
@@ -689,7 +690,7 @@ function planCave() {
   const scatter = (li, tries, max, sizeOf) => {
     for (let k = 0, got = 0; k < tries && got < max; k++) {
       const cx = R(0, W), cy = R(0, H), size = sizeOf(), r = size * .55;
-      if (cx < r || cx > W - r || cy < r || cy > H - r || underControls(cx, cy, r)) continue;
+      if (cx < r || cx > W - r || cy < r || cy > H - r || underControls(cx, cy, r) || roofOf(li, cy)) continue;
       if (![[0, 0], [.75, 0], [-.75, 0], [0, .75], [0, -.75]].every(([a, b]) => visibleOn(li, cx + a * r, cy + b * r))) continue;
       if (crowds(cx, cy, r)) continue;
       const L = layers[li].sh, ang = Math.atan2(L.cy - cy, L.cx - cx) + R(-.6, .6);
