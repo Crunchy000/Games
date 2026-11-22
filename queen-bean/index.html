@@ -188,6 +188,10 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 .pk-leave-card h2 { margin:0 0 6px; font-size:1.25rem; }
 .pk-leave-card p { margin:0 0 16px; line-height:1.4; }
 .pk-leave-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+
+/* no pull-down-to-refresh or overscroll bounce: a stray drag must never reload the page mid-game */
+html, body { overscroll-behavior:none; }
 </style>
 <script id="pub-kit-settings">
 window.BB = (() => {

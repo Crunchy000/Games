@@ -202,6 +202,10 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 .pk-leave-card h2 { margin:0 0 6px; font-size:1.25rem; }
 .pk-leave-card p { margin:0 0 16px; line-height:1.4; }
 .pk-leave-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+
+/* no pull-down-to-refresh or overscroll bounce: a stray drag must never reload the page mid-game */
+html, body { overscroll-behavior:none; }
 </style>
 <script id="asset-versions">window.AV = {"bear-and-bean-picnic.webp":"53b8e142"};</script>
 <script id="pub-kit-settings">
@@ -340,7 +344,7 @@ const bCtx = backdropCanvas.getContext('2d');
 const miniArt = document.createElement('canvas');   // the whole baked meadow, drawn small once per bake
 
 let viewW = 0, viewH = 0, worldW = 0, worldH = 0;
-let dpr = Math.min(window.devicePixelRatio || 1, 2);
+let dpr = Math.min(window.devicePixelRatio || 1, 1.75);
 let bdpr = 1, bakeBudget = 5e6;   // pixels in the baked meadow; halved if a phone can't spare the memory   // the baked meadow's resolution, capped so a big tablet doesn't run out of canvas memory
 
 // camera pan & zoom
@@ -531,7 +535,6 @@ let roundDone = false;
 
 let targetFlowers = [];
 let luckyClovers = [];
-let movingFlowers = [];
 let cachedStaticFlowers = [];
 let pollinators = [];
 let sparkles = [];
@@ -610,7 +613,7 @@ function sizeWorld() {
 
 function layout() {
   fitApp();
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  dpr = Math.min(window.devicePixelRatio || 1, 1.75);   // the meadow is soft painted art: 1.75x looks the same and draws much faster
   const r = stage.getBoundingClientRect();
   viewW = Math.max(1, r.width); viewH = Math.max(1, r.height);
   // only when the size really changes: setting a canvas's size throws its memory away and allocates it again
@@ -1101,22 +1104,26 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
       targetCtx.translate(headX, headY);
       targetCtx.rotate(fl.headTilt + swayOffset * 0.018);
 
-
-      if (isLupine) {
-        drawLupineHead(targetCtx, fl.palette, fl.speckles, scale, fl.found);
+      // painting the meadow: a small, far-off head is stamped from a picture of its kind, drawn once (see headStamp)
+      if (targetCtx === bCtx && !fl.found && scale <= STAMP_SCALE) {
+        const st = headStamp(fl), k = scale / STAMP_SCALE;
+        if (!isLupine) { targetCtx.scale(1, 0.86 + fl.depth * 0.12); targetCtx.rotate(fl.rotationOffset); }
+        targetCtx.drawImage(st.c, -st.ox * k, -st.oy * k, st.w * k, st.h * k);
         targetCtx.restore();
         return;
       }
 
-      targetCtx.scale(1, 0.86 + fl.depth * 0.12);
 
-      if (fl.arch.key === "rose") {
-        drawRoseHead(targetCtx, fl.palette, fl.speckles, scale, fl.rotationOffset, fl.found);
-        targetCtx.restore();
-        return;
-      }
+      if (!isLupine) targetCtx.scale(1, 0.86 + fl.depth * 0.12);
+      paintHead(targetCtx, fl, scale, fl.rotationOffset);
+      targetCtx.restore();
+    }
 
+    // a flower head at the origin: its kind, colours and speckles, at a size and turned by rot
+    function paintHead(targetCtx, fl, scale, rot) {
       const { arch, palette, speckles } = fl;
+      if (arch.key === "lupine") { drawLupineHead(targetCtx, palette, speckles, scale, fl.found); return; }
+      if (arch.key === "rose") { drawRoseHead(targetCtx, palette, speckles, scale, rot, fl.found); return; }
       for (let layer = arch.layers - 1; layer >= 0; layer--) {
         const layerScale = (1 - layer * 0.22) * scale;
         const layerOffset = layer * (Math.PI / arch.petals);
@@ -1127,7 +1134,7 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
 
         for (let i = 0; i < arch.petals; i++) {
           targetCtx.save();
-          targetCtx.rotate(fl.rotationOffset + layerOffset + (i * Math.PI * 2) / arch.petals);
+          targetCtx.rotate(rot + layerOffset + (i * Math.PI * 2) / arch.petals);
           drawPetalPath(targetCtx, arch.len * layerScale, arch.wid * layerScale, arch.shape);
           targetCtx.fillStyle = grad;
           targetCtx.fill();
@@ -1153,7 +1160,22 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
         targetCtx.stroke();
       }
 
-      targetCtx.restore();
+    }
+
+    // pictures of flower heads, one for each kind, colour and speckling. A head looks the same in every meadow and at every
+    // time of day, so each is drawn once and kept for the whole visit (only redrawn if the meadow's resolution changes)
+    const STAMP_SCALE = 0.8;
+    let stamps = new Map();
+    function headStamp(fl) {
+      if (stamps.res !== bdpr) { stamps.clear(); stamps.res = bdpr; }
+      const key = fl.arch.key + '|' + fl.palette.label + '|' + fl.speckles;
+      let st = stamps.get(key); if (st) return st;
+      const s = STAMP_SCALE, lup = fl.arch.key === 'lupine', R = (lup ? 26 : (fl.arch.key === 'rose' ? 34 : fl.arch.len * 1.2 + 4)) * s;
+      const w = Math.ceil(2 * R), h = lup ? Math.ceil(100 * s) : w, ox = w / 2, oy = lup ? Math.ceil(84 * s) : w / 2;
+      const c = document.createElement('canvas'); c.width = Math.ceil(w * bdpr); c.height = Math.ceil(h * bdpr);
+      const g = c.getContext('2d'); g.setTransform(bdpr, 0, 0, bdpr, ox * bdpr, oy * bdpr);
+      paintHead(g, { arch: fl.arch, palette: fl.palette, speckles: fl.speckles, found: false }, s, 0);
+      st = { c, w, h, ox, oy }; stamps.set(key, st); return st;
     }
 
     function drawCloverPatch(targetCtx, tuft, swayOffset = 0) {
@@ -2327,7 +2349,7 @@ function rebakeAround(fl) {
   bCtx.save(); bCtx.beginPath(); bCtx.rect(x0, y0, x1 - x0, y1 - y0); bCtx.clip(); bCtx.clearRect(x0, y0, x1 - x0, y1 - y0);
   bakeClip = { x0, y0, x1, y1 };
   try { bakeStaticBackdrop(cachedStaticFlowers); } finally { bakeClip = null; }
-  bCtx.restore(); paintMiniArt();
+  bCtx.restore(); paintMiniRegion(x0, y0, x1, y1);
 }
 
 /* ---------- rounds ---------- */
@@ -2356,32 +2378,27 @@ function newMeadow(fresh) {
     // every hunt's flowers grow in the meadow from the start (so they're lookalikes for the other hunts), and are
     // drawn live on top of the baked meadow, so none is ever hidden
     huntFlowers = [];
+    // each hunt's flowers: where they grow is settled once the meadow is laid out (placeHuntFlowers)
     hunts.forEach((spec, h) => {
       for (let t = 0; t < huntSize(h + 1); t++) {
         const fl = makeFlower(rand(0.06, 0.94), rand(0.28, 0.92), spec, false, true);
-        fl.hunt = h; fl.slot = t; huntFlowers.push(fl);
+        fl.hunt = h; huntFlowers.push(fl);
       }
     });
 
-    // about a thousand other flowers, never one of the kinds being hunted; the first two dozen sway as you pan
-    movingFlowers = [];
+    // about a thousand other flowers, never one of the kinds being hunted, all painted into the meadow
     for (let i = 0; i < 980; i++) {
-      const isAnimated = i < 24;
       // the swaying ones stand in the very front row, their stems running off the bottom of the meadow,
       // because they're drawn over the baked meadow and nothing baked may stand in front of them
-      const depth = isAnimated ? 0.955 + (rand(0.25, 0.94) - 0.25) * 0.065 : Math.pow(rng(), 1.75);
+      const depth = Math.pow(rng(), 1.75);
       let dArch, dPalette;
       do { dArch = pick(ARCHETYPES); dPalette = pick(PALETTES); } while (taken.has(dArch.key + '|' + dPalette.label));
-      const fl = makeFlower(rng(), depth, { arch: dArch, palette: dPalette, speckles: rng() < 0.45 }, false, isAnimated);
-      (isAnimated ? movingFlowers : staticFlowers).push(fl);
+      staticFlowers.push(makeFlower(rng(), depth, { arch: dArch, palette: dPalette, speckles: rng() < 0.45 }, false, false));
     }
   });
   luckyClovers.sort((a, b) => a.depth - b.depth);
   S.clovers.forEach(i => { if (luckyClovers[i]) luckyClovers[i].found = true; });
 
-  // flowers already picked in earlier hunts (when coming back to a meadow part way through)
-  pickedFlowers = [];
-  huntFlowers.forEach(fl => { if (fl.hunt < S.hunt - 1 || (fl.hunt === S.hunt - 1 && S.found.includes(fl.slot))) { fl.found = true; pickedFlowers.push(fl); } });
   cachedStaticFlowers = staticFlowers;
 
   showHunt();   // the tray first, so the meadow is measured at its final size
@@ -2390,8 +2407,11 @@ function newMeadow(fresh) {
   sizeMini();
   initCampPos();
   luckyClovers.forEach(lc => { lc.worldX = lc.xNorm * worldW; lc.worldY = depthToWorldY(lc.depth, lc.xNorm); });
-  unhideHuntFlowers();
-  liveFlowers = movingFlowers.concat(huntFlowers).sort((a, b) => a.depth - b.depth);
+  placeHuntFlowers();
+  // flowers already picked in earlier hunts (when coming back to a meadow part way through)
+  pickedFlowers = [];
+  huntFlowers.forEach(fl => { if (fl.hunt < S.hunt - 1 || (fl.hunt === S.hunt - 1 && S.found.includes(fl.slot))) { fl.found = true; pickedFlowers.push(fl); } });
+  liveFlowers = huntFlowers.slice().sort((a, b) => a.depth - b.depth);
   luckyClovers.forEach(lc => { lc.worldX = lc.xNorm * worldW; lc.worldY = depthToWorldY(lc.depth, lc.xNorm); });
   huntFlowers.forEach(fl => { const p = getLiveTargetWorldPos(fl); fl.worldHeadX = p.x; fl.worldHeadY = p.y; fl.hitRadius = p.r; });
   centreCamera();
@@ -2438,36 +2458,26 @@ function hiddenShare(fl, live, keepOut) {
   }
   return hid / HEAD_SPOTS.length;
 }
-function unhideHuntFlowers() {
+// where each hunted flower grows, settled once when the meadow is planted (before anything is drawn): a spot is kept if
+// the flower is at least about two-thirds in view there (not behind nearer flowers, clovers or the picnic) and it hides
+// no hunted flower planted before it; otherwise another spot is tried. One with no good spot isn't asked for (a hunt
+// always keeps at least one).
+function placeHuntFlowers() {
   const { x, y, scale: cs } = campPos, pw = 240 * cs, ph = pw * (picnicReady() ? picnicImg.naturalHeight / picnicImg.naturalWidth : 0.75);
   const keepOut = [{ x, y: y - ph * 0.28, rx: pw * 0.5, ry: ph * 0.5, box: true }]   // the whole picnic picture
     .concat(luckyClovers.map(lc => { const r = Math.max(3.6, 6.6 * depthToScale(lc.depth)) * 2.2; return { x: lc.worldX, y: lc.worldY, rx: r, ry: r }; }));
   buildFrontGrid();
-  const live = movingFlowers.concat(huntFlowers), OK = 0.36;   // well under half, leaving room for the grass and bulrushes in front, which this leaves out
-  // moving this flower mustn't hide one of the others behind it
-  const fine = fl => { const h = headShape(fl); return huntFlowers.every(o => o === fl || o.depth >= fl.depth || !near(headShape(o), h) || hiddenShare(o, live, keepOut) <= OK); };
+  const kept = [], OK = 0.34;
+  const hid = (f, others) => hiddenShare(f, others, keepOut);
+  const good = f => { if (hid(f, kept) > OK) return false; const h = headShape(f); return kept.every(k => k.depth >= f.depth || !near(headShape(k), h) || hid(k, kept.concat(f)) <= OK); };
   seeded((S.seed ^ 0x5bd1e995) >>> 0, () => {
-    for (let pass = 0; pass < 3; pass++) {
-      let still = 0;
-      for (const fl of huntFlowers) {
-        if (hiddenShare(fl, live, keepOut) <= OK) continue;
-        let placed = false;
-        for (let t = 0; t < 60 && !placed; t++) {
-          const was = [fl.xNorm, fl.depth];
-          fl.xNorm = rand(0.06, 0.94); fl.depth = rand(0.28, 0.92);
-          placed = hiddenShare(fl, live, keepOut) <= 0.24 && fine(fl);
-          if (!placed) [fl.xNorm, fl.depth] = was;
-        }
-        if (!placed) still++;
-      }
-      if (!still) break;
+    for (const f of huntFlowers) {
+      for (let t = 0; t < 80 && !good(f); t++) { f.xNorm = rand(0.06, 0.94); f.depth = rand(0.28, 0.92); }
+      if (good(f) || !kept.some(k => k.hunt === f.hunt)) kept.push(f);
     }
   });
-  // anything still mostly out of sight isn't asked for (a hunt always keeps at least one flower)
-  for (const fl of huntFlowers.slice()) {
-    if (hiddenShare(fl, live, keepOut) <= OK) continue;
-    if (huntFlowers.filter(o => o.hunt === fl.hunt).length > 1) huntFlowers.splice(huntFlowers.indexOf(fl), 1);
-  }
+  hunts.forEach((_, h) => kept.filter(f => f.hunt === h).forEach((f, i) => { f.slot = i; }));
+  huntFlowers = kept;
 }
 
 // the tray: the flower to find now
@@ -2584,9 +2594,23 @@ function sizeMini() {
 }
 function paintMiniArt() {
   if (!backdropCanvas.width || !miniArt.width) return;
+  // shrink the meadow by halves first: much cheaper than one high-quality shrink of the whole picture, and looks the same this small
+  let src = backdropCanvas;
+  while (src.width > miniArt.width * 2.5) {
+    const half = document.createElement('canvas'); half.width = Math.ceil(src.width / 2); half.height = Math.ceil(src.height / 2);
+    half.getContext('2d').drawImage(src, 0, 0, half.width, half.height); src = half;
+  }
   const g = miniArt.getContext('2d');
-  g.imageSmoothingQuality = 'high';
-  g.drawImage(backdropCanvas, 0, 0, miniArt.width, miniArt.height);
+  g.drawImage(src, 0, 0, miniArt.width, miniArt.height);
+}
+
+// just one patch of the little map (after a re-bake of that patch)
+function paintMiniRegion(x0, y0, x1, y1) {
+  if (!miniArt.width) return;
+  const kx = miniArt.width / worldW, ky = miniArt.height / worldH;
+  const mx0 = Math.max(0, Math.floor(x0 * kx) - 1), my0 = Math.max(0, Math.floor(y0 * ky) - 1), mx1 = Math.min(miniArt.width, Math.ceil(x1 * kx) + 1), my1 = Math.min(miniArt.height, Math.ceil(y1 * ky) + 1);
+  if (mx1 <= mx0 || my1 <= my0) return;
+  miniArt.getContext('2d').drawImage(backdropCanvas, mx0 / kx * bdpr, my0 / ky * bdpr, (mx1 - mx0) / kx * bdpr, (my1 - my0) / ky * bdpr, mx0, my0, mx1 - mx0, my1 - my0);
 }
 
 function renderMinimap(time) {
@@ -2710,14 +2734,7 @@ function loop(now) {
   const sw = Math.min(visibleW * bdpr, backdropCanvas.width - camX * bdpr), sh = Math.min(visibleH * bdpr, backdropCanvas.height - camY * bdpr);
   if (sw > 0 && sh > 0) ctx.drawImage(backdropCanvas, camX * bdpr, camY * bdpr, sw, sh, camX, camY, sw / bdpr, sh / bdpr);
 
-  for (let i = 0; i < liveFlowers.length; i++) {
-    const mf = liveFlowers[i];
-    if (mf.found || mf.hunt !== undefined) continue;   // picked, or baked into the meadow
-    const approxX = mf.xNorm * worldW;
-    const approxY = depthToWorldY(mf.depth, mf.xNorm);
-    if (approxX < camX - 110 || approxX > camX + visibleW + 110 || approxY < camY - 150 || approxY > camY + visibleH + 150) continue;
-    drawFlowerTo(ctx, mf, getPanReactiveSway(mf));
-  }
+  // every flower is painted into the meadow (the ones still to find too), so none is drawn here
 
   // ladybirds crawling and crickets hopping in the turf
   updateAndDrawLadybirds(dt, time);
@@ -3073,7 +3090,7 @@ Promise.race([Promise.all([picnicImg, ...faces].map(settle)), new Promise(res =>
 if (/[?&]debug\b/.test(location.search)) window.__ff = {
   get targets() { return targetFlowers; }, get clovers() { return luckyClovers; }, get S() { return S; },
   get cam() { return { camX, camY, zoom, viewW, viewH, worldW, worldH }; }, newMeadow, freshMeadow, get hunts() { return hunts; }, get live() { return liveFlowers; }, get picked() { return pickedFlowers; }, get MP() { return MP; }, get camp() { return campPos; }, wl: getLiveTargetWorldPos, live2: getLiveTargetWorldPos,
-  pickAt: evaluatePickAtWorld, drawFlowerTo, drawCloverPatch, drawBearAndBeanBasket, hiddenShare, rebakeAround, rebake, get backdrop() { return backdropCanvas; }, get bdpr() { return bdpr; }, get moving() { return movingFlowers; }, get liveAll() { return liveFlowers; }, lookAt(x, y, z = 1.2) { targetZoom = zoom = clampZoom(z); const c = clampCam(x - viewW / zoom / 2, y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; },
+  pickAt: evaluatePickAtWorld, drawFlowerTo, drawCloverPatch, drawBearAndBeanBasket, hiddenShare, rebakeAround, rebake, get backdrop() { return backdropCanvas; }, get bdpr() { return bdpr; }, get moving() { return []; }, get liveAll() { return liveFlowers; }, lookAt(x, y, z = 1.2) { targetZoom = zoom = clampZoom(z); const c = clampCam(x - viewW / zoom / 2, y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; },
 };
 })();
 </script>
