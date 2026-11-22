@@ -24,7 +24,7 @@
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
 }</script>
 <title>Crystal Cave</title>
-<meta name="description" content="A cosy hidden-crystal hunt in a wide, glittering cave. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, among dozens of lookalikes, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A cosy hidden-crystal hunt through rings of rock or across a crystal floor under a skylight. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, among dozens of lookalikes, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://www.bearandbean.uk/crystal-cave/">
 <style>
   :root { --bg:#efe7f1; --ink:#33283f; --muted:#85789a; --panel:#e2d6e8; --card:#fbf7fc; --accent:#8a4fd0; }
@@ -77,6 +77,8 @@
   #loading.show { opacity:1; visibility:visible; pointer-events:auto; transition:none; }
   #loading:not(.show) .spin { animation:none; }
   #loading > div { display:flex; flex-direction:column; align-items:center; gap:10px; background:rgba(251,247,252,.95); color:#33283f; font-weight:800; font-size:.95rem; padding:16px 22px 14px; border-radius:18px; box-shadow:0 6px 18px rgba(0,0,0,.35); }
+  #loading small { max-width:250px; text-align:center; font-size:.8rem; font-weight:700; color:#6a5a80; line-height:1.35; }
+  #loading small:empty { display:none; }
   #loading svg { width:46px; height:46px; }
   #loading .spin { transform-origin:0 0; animation:spin 2.4s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
@@ -95,6 +97,14 @@
   .stats { display:flex; justify-content:center; gap:18px; margin:8px 0 2px; }
   .stats div { font-size:.75rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
   .stats b { display:block; font-size:1.5rem; color:var(--ink); letter-spacing:0; }
+  .modes { display:flex; flex-direction:column; gap:10px; margin:12px 0 4px; }
+  .mode { border:0; border-radius:16px; padding:12px 14px; font:inherit; cursor:pointer; background:#efe4f4; color:#33283f; box-shadow:0 3px 0 #d5c3e0; display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; column-gap:12px; text-align:left; align-items:center; }
+  .mode span { grid-row:1 / 3; font-size:1.7rem; }
+  .mode b { grid-column:2; font-size:1.05rem; font-weight:900; }
+  .mode small { grid-column:2; font-size:.82rem; font-weight:700; color:#6a5a80; }
+  body.dark .mode { background:#2a2038; color:#efe6fb; box-shadow:0 3px 0 #150f1e; } body.dark .mode small { color:#b7a8d0; }
+  .mode.on { outline:3px solid var(--accent); outline-offset:2px; }
+  .warn { font-size:.8rem !important; color:var(--muted); font-weight:700; }
   .gold { display:inline-flex; align-items:center; gap:6px; font-weight:800; background:#f2dfb0; color:#5a3f10; border-radius:999px; padding:5px 12px; margin:6px 0 2px; }
 </style>
 <style id="pub-kit">
@@ -267,14 +277,14 @@ document.addEventListener('click', e => {
       <button class="ib pk-home" id="bSound" aria-label="Sound"></button>
     </div>
   </header>
-  <div class="info"><div><small>Hunt</small><span id="rnd">1/12</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="A new cave">↻</button></div>
+  <div class="info"><div><small>Hunt</small><span id="rnd">1/12</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="A new cave, or the crystal floor">↻</button></div>
   <div class="main">
   <div id="stage" aria-label="The cave. Pinch to zoom, drag to look around, tap a matching crystal to collect it.">
     <canvas id="game"></canvas>
     <canvas id="mini" aria-label="Map of the whole cave: tap or drag to look there"></canvas>
     <div class="zoom"><button class="tool pk-chip" id="bIn" aria-label="Zoom in">＋</button><button class="tool pk-chip" id="bOut" aria-label="Zoom out">－</button></div>
     <div class="note" id="note" role="status" aria-live="polite"></div>
-    <div id="loading" class="show" role="status"><div><svg viewBox="-20 -20 40 40" aria-hidden="true"><g class="spin"><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#9b5bd6" transform="rotate(0)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#4cc9e6" transform="rotate(60)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#f095bd" transform="rotate(120)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#2fbf71" transform="rotate(180)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#f2ae3a" transform="rotate(240)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#3a63e0" transform="rotate(300)"/><circle r="3" fill="#fff"/></g></svg><span>Lighting the lanterns…</span></div></div>
+    <div id="loading" class="show" role="status"><div><svg viewBox="-20 -20 40 40" aria-hidden="true"><g class="spin"><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#9b5bd6" transform="rotate(0)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#4cc9e6" transform="rotate(60)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#f095bd" transform="rotate(120)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#2fbf71" transform="rotate(180)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#f2ae3a" transform="rotate(240)"/><path d="M0 -17L5 -7L0 -3L-5 -7Z" fill="#3a63e0" transform="rotate(300)"/><circle r="3" fill="#fff"/></g></svg><span>Lighting the lanterns…</span><small id="tip"></small></div></div>
   </div>
   <div id="tray">
     <canvas id="want" aria-hidden="true"></canvas>
@@ -292,10 +302,22 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>💎</div><h3>Find the crystal</h3><p>Bear and Bean are collecting one special crystal. Find every one hidden in the cave that matches it: same <b>shape, colour and markings</b>.</p></section>
     <section class="pk-step"><div class=pk-step-art>👀</div><h3>Watch for lookalikes</h3><p>The cave is full of crystals that <b>almost</b> match: the same colour in another shape, or the same shape with other markings.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p>The cave is wide! <b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom in close. Tap the little map to jump.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: glassy and shiny, with a twinkle. <b>Frosted tips</b>: rough, matte white ends with no shine. <b>Banded</b>: stripes across. <b>Gold fractures</b>: gold cracks. <b>Two-tone</b>: a second colour at the tip.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Tap to collect</h3><p><b>Tap</b> a match to collect it. A wrong tap costs 10 points; a hint 🔍 costs 25. Fossils 🐚 hidden in the rock are a bonus.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🔦</div><h3>12 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a whole new cave.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔦</div><h3>12 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a new cave: rings of rock, or a wide <b>crystal floor</b> under a skylight.</p></section>
   </div>
   <div class="row2"><button class="btn pk-btn" data-close>Let's explore</button></div>
+</div></div>
+
+<div class="ov" id="ovNew"><div class="card pk-card">
+  <button class="ib x" id="bNewX" aria-label="Close">✕</button>
+  <h2>A new cave</h2>
+  <p>Where shall Bear and Bean explore next?</p>
+  <div class="modes">
+    <button class="mode" data-mode="cave"><span>💎</span><b>Crystal cave</b><small>rings of rock, deep into the hill</small></button>
+    <button class="mode" data-mode="floor"><span>☀️</span><b>Crystal floor</b><small>a wide floor under a skylight</small></button>
+  </div>
+  <p class="warn" id="newWarn">This cave's hunt will end.</p>
 </div></div>
 
 <div class="ov" id="ovWin"><div class="card pk-card">
@@ -313,7 +335,7 @@ document.addEventListener('click', e => {
 const $ = id => document.getElementById(id);
 const stage = $('stage'), cv = $('game'), ctx = cv.getContext('2d'), wantCv = $('want'), wctx = wantCv.getContext('2d');
 // the cave is a wide world of its own; the screen is a camera on it
-const WORLD_W = 1200, WORLD_H = 1150;   // about three phone screens across at normal zoom
+let WORLD_W = 1200, WORLD_H = 1150;   // about three phone screens across at normal zoom; the crystal floor is a little wider
 let W = WORLD_W, H = WORLD_H, DPR = 1, BDPR = 1, sparks = [], motes = [];
 /* ---------- seeded randomness and noise ---------- */
 let rnd = Math.random;
@@ -342,26 +364,29 @@ const shade = (c, t) => t < 0 ? mix(c, [0, 0, 0], -t) : mix(c, [255, 255, 255], 
 // every formation in a cave is one TYPE: a shape, a colour and a marking, so the same type always looks the same
 // each mineral, its colours, and the shapes it really grows in (h)
 const PALETTES = [
-  { n: 'Amethyst', c: '#9b5bd6', glow: '#b07cff', alt: '#f4c8ff', h: 'cluster tower' }, { n: 'Clear Quartz', c: '#c7d6e8', glow: '#cfe6ff', alt: '#6fa8ff', h: 'cluster tower fan' },
+  { n: 'Amethyst', c: '#9b5bd6', glow: '#b07cff', alt: '#f4c8ff', h: 'cluster tower' }, { n: 'Clear Quartz', c: '#c7d6e8', glow: '#cfe6ff', alt: '#6fa8ff', h: 'cluster tower fan', not: 'frost' },
   { n: 'Emerald', c: '#2fbf71', glow: '#4dffa0', alt: '#e0ff80', h: 'tower cluster' },  { n: 'Aquamarine', c: '#4cc9e6', glow: '#6fe3ff', alt: '#ffffff', h: 'tower cluster' },
   { n: 'Rose Quartz', c: '#f095bd', glow: '#ffb0d6', alt: '#fff0f6', h: 'cluster tower' },     { n: 'Citrine', c: '#f2ae3a', glow: '#ffcf63', alt: '#ff6a2a', h: 'cluster tower' },
-  { n: 'Ruby', c: '#e0405e', glow: '#ff6a86', alt: '#ffc0cc', h: 'tower octa' },     { n: 'Sapphire', c: '#3a63e0', glow: '#6f8fff', alt: '#a8ecff', h: 'tower octa' },
+  { n: 'Ruby', c: '#e0405e', glow: '#ff6a86', alt: '#ffc0cc', h: 'tower cluster' },     { n: 'Sapphire', c: '#3a63e0', glow: '#6f8fff', alt: '#a8ecff', h: 'tower cluster' },
   { n: 'Smoky Quartz', c: '#8d7b6e', glow: '#c9b29c', alt: '#f1e2cf', h: 'cluster tower fan' },    { n: 'Peridot', c: '#a6d43a', glow: '#d4ff63', alt: '#fff27a', h: 'cluster tower' },
-  { n: 'Orange Calcite', c: '#ff7a2e', glow: '#ffa15c', alt: '#ffe08a', h: 'blades cluster' }, { n: 'Apatite', c: '#1fa39a', glow: '#45e0d4', alt: '#ff8fb8', h: 'tower cluster' },
+  { n: 'Orange Calcite', c: '#ff7a2e', glow: '#ffa15c', alt: '#ffe08a', h: 'blades cluster' }, { n: 'Apatite', c: '#1fa39a', glow: '#45e0d4', alt: '#ff8fb8', h: 'tower cluster', not: 'frost' },
   { n: 'Iolite', c: '#625a86', glow: '#9d93cc', alt: '#d6cfff', h: 'tower blades' },  { n: 'Golden Topaz', c: '#d9b13b', glow: '#ffe07a', alt: '#fff7d6', h: 'tower cluster' },
   { n: 'Rubellite', c: '#d63aa0', glow: '#ff6ad0', alt: '#ffd0f0', h: 'fan tower urchin' },   { n: 'Morganite', c: '#f2a88a', glow: '#ffc8ae', alt: '#fff0e4', h: 'tower cluster' },
-  { n: 'Garnet', c: '#8f1d3f', glow: '#e0466e', alt: '#ff9ab0', h: 'octa cluster' },    { n: 'Kunzite', c: '#b89cf0', glow: '#d8c4ff', alt: '#f4eeff', h: 'blades tower' },
+  { n: 'Garnet', c: '#8f1d3f', glow: '#e0466e', alt: '#ff9ab0', h: 'cluster' },    { n: 'Kunzite', c: '#b89cf0', glow: '#d8c4ff', alt: '#f4eeff', h: 'blades tower' },
   { n: 'Prehnite', c: '#74e0b4', glow: '#a6ffd8', alt: '#f0fff8', h: 'fan urchin' },      { n: 'Black Tourmaline', c: '#2e2a38', glow: '#8c84b8', alt: '#bdb6e0', h: 'fan urchin tower' },
   // minerals that grow in two colours: always zoned from the first colour into the second
   { n: 'Watermelon Tourmaline', c: '#3a9a4c', glow: '#ff8fa6', alt: '#ff6a8e', zoned: true, h: 'tower fan' }, { n: 'Ametrine', c: '#8d4fd0', glow: '#ffcf6a', alt: '#f5b83a', zoned: true, h: 'tower cluster' },
-  { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true, h: 'cubes octa' },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true, h: 'tower octa' },
-  { n: 'Pyrite', c: '#c9a23a', glow: '#ffe08a', alt: '#fff2b8', h: 'cubes octa' },
+  { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true, h: 'cubes' },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true, h: 'tower cluster' },
+  { n: 'Pyrite', c: '#c9a23a', glow: '#ffe08a', alt: '#fff2b8', h: 'cubes' },
   { n: 'Chevron Amethyst', c: '#8f4ed0', glow: '#e6d4ff', alt: '#f6f0ff', zoned: true, h: 'tower cluster' },
+];
+const SKIES = [   // what shows through the skylight, and the colour of its light
+  { top: '#5fa8ea', bottom: '#cfeafc', light: [255, 244, 214] }, { top: '#f2a07b', bottom: '#ffe2ae', light: [255, 214, 160] }, { top: '#8fc2e8', bottom: '#f3f7f2', light: [236, 246, 255] },
 ];
 const SHAPES = [
   { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' }, { k: 'fan', n: 'Spike Fan', t: 'a fan of long thin spikes' },
-  { k: 'tower', n: 'Tower', t: 'one tall column' },               
-  { k: 'cubes', n: 'Cube Stack', t: 'nested metallic cubes' },           { k: 'octa', n: 'Octahedra', t: 'double-pointed diamonds' },
+  { k: 'tower', n: 'Tower', t: 'one tall column on its own' },               
+  { k: 'cubes', n: 'Cube Stack', t: 'nested metallic cubes' },           ,
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },          { k: 'urchin', n: 'Urchin', t: 'a burst of needles' },
 ];
 const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
@@ -427,7 +452,7 @@ function inRock(sh, t, d) {
 // a style: base colour, its second colour (for two-tone), the marking, and where sparkles and glow go
 const styleOf = ty => ({ c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k, two: ty.trait.k === 'two' || !!ty.pal.zoned, zoned: !!ty.pal.zoned });
 let curSlot = -1;   // the formation being drawn, so its sparkles and glow can go with it when it's collected
-function sparkAt(x, y, s, st) { sparks.push({ x, y, s: clamp(s, 2.5, 12), c: st.glow, p: rnd() * 6.3, f: R(.6, 1.6), k: curSlot }); }
+function sparkAt(x, y, s, st) { const p = rnd() * 6.3, f = R(.6, 1.6); if (st.trait !== 'frost') sparks.push({ x, y, s: clamp(s * (st.trait === 'clear' ? 1.5 : 1), 2.5, 14), c: st.glow, p, f, k: curSlot }); }
 // a jagged crack filled with gold, from a to b
 function goldVein(g, a, b, w) {
   const pts = [a], n = 4, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
@@ -443,8 +468,16 @@ function goldVein(g, a, b, w) {
 // markings drawn over a piece, in the piece's own frame: P(along, across) gives points; len along, w across
 function marks(g, P, len, w, st, tip) {
   if (st.trait === 'frost') {
-    g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.moveTo(...P(tip * .8, -1)); g.lineTo(...P(len, 0)); g.lineTo(...P(tip * .8, 1)); g.closePath(); g.fill();
-    g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.moveTo(...P(tip * .6, -1)); g.lineTo(...P(tip * .8, -1)); g.lineTo(...P(tip * .8, 1)); g.lineTo(...P(tip * .6, 1)); g.closePath(); g.fill();
+    // frosted: the top part is a rough, matte white, with a ragged edge where the frost stops, and no shine
+    const f0 = tip * .5, edge = [];
+    for (let k = 0; k <= 6; k++) edge.push(P(f0 + (k % 2 ? 1 : -1) * tip * R(.04, .09), -1 + k / 3));
+    g.beginPath(); g.moveTo(...edge[0]); for (const q of edge) g.lineTo(...q); g.lineTo(...P(tip, 1)); g.lineTo(...P(len, 0)); g.lineTo(...P(tip, -1)); g.closePath();
+    g.fillStyle = 'rgba(246,249,255,.9)'; g.fill();
+    g.strokeStyle = 'rgba(170,182,200,.75)'; g.lineWidth = Math.max(.6, w * .07); g.beginPath(); edge.forEach((q, k) => k ? g.lineTo(...q) : g.moveTo(...q)); g.stroke();
+    for (let k = 0; k < 16; k++) {   // the rough texture
+      const a = R(f0 + tip * .08, len * .96), lim = a > tip ? (len - a) / (len - tip) : 1, [x, y] = P(a, R(-.85, .85) * lim);
+      g.fillStyle = k % 3 ? 'rgba(196,206,222,.85)' : '#fff'; g.beginPath(); g.arc(x, y, Math.max(.5, w * R(.05, .1)), 0, 6.3); g.fill();
+    }
   } else if (st.trait === 'band') {
     for (const [f, dark] of [[.22, 1], [.38, 0], [.54, 1]]) {
       g.fillStyle = dark ? rgba(shade(st.c, -.5), .5) : 'rgba(255,255,255,.35)';
@@ -516,7 +549,10 @@ function cube(g, x, y, s, rot, st, glows) {
   g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = Math.max(.5, s * .03);
   for (const fc of [left, right]) { const M = fc.reduce((m, p) => [m[0] + p[0] / 4, m[1] + p[1] / 4], [0, 0]); g.beginPath(); fc.forEach((p, i) => { const q = [M[0] + (p[0] - M[0]) * .7, M[1] + (p[1] - M[1]) * .7]; i ? g.lineTo(...q) : g.moveTo(...q); }); g.closePath(); g.stroke(); }
   g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = Math.max(.6, s * .045); g.beginPath(); g.moveTo(...pts[5]); g.lineTo(...pts[0]); g.lineTo(...pts[1]); g.stroke();
-  if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.moveTo(...C); for (const i of [5, 0, 1]) g.lineTo(...pts[i]); g.closePath(); g.fill(); }
+  if (st.trait === 'frost') {   // a rough, matte white top
+    g.fillStyle = 'rgba(246,249,255,.9)'; g.beginPath(); g.moveTo(...C); for (const i of [5, 0, 1]) g.lineTo(...pts[i]); g.closePath(); g.fill();
+    for (let k = 0; k < 10; k++) { const [px, py] = v(-Math.PI / 2 + R(-.8, .8), R(.15, .85)); g.fillStyle = k % 3 ? 'rgba(196,206,222,.85)' : '#fff'; g.beginPath(); g.arc(px, py, Math.max(.5, s * .06), 0, 6.3); g.fill(); }
+  }
   if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.6), .6); g.lineWidth = Math.max(.8, s * .12); g.beginPath(); g.moveTo(...v(Math.PI / 6 + .02, .55)); g.lineTo(...v(Math.PI * .5, .3)); g.lineTo(...v(Math.PI * 5 / 6 - .02, .55)); g.stroke(); }
   if (st.trait === 'gold') goldVein(g, v(Math.PI * 5 / 6, .9), v(Math.PI / 6 + R(-.2, .2), .85), Math.max(.8, s * .08));
   if (rnd() < .5) sparkAt(...pts[0], s * .5, st);
@@ -558,7 +594,6 @@ function formation(g, x, y, ang, size, ty, glows) {
     }
     case 'tower': {
       bed(g, x, y, size * .4, ang);
-      for (let i = 0; i < RI(2, 4); i++) { const o = R(-1, 1) * size * .22; prism(g, x - dy * o, y + dx * o, ang + R(-.6, .6), size * R(.2, .38), size * R(.05, .08), st, glows); }
       prism(g, x, y, ang + R(-.08, .08), size * 1.15, size * .2, st, glows);
       break;
     }
@@ -603,13 +638,16 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 16, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 18, mode: 'cave', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 16) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 18) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
 let cave = null;   // everything about the cave now on screen: its hunts, formations, fossils and the painted picture
+const bell = (a, b) => a + (b - a) * (rnd() + rnd() + rnd()) / 3;   // sizes on a bell curve round the middle of a range
+const overlap = (r1, r2, d) => { if (d >= r1 + r2) return 0; if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
+  const a = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)), b = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2)); return a + b - .5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)); };
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const sameType = (a, b) => a.shape === b.shape && a.pal === b.pal && a.trait === b.trait;
 const inPoly = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
@@ -618,7 +656,7 @@ const inPoly = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 
 function planCave() {
   rnd = mulberry(S.seed); makeNoise();
   W = WORLD_W; H = WORLD_H; const scale = 1.15, MORE = 1.8, rock = pick(ROCKS).map(hex);
-  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k)) TRAITS.forEach(trait => { if (!(pal.zoned && trait.k === 'two')) combos.push({ shape, pal, trait }); }); })); shuffle(combos);
+  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k)) TRAITS.forEach(trait => { if (!(pal.zoned && trait.k === 'two') && !(pal.not || '').split(' ').includes(trait.k)) combos.push({ shape, pal, trait }); /* some markings are too subtle on some minerals */ }); })); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
   for (const c of combos) { if (hunts.length >= HUNTS) break; if (!hunts.some(h => h.pal === c.pal && h.shape === c.shape)) hunts.push(c); }
@@ -632,18 +670,15 @@ function planCave() {
   }
   const fillers = combos.filter(c => !isHunt(c)).slice(0, 16);
   const theme = [hunts[0].pal, hunts[1].pal, hunts[2].pal];
-  // four rings of rock, far to near
+  if (S.mode === 'floor') return planFloor({ hunts, decoys, fillers, theme, rock });
   // five rings of rock, from a small deep pocket out to the rocks right in front of you
   const layers = [.9, .7, .48, .25, 0].map(d => ({ d, sh: layerShape(d) })), NL = layers.length, NEAR = NL - 1;
   // every formation: where it grows, which way, how big, and its own seed so it's drawn the same every time
   const slots = [], seedOf = () => (rnd() * 2147483647) | 0;
   const put = (li, x, y, ang, size) => slots.push({ li, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 });
   // sizes on a bell curve: most near the middle of each ring's range, few at the ends, and the ranges kept narrow
-  const bell = (a, b) => a + (b - a) * (rnd() + rnd() + rnd()) / 3;
-  const stals = [], SIZES = [[29, 41], [32, 47], [36, 54], [41, 63]], GAP = [1.75, 1.55, 1.4, 1.3];   // room between neighbours round each rim
+  const SIZES = [[29, 37], [31, 41], [34, 46], [38, 52]], GAP = [1.75, 1.55, 1.4, 1.3];   // room between neighbours round each rim
   // scatter formations evenly over everything that can be seen of a ring's rock face: random spots by area, each kept clear of every formation already placed
-  const overlap = (r1, r2, d) => { if (d >= r1 + r2) return 0; if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
-    const a = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)), b = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2)); return a + b - .5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)); };
   // a new formation may overlap its neighbours a little, but never cover more than a quarter of one (or be a quarter covered itself)
   const crowds = (cx, cy, r) => slots.some(o => Math.abs(o.cy - cy) < o.r + r && overlap(o.r, r, Math.hypot(o.cx - cx, o.cy - cy)) > .25 * Math.PI * Math.min(o.r, r) ** 2);
   const visibleOn = (li, x, y) => !inPoly(layers[li].sh.pts, x, y) && layers.every((M, j) => j <= li || inPoly(M.sh.pts, x, y));
@@ -658,7 +693,6 @@ function planCave() {
     }
   };
   layers.forEach((L, li) => {
-    for (let i = 0; i < RI(7, 12) * (1 + li * .7); i++) { const x = R(L.sh.x0 + 20, L.sh.x1 - 20), y = L.sh.ceil(x); if (y > 0) stals.push({ li, x, y, len: R(14, 40) * (1 + li * .3) * scale, w: R(4, 9) * (1 + li * .25) * scale }); }
     if (li === NEAR) return;
     // as many as fit around the ring, spaced for their size
     const sz = SIZES[li], perim = Math.PI * Math.sqrt(2 * (L.sh.rx ** 2 + L.sh.ry ** 2)) * 1.08;
@@ -672,16 +706,15 @@ function planCave() {
       const x = R(L.sh.x0 + L.sh.rx * .2, L.sh.x1 - L.sh.rx * .2), y = L.sh.floor(x) + (i % 2 ? R(2, 10) : R(16, 34) * scale);
       if (y < H - 6) put(li, x, y, -Math.PI / 2 + R(-.5, .5), bell(sz[0] * .9, sz[1] * .88) * scale);
     }
-    if (li === NEAR - 1) { const x = L.sh.cx + R(-1, 1) * L.sh.rx * .3; put(li, x, L.sh.floor(x) + 5, -Math.PI / 2 + R(-.15, .15), 190); slots[slots.length - 1].centre = true; }
   });
   { const sh = layers[NEAR].sh, perim = Math.PI * Math.sqrt(2 * (sh.rx ** 2 + sh.ry ** 2)), n = Math.round(perim / (92 * scale * 1.5)), start = R(0, Math.PI * 2);
     for (let i = 0; i < n; i++) {
       const t = start + i / n * Math.PI * 2 + R(-.1, .1), [x, y] = inRock(sh, t, R(-4, 10)), inward = Math.atan2(sh.cy - y, sh.cx - x);
-      if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(NEAR, x, y, inward + R(-.4, .4), bell(70, 104) * scale);
+      if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(NEAR, x, y, inward + R(-.4, .4), bell(60, 80) * scale);
     }
   }
   // then the rock between the rims, ring by ring from the back
-  layers.forEach((L, li) => li < NEAR ? scatter(li, 4000, 999, () => bell(SIZES[li][0], SIZES[li][1]) * scale) : scatter(li, 1200, 14, () => bell(58, 86) * scale));
+  layers.forEach((L, li) => li < NEAR ? scatter(li, 4000, 999, () => bell(SIZES[li][0], SIZES[li][1]) * scale) : scatter(li, 1200, 14, () => bell(52, 68) * scale));
   // drawn from the back of the cave to the front: ring by ring, and within a ring from the top of the screen down
   slots.sort((a, b) => a.li - b.li || a.y - b.y);
   // how much of each formation is hidden: by nearer rock in front of it, and by formations drawn over it
@@ -698,17 +731,7 @@ function planCave() {
     s.huntable = !s.centre && onScreen && s.hidden <= .5 && s.r >= 15;   // never a hunt crystal if more than half of it is covered
     s.spare = !s.centre && onScreen && s.hidden <= .5 && s.r >= 11;       // a fallback if a cave runs short
   });
-  // the hunted ones, spread about; everything else is a lookalike or another kind
-  const pool = shuffle(slots.filter(s => s.huntable)).concat(shuffle(slots.filter(s => s.spare && !s.huntable))), counts = [];
-  hunts.forEach((h, k) => {
-    const want = huntSize(k + 1), got = [];
-    for (const gap of [160, 70, 0]) for (const s of pool) {   // spread them out, but never leave a hunt short
-      if (got.length >= want) break; if (s.type || got.some(o => Math.hypot(o.cx - s.cx, o.cy - s.cy) < gap)) continue; s.type = h; s.hunt = k; s.slot = got.length; got.push(s);
-    }
-    counts.push(got.length);
-  });
-  const pickOne = pick;
-  for (const s of slots) if (!s.type) s.type = s.centre ? (decoys[0] || fillers[0]) : rnd() < .72 && decoys.length ? pickOne(decoys) : pickOne(fillers);
+  const counts = assignHunts(slots, hunts, decoys, fillers);
   // three fossils pressed into the rock, just behind the rim of the middle rings
   const fossils = [];
   for (let tries = 0; fossils.length < 3 && tries < 2000; tries++) {
@@ -718,7 +741,191 @@ function planCave() {
     if (slots.some(s => s.li >= li && Math.hypot(s.cx - x, s.cy - y) < s.r * .85 + r + 3) || fossils.some(f => Math.hypot(f.x - x, f.y - y) < 160)) continue;
     fossils.push({ li, x, y, r, rot: R(0, 6.3) });
   }
-  return { hunts, counts, decoys, layers, slots, stals, fossils, rock, theme, scale };
+  return { kind: 'rings', hunts, counts, decoys, layers, slots, fossils, rock, theme, scale };
+}
+
+// the hunted ones, spread about; everything else is a lookalike or another kind
+function assignHunts(slots, hunts, decoys, fillers) {
+  const pool = shuffle(slots.filter(s => s.huntable)).concat(shuffle(slots.filter(s => s.spare && !s.huntable))), counts = [];
+  hunts.forEach((h, k) => {
+    const want = huntSize(k + 1), got = [];
+    for (const gap of [160, 70, 0]) for (const s of pool) {   // spread them out, but never leave a hunt short
+      if (got.length >= want) break; if (s.type || got.some(o => Math.hypot(o.cx - s.cx, o.cy - s.cy) < gap)) continue; s.type = h; s.hunt = k; s.slot = got.length; got.push(s);
+    }
+    counts.push(got.length);
+  });
+  for (const s of slots) if (!s.type) s.type = rnd() < .72 && decoys.length ? pick(decoys) : pick(fillers);
+  return counts;
+}
+// the crystal floor: a flat cave floor seen in perspective like a meadow, a back wall curving round at the sides, and a skylight
+function planFloor(T) {
+  const { hunts, decoys, fillers, theme, rock } = T;
+  const y0 = H * R(.28, .32), off = R(0, 100), sideDrop = H * R(.22, .28);
+  const baseY = x => { const e = Math.abs(x - W / 2) / (W / 2); return y0 + sideDrop * e * e * e + fbm1(off + x / W * 7, 3) * H * .03; };
+  const depth = y => clamp((y - y0) / (H - y0), 0, 1), persp = y => lerp(.8, 1.12, Math.pow(depth(y), .9));
+  const sky = pick(SKIES), hole = { x: W * R(.38, .62), y: H * R(.055, .085), rx: R(110, 150), ry: R(40, 54), off: R(0, 100) };
+  const pool = { x: hole.x + R(-1, 1) * W * .08, y: y0 + (H - y0) * R(.38, .5), rx: R(230, 290), ry: R(90, 115) };
+  const inHole = (x, y, pad = 0) => ((x - hole.x) / (hole.rx + pad)) ** 2 + ((y - hole.y) / (hole.ry + pad)) ** 2 < 1;
+  const seedOf = () => (rnd() * 2147483647) | 0, wallF = [], floorI = [];
+  const mk = (kind, x, y, ang, size, extra) => Object.assign({ kind, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 }, extra);
+  const crowds = (list, it) => list.some(o => Math.abs(o.cy - it.cy) < o.r + it.r && overlap(o.r, it.r, Math.hypot(o.cx - it.cx, o.cy - it.cy)) > .25 * Math.PI * Math.min(o.r, it.r) ** 2);
+  // seams across the wall's face, with crystals growing out of them in runs
+  const seams = [];
+  for (let i = 0, n = RI(3, 5); i < n; i++) { const o = R(0, 100), y = lerp(H * .15, y0 - 20, (i + R(.1, .9)) / n); seams.push({ o, y, at: x => y + fbm1(o + x / 320, 3) * 30 }); }
+  for (const sm of seams) for (let x = R(20, 80); x < W - 20; ) {
+    for (let k = 0, run = RI(3, 6); k < run && x < W - 20; k++, x += R(30, 46)) {
+      const y = sm.at(x); if (y > baseY(x) - 34 || inHole(x, y, 60)) continue;
+      const up = rnd() < .55, it = mk('f', x, y + (up ? -2 : 3), up ? -Math.PI / 2 + R(-.5, .5) : Math.PI / 2 + R(-.5, .5), bell(30, 38), { wall: true });
+      if (!crowds(wallF, it)) wallF.push(it);
+    }
+    x += R(90, 220);
+  }
+  // a staggered row along the foot of the wall, leaning out into the cave
+  for (let x = R(10, 30), i = 0; x < W - 10; x += R(40, 66), i++) {
+    const y = baseY(x) + (i % 2 ? R(-2, 6) : R(14, 30)), lean = clamp((W / 2 - x) / (W / 2), -1, 1) * .5, it = mk('f', x, y, -Math.PI / 2 + lean + R(-.35, .35), bell(30, 42) * persp(y));
+    if (!crowds(floorI, it)) floorI.push(it);
+  }
+  // a few boulders, then crystals scattered over the floor like flowers in a meadow; none covers more than a quarter of another
+  for (let i = 0, n = 0, want = RI(8, 12); i < 400 && n < want; i++) {
+    const x = R(0, W), y = R(y0 + 30, H + 10); if (y < baseY(x) + 24) continue;
+    const sc = persp(y), it = mk('boulder', x, y, -Math.PI / 2, R(26, 46) * sc); it.cy = y - it.size * .35; it.r = it.size * .7;
+    if (!crowds(floorI, it) && Math.hypot((x - pool.x) / pool.rx, (y - pool.y) / pool.ry) > 1.1) { floorI.push(it); n++; }
+  }
+  for (let i = 0, n = 0; i < 14000 && n < 380; i++) {
+    const x = R(-10, W + 10), y = R(y0 + 6, H + 20); if (y < baseY(x) + 12) continue;
+    const it = mk('f', x, y, -Math.PI / 2 + R(-.45, .45), bell(33, 42) * persp(y));
+    if (!crowds(floorI, it) && !floorI.some(o => Math.hypot(o.cx - it.cx, o.cy - it.cy) < (o.r + it.r) * .85)) { floorI.push(it); n++; }
+  }
+  floorI.sort((a, b) => a.y - b.y);   // back to front, so nearer things are drawn over farther ones
+  const items = wallF.concat(floorI);
+  items.forEach((s, i) => {
+    if (s.kind !== 'f') return;
+    let hid = 0;
+    for (let k = i + 1; k < items.length; k++) { const o = items[k]; if (Math.abs(o.cy - s.cy) > o.r + s.r) continue; hid += overlap(s.r, o.r * .85, Math.hypot(o.cx - s.cx, o.cy - s.cy)); }
+    s.hidden = Math.min(1, hid / (Math.PI * s.r * s.r));
+  });
+  const slots = items.filter(s => s.kind === 'f'), decor = items.filter(s => s.kind !== 'f');
+  slots.forEach((s, i) => {
+    s.i = i;
+    const onScreen = s.cx > s.r * .6 && s.cx < W - s.r * .6 && s.cy > s.r * .6 && s.cy < H - s.r * .6;
+    s.huntable = onScreen && s.hidden <= .5 && s.r >= 15;   // never a hunt crystal if more than half of it is covered
+    s.spare = onScreen && s.hidden <= .5 && s.r >= 11;
+  });
+  const counts = assignHunts(slots, hunts, decoys, fillers);
+  // three fossils: pressed into the wall or lying on the floor, never hidden behind anything
+  const fossils = [];
+  for (let tries = 0; fossils.length < 3 && tries < 800; tries++) {
+    const x = R(60, W - 60), onWall = rnd() < .4, y = onWall ? R(H * .14, baseY(x) - 40) : R(baseY(x) + 40, H - 40), r = onWall ? R(10, 13) : R(10, 13) * persp(y);
+    if (inHole(x, y, 60)) continue;
+    if (items.some(s => Math.hypot(s.cx - x, s.cy - y) < s.r + r + 6) || fossils.some(f => Math.hypot(f.x - x, f.y - y) < 160)) continue;
+    fossils.push({ wall: onWall, x, y, r, rot: R(0, 6.3) });
+  }
+  return { kind: 'floor', hunts, counts, decoys, slots, decor, items, fossils, seams, rock, theme, sky, hole, pool, y0, baseY, persp, view: { x: pool.x, y: (y0 + pool.y) / 2 } };
+}
+// a rounded boulder, lit from above
+function boulder(g, x, y, s, col) {
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y, s * .8, s * .2, 0, 0, 6.3); g.fill();
+  const pts = [], o = R(0, 50);
+  for (let i = 0; i < 18; i++) { const a = Math.PI + i / 17 * Math.PI, k = 1 + fbm1(o + i * .4, 2) * .25; pts.push([x + Math.cos(a) * s * .75 * k, y + Math.sin(a) * s * .7 * k]); }
+  const gr = g.createLinearGradient(x, y - s * .7, x, y); gr.addColorStop(0, rgba(shade(col, .3))); gr.addColorStop(1, rgba(shade(col, -.35)));
+  g.fillStyle = gr; g.beginPath(); g.moveTo(pts[0][0], y); pts.forEach(p => g.lineTo(p[0], p[1])); g.lineTo(pts[pts.length - 1][0], y); g.closePath(); g.fill();
+  g.strokeStyle = rgba(shade(col, .45), .5); g.lineWidth = Math.max(1, s * .04); g.beginPath(); pts.slice(4, 13).forEach((p, i) => i ? g.lineTo(p[0], p[1] + s * .04) : g.moveTo(p[0], p[1] + s * .04)); g.stroke();
+}
+// the painting steps for the crystal floor (patch-aware: near() says what's in the area being repainted)
+function floorOps(g, plan, removed, near, ops, glows, patch) {
+  const { rock, theme, sky, hole, pool, y0, baseY, persp } = plan, light = sky.light;
+  const wallCol = mix(rock[0], [70, 62, 58], .25), floorCol = mix(shade(rock[0], .2), [128, 108, 88], .3), toHex = c => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
+  const tex = (k, col) => { if (plan.tex[k]) { for (let i = 0; i < 4; i++) rnd(); return plan.tex[k]; } return (plan.tex[k] = rockTexture(toHex(col))); };
+  const holePath = (() => { const p = new Path2D(); for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2, k = 1 + fbm1(hole.off + Math.cos(a) * 2 + Math.sin(a) * 1.3, 3) * .2; const x = hole.x + Math.cos(a) * hole.rx * k, y = hole.y + Math.sin(a) * hole.ry * k; i ? p.lineTo(x, y) : p.moveTo(x, y); } p.closePath(); return p; })();
+  const floorPath = (() => { const p = new Path2D(); p.moveTo(-10, H + 10); for (let x = -10; x <= W + 10; x += 10) p.lineTo(x, baseY(x)); p.lineTo(W + 10, H + 10); p.closePath(); return p; })();
+  const edgePath = (() => { const p = new Path2D(); for (let x = -10; x <= W + 10; x += 10) x > -10 ? p.lineTo(x, baseY(x)) : p.moveTo(x, baseY(x)); return p; })();
+  const formationOp = it => () => { rnd = mulberry(it.seed); curSlot = it.i; const n0 = glows.length; formation(g, it.x, it.y, it.ang, it.size, it.type, glows); for (let k = n0; k < glows.length; k++) glows[k][4] = it.i; curSlot = -1; };
+  const wanted = it => (it.kind !== 'f' || !removed.has(it.i)) && (near(it.x, it.y, it.size * 1.1) || near(it.cx, it.cy, it.size * 1.1));
+  // the back wall, its seams, the skylight and what hangs from the roof
+  ops.push(() => {
+    rnd = mulberry(S.seed ^ 0x9e3779b9);
+    g.fillStyle = tex('wall', shade(wallCol, .06)); g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'multiply';
+    for (let i = 0; i < 6; i++) { const y = R(H * .05, y0 + H * .2), o = R(0, 50); g.strokeStyle = `rgba(0,0,0,${R(.08, .16)})`; g.lineWidth = R(2, 5); g.beginPath(); for (let x = 0; x <= W; x += 20) { const yy = y + fbm1(o + x / 300, 3) * 40; x ? g.lineTo(x, yy) : g.moveTo(x, yy); } g.stroke(); }
+    for (const sm of plan.seams) { const p = new Path2D(); for (let x = 0; x <= W; x += 16) x ? p.lineTo(x, sm.at(x)) : p.moveTo(x, sm.at(x)); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 9; g.stroke(p); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 3; g.stroke(p);
+      g.save(); g.translate(0, 5); g.globalCompositeOperation = 'screen'; g.strokeStyle = 'rgba(255,240,220,.12)'; g.lineWidth = 2.5; g.stroke(p); g.restore(); }
+    g.globalCompositeOperation = 'source-over';
+    const sh = g.createLinearGradient(0, 0, 0, y0 + H * .25); sh.addColorStop(0, 'rgba(0,0,0,.55)'); sh.addColorStop(1, 'rgba(0,0,0,.05)'); g.fillStyle = sh; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'screen';
+    const sp = g.createRadialGradient(hole.x, hole.y, hole.rx * .6, hole.x, hole.y, hole.rx * 4); sp.addColorStop(0, rgba(light, .4)); sp.addColorStop(1, rgba(light, 0)); g.fillStyle = sp; g.fillRect(0, 0, W, H * .6);
+    g.globalCompositeOperation = 'source-over';
+    g.save(); g.translate(0, 12); g.fillStyle = rgba(shade(wallCol, -.55)); g.fill(holePath); g.translate(0, -5); g.fillStyle = rgba(shade(wallCol, -.3)); g.fill(holePath); g.restore();
+    g.save(); g.clip(holePath);
+    const sk = g.createLinearGradient(0, hole.y - hole.ry * 1.3, 0, hole.y + hole.ry * 1.3); sk.addColorStop(0, sky.top); sk.addColorStop(1, sky.bottom); g.fillStyle = sk; g.fillRect(hole.x - hole.rx * 1.5, hole.y - hole.ry * 1.5, hole.rx * 3, hole.ry * 3);
+    g.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 4; i++) { const cx = hole.x + R(-1, 1) * hole.rx, cy = hole.y + R(-.6, .5) * hole.ry; for (let j = 0; j < 4; j++) { g.beginPath(); g.ellipse(cx + j * 14 - 20, cy + R(-4, 4), R(14, 24), R(7, 11), 0, 0, 6.3); g.fill(); } }
+    g.restore();
+    g.strokeStyle = rgba(light, .45); g.lineWidth = 1.5; g.stroke(holePath);
+    for (let i = 0; i < RI(4, 7); i++) {
+      const a = R(.15, .85) * Math.PI, x = hole.x + Math.cos(a) * hole.rx * R(-1, 1), y = hole.y + hole.ry * R(.3, .9), len = R(50, 140), sway = R(-30, 30);
+      g.strokeStyle = '#3f7a3a'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + sway, y + len * .5, x + sway * .4, y + len); g.stroke();
+      for (let t = .12; t < 1; t += R(.08, .16)) { const lx = lerp(lerp(x, x + sway, t), lerp(x + sway, x + sway * .4, t), t), ly = y + len * t; g.fillStyle = rnd() < .5 ? '#5fa34f' : '#4b8d41'; g.beginPath(); g.ellipse(lx + (rnd() < .5 ? -5 : 5), ly, 6, 3.2, R(-.8, .8), 0, 6.3); g.fill(); }
+    }
+    for (const f of plan.fossils) if (f.wall) fossil(g, f, wallCol);
+  });
+  for (const it of plan.items) if (it.wall && wanted(it)) ops.push(formationOp(it));
+  // the floor: stone in perspective, cracks, pebbles, puddles that hold a little sky, and the pool of light
+  ops.push(() => {
+    rnd = mulberry(S.seed ^ 0x2545f491);
+    g.save(); g.clip(floorPath);
+    g.fillStyle = tex('floor', floorCol); g.fillRect(0, 0, W, H);
+    const fl = g.createLinearGradient(0, y0, 0, H); fl.addColorStop(0, 'rgba(0,0,0,.35)'); fl.addColorStop(.35, 'rgba(0,0,0,.05)'); fl.addColorStop(1, 'rgba(0,0,0,.3)'); g.fillStyle = fl; g.fillRect(0, 0, W, H);
+    g.strokeStyle = rgba(shade(floorCol, -.45), .5); g.lineCap = 'round';
+    for (let i = 0; i < 22; i++) { let x = R(0, W), y = R(y0, H); const s = persp(y); g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 6; k++) { x += R(-40, 40) * s; y += R(-8, 8) * s; g.lineTo(x, y); } g.stroke(); }
+    for (let i = 0; i < 420; i++) { const x = R(0, W), y = R(y0, H + 10), s = persp(y), r = R(1.5, 5) * s, c = shade(floorCol, R(-.3, .3)); g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x + r * .3, y + r * .35, r, r * .55, 0, 0, 6.3); g.fill(); g.fillStyle = rgba(c); g.beginPath(); g.ellipse(x, y, r, r * .6, 0, 0, 6.3); g.fill(); }
+    for (let i = 0; i < RI(2, 3); i++) {
+      const x = R(W * .1, W * .9), y = R(y0 + (H - y0) * .3, H - 60); if (Math.hypot((x - pool.x) / pool.rx, (y - pool.y) / pool.ry) < 1.3) continue;
+      const s = persp(y), rx = R(60, 110) * s, ry = rx * R(.28, .36);
+      const pg = g.createLinearGradient(0, y - ry, 0, y + ry); pg.addColorStop(0, sky.bottom); pg.addColorStop(1, sky.top);
+      g.fillStyle = rgba(shade(floorCol, -.5)); g.beginPath(); g.ellipse(x, y + 2, rx + 4, ry + 3, 0, 0, 6.3); g.fill(); g.fillStyle = rgba(shade(floorCol, -.62)); g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill();
+      g.globalAlpha = .32; g.fillStyle = pg; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill(); g.globalAlpha = 1;
+      g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(x - rx * .2, y - ry * .3, rx * .4, ry * .2, 0, Math.PI * 1.1, Math.PI * 1.7); g.stroke();
+    }
+    g.globalCompositeOperation = 'multiply'; for (let k = 0; k < 3; k++) { g.strokeStyle = 'rgba(0,0,0,.16)'; g.lineWidth = 50 - k * 18; g.stroke(edgePath); } g.globalCompositeOperation = 'source-over';
+    g.globalCompositeOperation = 'screen';
+    g.save(); g.translate(pool.x, pool.y); g.scale(1, pool.ry / pool.rx);
+    const pl = g.createRadialGradient(0, 0, 0, 0, 0, pool.rx * 1.25); pl.addColorStop(0, rgba(light, .5)); pl.addColorStop(.55, rgba(light, .2)); pl.addColorStop(1, rgba(light, 0)); g.fillStyle = pl; g.fillRect(-pool.rx * 1.3, -pool.rx * 1.3, pool.rx * 2.6, pool.rx * 2.6);
+    g.restore(); g.globalCompositeOperation = 'source-over';
+    g.restore();
+    g.strokeStyle = rgba(mix(shade(wallCol, .4), light, .25), .5); g.lineWidth = 2; g.stroke(edgePath);
+    for (const f of plan.fossils) if (!f.wall) fossil(g, f, floorCol);
+  });
+  // everything on the floor, back to front, with a little haze over the far parts as we come forward
+  const hazes = [y0 + (H - y0) * .12, y0 + (H - y0) * .32], fog = mix(shade(floorCol, -.2), light, .2);
+  let hz = 0;
+  for (const it of plan.items) {
+    if (it.wall) continue;
+    while (hz < hazes.length && it.y > hazes[hz]) { const t = hazes[hz++]; ops.push(() => { const hg = g.createLinearGradient(0, 0, 0, t + 80); hg.addColorStop(0, rgba(fog, .06)); hg.addColorStop(t / (t + 80), rgba(fog, .06)); hg.addColorStop(1, rgba(fog, 0)); g.fillStyle = hg; g.fillRect(0, 0, W, t + 80); }); }
+    if (!wanted(it)) continue;
+    if (it.kind === 'f') ops.push(formationOp(it));
+    else if (it.kind === 'boulder') ops.push(() => { rnd = mulberry(it.seed); boulder(g, it.x, it.y, it.size, shade(floorCol, R(-.1, .15))); });
+  }
+  // the crystals' glow, shafts of light from the skylight, a soft vignette, and dust drifting in the light
+  ops.push(() => {
+    glowPass(g, plan, removed, near, glows, patch);
+    rnd = mulberry(S.seed ^ 0x51ed27);
+    g.globalCompositeOperation = 'screen';
+    const beams = [];
+    for (let i = 0, n = RI(5, 7); i < n; i++) {
+      const u = (i + .5) / n * 2 - 1 + R(-.1, .1), hx = hole.x + u * hole.rx * .75, hy = hole.y + hole.ry * .4, bx = pool.x + u * pool.rx * .85 + R(-20, 20), by = pool.y + R(-.2, .3) * pool.ry, w1 = R(14, 30), w2 = R(50, 100), a = R(.09, .17);
+      beams.push([hx, hy, bx, by]);
+      const bg = g.createLinearGradient(hx, hy, bx, by); bg.addColorStop(0, rgba(light, a)); bg.addColorStop(.75, rgba(light, a * .55)); bg.addColorStop(1, rgba(light, 0));
+      g.fillStyle = bg; g.beginPath(); g.moveTo(hx - w1 / 2, hy); g.lineTo(hx + w1 / 2, hy); g.lineTo(bx + w2 / 2, by); g.lineTo(bx - w2 / 2, by); g.closePath(); g.fill();
+    }
+    { const bg = g.createLinearGradient(hole.x, hole.y, pool.x, pool.y); bg.addColorStop(0, rgba(light, .1)); bg.addColorStop(1, rgba(light, 0));
+      g.fillStyle = bg; g.beginPath(); g.moveTo(hole.x - hole.rx, hole.y); g.lineTo(hole.x + hole.rx, hole.y); g.lineTo(pool.x + pool.rx * 1.1, pool.y); g.lineTo(pool.x - pool.rx * 1.1, pool.y); g.closePath(); g.fill(); }
+    g.globalCompositeOperation = 'source-over';
+    const vg = g.createRadialGradient(pool.x, pool.y - 100, Math.min(W, H) * .35, pool.x, pool.y - 100, Math.max(W, H) * .8);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    if (patch) return;
+    for (let i = 0; i < 150; i++) { const [hx, hy, bx, by] = pick(beams), t = R(.05, .95); motes.push({ x: lerp(hx, bx, t) + R(-30, 30), y: lerp(hy, by, t), ax: R(8, 22), ay: R(6, 16), a: R(.25, .6), r: R(.7, 1.8), c: rgba(light), p: rnd() * 6.3, f: R(.08, .2) }); }
+    for (let i = 0; i < 50; i++) motes.push({ x: R(0, W), y: R(0, H), ax: R(10, 30), ay: R(10, 30), a: R(.12, .3), r: R(.6, 1.4), c: pick(theme).glow, p: rnd() * 6.3, f: R(.05, .15) });
+    if (sparks.length > 700) sparks = shuffle(sparks).slice(0, 700);
+  });
 }
 
 // an ammonite pressed into the rock
@@ -737,6 +944,13 @@ function fossil(g, f, rockCol) {
   g.restore();
 }
 
+// the crystals' soft glow, added over everything (minus any collected crystal's)
+function glowPass(g, plan, removed, near, glows, patch) {
+  if (!patch) plan.glows = glows;
+  g.globalCompositeOperation = 'lighter';
+  for (const [x, y, r, c, k] of plan.glows) { if (removed.has(k) || !near(x, y, r)) continue; const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rgba(hex(c), .07)); gl.addColorStop(1, rgba(hex(c), 0)); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  g.globalCompositeOperation = 'source-over';
+}
 // paint a planned cave into one picture, a few milliseconds at a time so the page stays responsive; resolves when done.
 // Collected formations (removed) are left out. With patch = { pic, x0, y0, x1, y1 } it instead repaints just that area of an
 // existing picture, at once: everything is drawn from its own seed, so the patch matches the rest exactly.
@@ -749,6 +963,7 @@ function paintCave(plan, removed = new Set(), patch = null) {
   const near = (x, y, r) => !patch || (x + r > patch.x0 && x - r < patch.x1 && y + r > patch.y0 && y - r < patch.y1);
   if (patch) { g.save(); const k = BDPR, x0 = Math.floor(patch.x0 * k) / k, y0 = Math.floor(patch.y0 * k) / k; g.beginPath(); g.rect(x0, y0, Math.ceil(patch.x1 * k) / k - x0, Math.ceil(patch.y1 * k) / k - y0); g.clip(); sparks = []; }
   else { sparks = []; motes = []; plan.tex = []; }
+  if (plan.kind === 'floor') floorOps(g, plan, removed, near, ops, glows, patch); else {
   ops.push(() => {
     rnd = mulberry(S.seed ^ 0x9e3779b9);
     const bg = g.createRadialGradient(W / 2, H * .5, 0, W / 2, H * .5, Math.max(W, H) * .7);
@@ -778,16 +993,13 @@ function paintCave(plan, removed = new Set(), patch = null) {
       g.restore();
       if (li < layers.length - 1) { g.fillStyle = rgba(mix(lit, [10, 8, 20], .88), .18); g.fillRect(0, 0, W, H); }
       for (const f of plan.fossils) if (f.li === li) fossil(g, f, col);
-      for (const st of plan.stals) if (st.li === li) stalactite(g, st.x, st.y, st.len, st.w, shade(col, .12));
     });
     for (const s of plan.slots) if (s.li === li && !removed.has(s.i) && (near(s.x, s.y, s.size * 1.1) || near(s.cx, s.cy, s.size * 1.1)))
       ops.push(() => { rnd = mulberry(s.seed); curSlot = s.i; const n0 = glows.length; formation(g, s.x, s.y, s.ang, s.size, s.type, glows); for (let k = n0; k < glows.length; k++) glows[k][4] = s.i; curSlot = -1; });
   });
   ops.push(() => {
     g.globalCompositeOperation = 'lighter';
-    if (!patch) plan.glows = glows;
-    for (const [x, y, r, c, k] of plan.glows) { if (removed.has(k) || !near(x, y, r)) continue; const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rgba(hex(c), .07)); gl.addColorStop(1, rgba(hex(c), 0)); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
-    g.globalCompositeOperation = 'source-over';
+    glowPass(g, plan, removed, near, glows, patch);
     const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.max(W, H) * .78);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
     if (patch) return;
@@ -795,6 +1007,7 @@ function paintCave(plan, removed = new Set(), patch = null) {
     for (let i = 0; i < 150; i++) motes.push({ x: R(0, W), y: R(0, H), v: R(4, 12), a: R(.15, .4), r: R(.6, 1.6), c: pick(theme).glow, p: rnd() * 6.3 });
     if (sparks.length > 700) sparks = shuffle(sparks).slice(0, 700);
   });
+  }
   if (patch) {   // all at once: it's only a small area
     for (const op of ops) { try { op(); } catch (e) { g.setTransform(BDPR, 0, 0, BDPR, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; } }
     g.restore(); sparks = keepSparks; return Promise.resolve(S2);
@@ -914,11 +1127,26 @@ function win() {
 
 /* ---------- making caves ---------- */
 let busyGen = false, genId = 0;
+const TIPS = [
+  'Frosted tips are rough and matte white at the ends, with no shine. Clear crystals are glassy and twinkle.',
+  'Gold fractures are bright gold cracks running across the crystal.',
+  'Banded crystals have stripes across them. Two-tone ones change colour near the tip.',
+  'A match needs the same mineral, the same shape and the same marking.',
+  'A Tower stands alone; a Cluster is a bunch of columns growing together.',
+  'Pinch or tap ＋ to zoom in close. Tap the little map to jump about.',
+  'Stuck? 🔍 shows you where one is, for 25 points.',
+  'Ammonite fossils 🐚 hide in the rock: 75 points each.',
+  'Watermelon Tourmaline really is green at the bottom and pink at the top.',
+  'Ametrine is amethyst and citrine in one crystal: purple, then gold.',
+  'Pyrite is called fool\'s gold: shiny golden cubes that grow in nature.',
+  'Every crystal here grows only in the shapes it forms in real life.',
+];
 const loadingEl = $('loading');
 function makeCave(fresh) {
   if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.fossils = []; S.score = 0; S.misses = 0; S.hints = 0; save(); }
+  WORLD_W = S.mode === 'floor' ? 1500 : 1200; WORLD_H = 1150; layout();
   BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(5.2e6 / (WORLD_W * WORLD_H)));   // the painted cave's resolution, capped to spare a phone's memory
-  busyGen = true; loadingEl.classList.add('show'); const id = ++genId;
+  busyGen = true; $('tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)]; loadingEl.classList.add('show'); const id = ++genId;
   let plan;
   try { plan = planCave(); } catch (e) { busyGen = false; loadingEl.classList.remove('show'); note('Sorry, that cave caved in. Tap ↻ for another'); return Promise.resolve(); }
   // crystals already collected in a saved game are left out of the picture
@@ -935,14 +1163,21 @@ function makeCave(fresh) {
     loadingEl.classList.remove('show'); showTarget();
   });
 }
-let confirmNew = false;
-$('bNew').onclick = () => {
-  if (busyGen) return;
-  if ((S.hunt > 1 || S.found.length) && !confirmNew) { confirmNew = true; note('Tap again for a new cave'); setTimeout(() => confirmNew = false, 2000); return; }
-  confirmNew = false; makeCave(true).then(() => note('Find: ' + typeName(target())));
-};
+// a new cave: choose the ring cave or the crystal floor
+function chooseNew(fromWin) {
+  document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.mode === S.mode));
+  $('newWarn').style.display = !fromWin && (S.hunt > 1 || S.found.length) ? '' : 'none';
+  $('ovWin').classList.remove('show'); $('ovNew').classList.add('show');
+}
+document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => {
+  $('ovNew').classList.remove('show'); S.mode = b.dataset.mode; save();
+  makeCave(true).then(() => target() && note('Find: ' + typeName(target())));
+}));
+$('bNewX').onclick = () => $('ovNew').classList.remove('show');
+$('ovNew').addEventListener('pointerdown', e => { if (e.target === $('ovNew')) $('ovNew').classList.remove('show'); });
+$('bNew').onclick = () => { if (!busyGen) chooseNew(false); };
 $('bHint').onclick = hint;
-$('bNext').onclick = () => { $('ovWin').classList.remove('show'); makeCave(true).then(() => note('Find: ' + typeName(target()))); };
+$('bNext').onclick = () => chooseNew(true);
 $('bHelp').onclick = () => $('ovHelp').classList.add('show');
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { $('ovHelp').classList.remove('show'); S.seenHelp = true; save(); }));
 $('ovHelp').addEventListener('pointerdown', e => { if (e.target === $('ovHelp')) { $('ovHelp').classList.remove('show'); S.seenHelp = true; save(); } });
@@ -960,7 +1195,7 @@ function zoomAt(z, sx, sy, now) {
 }
 function lookAt(x, y, z) { const nz = clampZoom(z), c = clampCam(x - viewW / nz / 2, y - viewH / nz / 2, nz); targetZoom = nz; targetCamX = c.x; targetCamY = c.y; }
 // open zoomed right out, looking into the heart of the cave
-function centreCamera() { zoom = targetZoom = minZoom(); const c = clampCam(WORLD_W / 2 - viewW / zoom / 2, WORLD_H / 2 - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; }
+function centreCamera() { zoom = targetZoom = minZoom(); const v = cave && cave.plan.view || { x: WORLD_W / 2, y: WORLD_H / 2 }, c = clampCam(v.x - viewW / zoom / 2, v.y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; }
 const fitApp = () => { const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight) || innerHeight; document.documentElement.style.setProperty('--app-h', h + 'px'); };
 function layout() {
   fitApp();
@@ -1014,7 +1249,7 @@ const mini = $('mini'), mctx = mini.getContext('2d'), miniArt = document.createE
 let miniW = 120, miniH = 73;
 function sizeMini() {
   const d = Math.min(2, window.devicePixelRatio || 1); miniW = viewW < 420 ? 104 : 136; miniH = Math.round(miniW * WORLD_H / WORLD_W);
-  if (mini.width !== miniW * d) { mini.width = miniW * d; mini.height = miniH * d; mini.style.width = miniW + 'px'; mini.style.height = miniH + 'px'; paintMiniArt(); }
+  if (mini.width !== miniW * d || mini.height !== miniH * d) { mini.width = miniW * d; mini.height = miniH * d; mini.style.width = miniW + 'px'; mini.style.height = miniH + 'px'; paintMiniArt(); }
 }
 function paintMiniArt() {
   if (!cave || !mini.width) return;
@@ -1075,9 +1310,11 @@ function frame(now) {
     ctx.drawImage(cave.pic, sx * BDPR, sy * BDPR, sw * BDPR, sh * BDPR, sx, sy, sw, sh); }
   ctx.globalCompositeOperation = 'lighter';
   for (const m of motes) {
-    if (!reduceMotion) { m.y -= m.v * dt; m.x += Math.sin(t * .6 + m.p) * .15; if (m.y < -5) { m.y = H + 5; m.x = Math.random() * W; } }
-    if (!seen(m.x, m.y)) continue;
-    ctx.globalAlpha = m.a * (.6 + .4 * Math.sin(t * 1.3 + m.p)); ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 6.3); ctx.fill();
+    let mx = m.x, my = m.y;
+    if (m.ax !== undefined) { if (!reduceMotion) { mx += Math.sin(t * m.f + m.p) * m.ax; my += Math.cos(t * m.f * .8 + m.p * 1.3) * m.ay; } }
+    else if (!reduceMotion) { m.y -= m.v * dt; m.x += Math.sin(t * .6 + m.p) * .15; if (m.y < -5) { m.y = H + 5; m.x = Math.random() * W; } mx = m.x; my = m.y; }
+    if (!seen(mx, my)) continue;
+    ctx.globalAlpha = m.a * (.6 + .4 * Math.sin(t * 1.3 + m.p)); ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(mx, my, m.r, 0, 6.3); ctx.fill();
   }
   if (!reduceMotion) for (const s of sparks) { if (!seen(s.x, s.y) || cave.removed.has(s.k)) continue; const v = Math.sin(t * s.f + s.p); if (v > .6) star(s.x, s.y, s.s * (v - .6) / .4 * .5, s.c, Math.min(1, (v - .6) * 2.4)); }
   ctx.globalAlpha = 1;
