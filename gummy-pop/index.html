@@ -31,7 +31,7 @@
   html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#2a1640; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   #app { position:relative; height:100dvh; width:100vw; display:flex; align-items:center; justify-content:center; touch-action:none; }
   canvas { display:block; touch-action:none; }
-  .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(40,16,64,.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:5; }
+  .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(40,16,64,.7); z-index:5; }
   .ov.show { display:flex; animation:fade .25s ease; }
   @keyframes fade { from { opacity:0; } }
   .panel { width:min(92vw,380px); max-height:92dvh; overflow:auto; background:linear-gradient(180deg,#fff7fb,#ffe6f2); border-radius:26px; padding:22px 20px 20px; text-align:center; color:#4a2350;
@@ -223,7 +223,7 @@ window.BB = (() => {
 /* ======================= setup ======================= */
 const W = 360, N = 8, CS = 42, BX = (W - N * CS) / 2;
 let H = 680, BY = 200, SC = 1;
-const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const cv = document.getElementById('c'); let ctx = cv.getContext('2d');   // let: the top bar is sometimes drawn into its own cache
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v, rnd = (a, b) => a + Math.random() * (b - a), ri = n => Math.floor(Math.random() * n);
 const COLORS = ['#ff4d6d', '#ff9f1c', '#ffd60a', '#35d07f', '#3fa7ff', '#a66bff'];
@@ -239,13 +239,17 @@ if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // s
 const IMG = { bear: new Image() }; IMG.bear.src = '../icons/bear.png?v=406624f3';
 const persist = () => { try { localStorage.setItem('gummypop', JSON.stringify(save)); } catch (e) {} };
 
+let sizeKey = '';
 function resize() {
+  // phones fire resize when the address bar slides: only rebuild canvases and sprites if the size really changed
+  const key = innerWidth + 'x' + innerHeight + '@' + (window.devicePixelRatio || 1); if (key === sizeKey) return false; sizeKey = key;
   H = Math.round(clamp(W * innerHeight / innerWidth, 600, 780));
   BY = Math.round(146 + Math.max(8, (H - 146 - N * CS - 84) * .4));
-  const s = Math.min(innerWidth / W, innerHeight / H), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const s = Math.min(innerWidth / W, innerHeight / H), dpr = Math.min(window.devicePixelRatio || 1, 2);   // 2x is sharp on any phone; more only costs frame rate
   cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px';
   cv.width = Math.round(W * s * dpr); cv.height = Math.round(H * s * dpr); SC = cv.width / W;
-  makeSprites(); bgCache = null;
+  makeSprites(); bgCache = null; sceneCache = null; cardCache = null; hudKey = '';
+  return true;
 }
 
 /* ======================= audio ======================= */
@@ -827,7 +831,21 @@ cv.addEventListener('pointercancel', () => { down = null; });
 addEventListener('keydown', e => { if (e.key === 'Escape' && state === 'play') openPause(); });
 
 /* ======================= drawing ======================= */
-let bgDirty = true, boardCache = null;
+let bgDirty = true, boardCache = null, sceneCache = null, sceneDirty = true, cardCache = null, hudCache = null, hudKey = '';
+// the background with the board painted on: one picture to copy each frame instead of two big ones
+function sceneLayer() {
+  if (sceneCache && !sceneDirty && !bgDirty) return sceneCache;
+  const board = boardLayer(), c = sceneCache || document.createElement('canvas'); c.width = Math.ceil(W * SC); c.height = Math.ceil(H * SC);
+  const g = c.getContext('2d'); g.setTransform(SC, 0, 0, SC, 0, 0); g.drawImage(bg(), 0, 0, W, H); g.drawImage(board, BX - 10, BY - 10, N * CS + 20, N * CS + 20);
+  sceneCache = c; sceneDirty = false; return c;
+}
+// the top card and its soft shadow, drawn once: a blurred shadow is costly to paint every frame
+function cardLayer() {
+  if (cardCache) return cardCache;
+  const c = document.createElement('canvas'); c.width = Math.ceil(W * SC); c.height = Math.ceil(150 * SC); const g = c.getContext('2d'); g.setTransform(SC, 0, 0, SC, 0, 0);
+  g.shadowColor = 'rgba(80,20,90,.3)'; g.shadowBlur = 14; g.shadowOffsetY = 4; rr(g, 10, 10, W - 20, 124, 22); g.fillStyle = 'rgba(255,255,255,.88)'; g.fill();
+  cardCache = c; return c;
+}
 function bg() {
   if (bgCache) return bgCache;
   const c = document.createElement('canvas'); c.width = Math.ceil(W * SC); c.height = Math.ceil(H * SC); const g = c.getContext('2d'); g.setTransform(SC, 0, 0, SC, 0, 0);
@@ -856,7 +874,7 @@ function boardLayer() {
     rr(g, cc * CS + 1.5, r * CS + 1.5, CS - 3, CS - 3, 9); g.fillStyle = (r + cc) % 2 ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.26)'; g.fill();
     if (frost[r] && frost[r][cc]) frostTile(g, cc * CS, r * CS, CS, frost[r][cc]);
   }
-  boardCache = c; bgDirty = false; return c;
+  boardCache = c; bgDirty = false; sceneDirty = true; return c;
 }
 function boosterRects() { const y = BY + N * CS + 18, w = 132, h = 44; return [{ id: 'hammer', x: W / 2 - w - 6, y, w, h }, { id: 'swap', x: W / 2 + 6, y, w, h }]; }
 function lollyIcon(x, y, s = 1) {
@@ -953,20 +971,36 @@ function text(t, x, y, size, fill, align = 'center', stroke = '#7a2a6e', w = 900
   ctx.fillStyle = fill; ctx.fillText(t, x, y);
 }
 function drawHUD() {
-  // top card
-  ctx.save(); ctx.shadowColor = 'rgba(80,20,90,.3)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
-  rr(ctx, 10, 10, W - 20, 124, 22); ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fill(); ctx.restore();
-  // menu button
-  rr(ctx, 20, 20, 36, 36, 12); ctx.fillStyle = '#ffe0ef'; ctx.fill(); ctx.fillStyle = '#d6357f'; for (let i = 0; i < 3; i++) { rr(ctx, 29, 29 + i * 7, 18, 3.4, 1.7); ctx.fill(); }
-  text('Level ' + L.n, 66, 38, 15, '#7a2a6e', 'left', null);
-  // moves
+  shownScore += (score - shownScore) * .2; if (Math.abs(score - shownScore) < 1) shownScore = score;
+  L.stars.forEach((v, i) => { if (shownScore >= v && v > 0 && !starPop[i]) { starPop[i] = 1; tone(1200 + i * 200, .15, 'triangle', .05); } });
+  const goal = L.kind === 'collect' ? L.collect.map(([t, k]) => k - collected[t]).join() : L.kind === 'honey' ? honeyGot + '/' + (IMG.bear.complete && IMG.bear.naturalWidth)
+    : L.kind === 'ice' || L.kind === 'choc' ? countBlocks(L.kind) : L.kind === 'score' ? '' : frost.map(r => r.join('')).join();
+  const key = [L.n, moves > 5 ? moves : 'low', Math.round(shownScore), goal, W, H, SC].join('|');
+  ctx.drawImage(cardLayer(), 0, 0, W, 150);
+  if (key !== hudKey) {
+    if (!hudCache) hudCache = document.createElement('canvas');
+    if (hudCache.width !== Math.ceil(W * SC)) { hudCache.width = Math.ceil(W * SC); hudCache.height = Math.ceil(150 * SC); }
+    const main = ctx; ctx = hudCache.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, hudCache.width, hudCache.height); ctx.setTransform(SC, 0, 0, SC, 0, 0);
+    try { paintHUD(false); } finally { ctx = main; }
+    hudKey = key;
+  }
+  ctx.drawImage(hudCache, 0, 0, W, 150);
+  if (moves <= 5) paintMoves();   // the moves bubble pulses when they're running out, so it's drawn live
+}
+function paintMoves() {
   ctx.save(); ctx.translate(W - 52, 50);
   const mg = ctx.createLinearGradient(0, -34, 0, 34); mg.addColorStop(0, moves <= 5 ? '#ff8a8a' : '#ff8cc4'); mg.addColorStop(1, moves <= 5 ? '#e0303a' : '#d6357f');
   ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(0, 0, 33, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
   const ms = moves <= 5 ? 1 + Math.sin(time * 8) * .06 : 1; ctx.scale(ms, ms);
   text(String(moves), 0, -3, 26, '#fff', 'center', 'rgba(120,10,60,.6)'); text('MOVES', 0, 18, 9, '#ffe0ef', 'center', null, 800); ctx.restore();
+}
+function paintHUD() {
+  // menu button
+  rr(ctx, 20, 20, 36, 36, 12); ctx.fillStyle = '#ffe0ef'; ctx.fill(); ctx.fillStyle = '#d6357f'; for (let i = 0; i < 3; i++) { rr(ctx, 29, 29 + i * 7, 18, 3.4, 1.7); ctx.fill(); }
+  text('Level ' + L.n, 66, 38, 15, '#7a2a6e', 'left', null);
+  // moves
+  if (moves > 5) paintMoves();
   // score + stars bar
-  shownScore += (score - shownScore) * .2; if (Math.abs(score - shownScore) < 1) shownScore = score;
   text(Math.round(shownScore).toLocaleString('en-GB'), 66, 64, 22, '#d6357f', 'left', '#fff');
   const bx = 22, by = 84, bw = W - 116, top = L.stars[2] * 1.05;
   rr(ctx, bx, by, bw, 10, 5); ctx.fillStyle = '#f1dcef'; ctx.fill();
@@ -974,7 +1008,6 @@ function drawHUD() {
   L.stars.forEach((v, i) => {
     if (i === 0 && v === 0) return;
     const x = bx + bw * clamp(v / top, .04, 1), on = shownScore >= v && v > 0;
-    if (on && !starPop[i]) { starPop[i] = 1; tone(1200 + i * 200, .15, 'triangle', .05); }
     const s = on ? 1.15 : .9; ctx.save(); ctx.translate(x, by + 5); ctx.scale(s, s); text('★', 0, 0, 18, on ? '#ffc21a' : '#e2cde6', 'center', on ? '#c77d00' : '#fff'); ctx.restore();
   });
   // goals
@@ -998,12 +1031,13 @@ function drawHUD() {
 }
 function draw(dt) {
   ctx.setTransform(SC, 0, 0, SC, 0, 0);
-  ctx.drawImage(bg(), 0, 0, W, H);
+  const still = L && shake <= .3;
+  ctx.drawImage(still ? sceneLayer() : bg(), 0, 0, W, H);
   for (const b of bubbles) { b.y -= b.v * dt; if (b.y < -40) { b.y = H + 40; b.x = rnd(0, W); } ctx.globalAlpha = .25; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(b.x + Math.sin(time + b.p) * 6, b.y, b.r, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = .35; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x + Math.sin(time + b.p) * 6 - b.r * .35, b.y - b.r * .35, b.r * .18, 0, Math.PI * 2); ctx.fill(); }
   ctx.globalAlpha = 1;
   if (!L) return;
   ctx.save(); if (shake > .3) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
-  ctx.drawImage(boardLayer(), BX - 10, BY - 10, N * CS + 20, N * CS + 20);
+  if (!still) ctx.drawImage(boardLayer(), BX - 10, BY - 10, N * CS + 20, N * CS + 20);
   if (L.kind === 'honey') for (let c = 0; c < N; c++) if (!block[N - 1][c]) { const x = cx(c), y = BY + N * CS + 5 + Math.sin(time * 4 + c) * 1.5; ctx.fillStyle = '#ffcb2f'; ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 6); ctx.closePath(); ctx.fill(); }
   ctx.save(); rr(ctx, BX - 4, BY - 4, N * CS + 8, N * CS + 8, 16); ctx.clip();
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (block[r] && block[r][c]) drawBlock(r, c, block[r][c]);
@@ -1124,7 +1158,7 @@ $('btnLevels').onclick = openMenu;
 $('btnSound').onclick = () => { save.muted = !save.muted; BB.muted = save.muted; persist(); $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); tone(660, .1, 'triangle', .06); };
 document.addEventListener('visibilitychange', () => { if (ac) document.hidden ? ac.suspend() : ac.resume(); });
 
-addEventListener('resize', () => { resize(); boardCache = null; bgDirty = true; });
+addEventListener('resize', () => { if (resize()) { boardCache = null; bgDirty = true; } });
 resize();
 L = levelCfg(1); block = L.blocks; fillBoard(); grid.flat().forEach(p => { if (p) p.y = p.tr; }); state = 'menu';
 openMenu();
