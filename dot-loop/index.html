@@ -148,6 +148,13 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 .pk-dots button[aria-current="step"] { width:20px; background:var(--pk-clay); }
 .pk-steps-go { justify-self:end; display:flex; }
 @media (prefers-reduced-motion: reduce) { .pk-step, .pk-step.on { transition:none; transform:none; } }
+/* "Leave this game?": shown by BB.home() when a game in progress would be lost */
+.pk-leave { position:fixed; inset:0; z-index:9999; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(40,28,18,.55); }
+.pk-leave.show { display:flex; }
+.pk-leave-card { max-width:320px; width:100%; padding:20px 20px 18px; border-radius:20px; text-align:center; box-shadow:0 18px 40px rgba(40,20,10,.3); }
+.pk-leave-card h2 { margin:0 0 6px; font-size:1.25rem; }
+.pk-leave-card p { margin:0 0 16px; line-height:1.4; }
+.pk-leave-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
 </style>
 <script id="pub-kit-settings">
 window.BB = (() => {
@@ -157,8 +164,33 @@ window.BB = (() => {
   return {
     get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
     get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+    // going back to all the games: a game sets BB.leaveRisk to a function that says whether a game in progress would be
+    // lost; if it would, BB.home() (and any link back home) asks first. BB.asking is true while the question is up, so a
+    // game that runs on its own can pause.
+    leaveRisk: null, asking: false,
+    home(href = '../') { if (BB.leaveRisk && BB.leaveRisk()) askLeave(href); else location.href = href; },
   };
 })();
+function askLeave(href) {
+  let d = document.getElementById('pk-leave');
+  if (!d) {
+    d = document.createElement('div'); d.id = 'pk-leave'; d.className = 'pk-leave';
+    d.innerHTML = '<div class="pk-card pk-leave-card" role="alertdialog" aria-modal="true" aria-labelledby="pk-leave-t" aria-describedby="pk-leave-d">'
+      + '<h2 id="pk-leave-t">Leave this game?</h2><p id="pk-leave-d">The game you’re playing won’t be saved.</p>'
+      + '<div class="pk-leave-row"><button type="button" class="pk-btn pk-small" data-stay>Keep playing</button><button type="button" class="pk-btn pk-alt pk-small" data-go>Leave</button></div></div>';
+    document.body.appendChild(d);
+    const close = () => { d.classList.remove('show'); BB.asking = false; };
+    d.addEventListener('pointerdown', e => e.stopPropagation());
+    d.addEventListener('click', e => { e.stopPropagation(); if (performance.now() - d.opened < 400) return;   // the tap that opened it
+      if (e.target === d || e.target.closest('[data-stay]')) close(); else if (e.target.closest('[data-go]')) location.href = d.dataset.href; });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && d.classList.contains('show')) { e.stopPropagation(); close(); } }, true);
+  }
+  d.dataset.href = href; d.opened = performance.now(); d.classList.add('show'); BB.asking = true; d.querySelector('[data-stay]').focus();
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href="../"]');
+  if (a && BB.leaveRisk && BB.leaveRisk()) { e.preventDefault(); askLeave(a.getAttribute('href')); }
+}, true);
 </script>
 </head>
 <body>
@@ -322,6 +354,9 @@ function levelCfg(n) {
 }
 
 /* ---------- state ---------- */
+let inLevel = false;   // a level has been started and not yet won or lost
+// leaving now would lose the game in progress (the shared kit asks first)
+BB.leaveRisk = () => inLevel && score > 0;
 let L = null, grid = [], state = 'menu', moves = 0, score = 0, collected = [0, 0, 0, 0, 0], timeLeft = 0, time = 0;
 let frost = new Map(), frostMelted = 0, acornsToDrop = 0, acornsGot = 0, harvesting = false;
 let melts = [];
@@ -370,7 +405,7 @@ function hasMove() {
   return false;
 }
 function begin(cfg) {
-  L = cfg; moves = cfg.moves || 0; score = 0; collected = [0, 0, 0, 0, 0]; path = []; loop = false; drag = null;
+  inLevel = true; L = cfg; moves = cfg.moves || 0; score = 0; collected = [0, 0, 0, 0, 0]; path = []; loop = false; drag = null;
   frost = new Map(cfg.frost || []); frostMelted = 0; acornsToDrop = cfg.acorns || 0; acornsGot = 0; harvesting = false;
   powers = Object.fromEntries(POWERS.map(q => [q.id, POWER_EACH])); armed = null;
   rings = []; parts = []; popups = []; callout = null; tint = 0; timeLeft = cfg.timed ? 60 : 0; state = 'play'; pause = false; fill();
@@ -691,7 +726,7 @@ function update(dt) {
   }
 }
 let last = performance.now();
-function frame(now) { const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now; update(dt); draw(dt); requestAnimationFrame(frame); }
+function frame(now) { const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now; update(BB.asking ? 0 : dt); draw(dt); requestAnimationFrame(frame); }
 
 /* ---------- menus ---------- */
 const OVS = ['ovMenu', 'ovHow', 'ovStart', 'ovPause', 'ovEnd'];
@@ -716,7 +751,7 @@ function openStart(n) {
 function startTimed() { show(null); begin({ n: 0, colors: 5, moves: 0, goals: [], holes: new Set(), timed: true }); note(0); note(7, .4, .06, .08); }
 function openPause() { pause = true; $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); show('ovPause'); }
 function endLevel(won) {
-  state = 'end';
+  state = 'end'; inLevel = false;
   const frac = moves / L.moves, stars = won ? (frac >= .3 ? 3 : frac >= .12 ? 2 : 1) : 0;
   if (won) { save.stars[L.n] = Math.max(save.stars[L.n] || 0, stars); save.unlocked = Math.max(save.unlocked, L.n + 1); persist(); [0, 4, 7, 12].forEach((s, i) => note(s, .5, .07, i * .1)); }
   else [7, 4, 0].forEach((s, i) => note(s - 5, .5, .06, i * .14));
@@ -730,7 +765,7 @@ function endLevel(won) {
   setTimeout(() => show('ovEnd'), 400);
 }
 function endTimed() {
-  state = 'end'; const nb = score > save.best; if (nb) { save.best = score; persist(); }
+  state = 'end'; inLevel = false; const nb = score > save.best; if (nb) { save.best = score; persist(); }
   $('endTitle').textContent = "Time's up!"; $('endText').textContent = `${score.toLocaleString('en-GB')} points${nb ? ' · new best!' : ' · best ' + save.best.toLocaleString('en-GB')}`;
   setStars(-1); [0, 4, 7, 12].forEach((s, i) => note(s, .5, .07, i * .1));
   $('endBtns').innerHTML = '<button class="btn pk-btn" id="eAgain">Play again</button><button class="btn soft pk-btn pk-alt" id="eMenu">Menu</button>';

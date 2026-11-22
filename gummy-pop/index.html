@@ -151,6 +151,13 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 .pk-dots button[aria-current="step"] { width:20px; background:var(--pk-clay); }
 .pk-steps-go { justify-self:end; display:flex; }
 @media (prefers-reduced-motion: reduce) { .pk-step, .pk-step.on { transition:none; transform:none; } }
+/* "Leave this game?": shown by BB.home() when a game in progress would be lost */
+.pk-leave { position:fixed; inset:0; z-index:9999; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(40,28,18,.55); }
+.pk-leave.show { display:flex; }
+.pk-leave-card { max-width:320px; width:100%; padding:20px 20px 18px; border-radius:20px; text-align:center; box-shadow:0 18px 40px rgba(40,20,10,.3); }
+.pk-leave-card h2 { margin:0 0 6px; font-size:1.25rem; }
+.pk-leave-card p { margin:0 0 16px; line-height:1.4; }
+.pk-leave-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
 </style>
 <script id="pub-kit-settings">
 window.BB = (() => {
@@ -160,8 +167,33 @@ window.BB = (() => {
   return {
     get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
     get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+    // going back to all the games: a game sets BB.leaveRisk to a function that says whether a game in progress would be
+    // lost; if it would, BB.home() (and any link back home) asks first. BB.asking is true while the question is up, so a
+    // game that runs on its own can pause.
+    leaveRisk: null, asking: false,
+    home(href = '../') { if (BB.leaveRisk && BB.leaveRisk()) askLeave(href); else location.href = href; },
   };
 })();
+function askLeave(href) {
+  let d = document.getElementById('pk-leave');
+  if (!d) {
+    d = document.createElement('div'); d.id = 'pk-leave'; d.className = 'pk-leave';
+    d.innerHTML = '<div class="pk-card pk-leave-card" role="alertdialog" aria-modal="true" aria-labelledby="pk-leave-t" aria-describedby="pk-leave-d">'
+      + '<h2 id="pk-leave-t">Leave this game?</h2><p id="pk-leave-d">The game you’re playing won’t be saved.</p>'
+      + '<div class="pk-leave-row"><button type="button" class="pk-btn pk-small" data-stay>Keep playing</button><button type="button" class="pk-btn pk-alt pk-small" data-go>Leave</button></div></div>';
+    document.body.appendChild(d);
+    const close = () => { d.classList.remove('show'); BB.asking = false; };
+    d.addEventListener('pointerdown', e => e.stopPropagation());
+    d.addEventListener('click', e => { e.stopPropagation(); if (performance.now() - d.opened < 400) return;   // the tap that opened it
+      if (e.target === d || e.target.closest('[data-stay]')) close(); else if (e.target.closest('[data-go]')) location.href = d.dataset.href; });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && d.classList.contains('show')) { e.stopPropagation(); close(); } }, true);
+  }
+  d.dataset.href = href; d.opened = performance.now(); d.classList.add('show'); BB.asking = true; d.querySelector('[data-stay]').focus();
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href="../"]');
+  if (a && BB.leaveRisk && BB.leaveRisk()) { e.preventDefault(); askLeave(a.getAttribute('href')); }
+}, true);
 </script>
 </head>
 <body>
@@ -435,6 +467,9 @@ function levelCfg(n) {
 }
 
 /* ======================= game state ======================= */
+let inLevel = false;   // a level has been started and not yet won or lost
+// leaving now would lose the game in progress (the shared kit asks first)
+BB.leaveRisk = () => inLevel && (score > 0 || moves < L.moves);
 let L = null, grid = [], frost = [], block = [], honeyGot = 0, honeySpawned = 0, chocHit = false, tool = null, extraUsed = false, flyers = [], score = 0, moves = 0, chainMax = 0, collected = [0, 0, 0, 0, 0, 0], busy = true, state = 'menu';
 let sel = null, hint = null, idleT = 0, uid = 0, time = 0, shownScore = 0, starPop = [0, 0, 0];
 let lolly = null, parts = [], beams = [], rings = [], zaps = [], popups = [], callout = null, tweens = [], waiters = [], shake = 0, bgCache = null;
@@ -466,7 +501,7 @@ function fillBoard() {
 
 function startLevel(n) {
   boost = { hammer: BOOST_EACH, swap: BOOST_EACH };
-  L = levelCfg(n); score = 0; shownScore = 0; moves = L.moves; chainMax = 0; collected = [0, 0, 0, 0, 0, 0]; sel = null; hint = null; idleT = 0;
+  inLevel = true; L = levelCfg(n); score = 0; shownScore = 0; moves = L.moves; chainMax = 0; collected = [0, 0, 0, 0, 0, 0]; sel = null; hint = null; idleT = 0;
   frost = L.frost ? L.frost.map(r => r.slice()) : Array.from({ length: N }, () => Array(N).fill(0));
   block = L.blocks.map(row => row.map(b => b ? { ...b, s: 1, hit: 0 } : null)); honeyGot = 0; tool = null; extraUsed = false; flyers = [];
   parts = []; beams = []; rings = []; zaps = []; popups = []; callout = null; tweens = []; starPop = [0, 0, 0]; bgDirty = true;
@@ -1134,7 +1169,7 @@ function openStart(n) {
 }
 function openPause() { if (state !== 'play') return; $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); show('ovPause'); }
 function endLevel(won) {
-  state = 'end'; busy = true;
+  state = 'end'; busy = true; inLevel = false;
   const stars = won ? L.stars.filter(v => score >= v).length || 1 : 0;
   if (won) { save.stars[L.n] = Math.max(save.stars[L.n] || 0, stars); save.unlocked = Math.max(save.unlocked, L.n + 1); persist(); }
   $('endTitle').textContent = won ? 'Level complete!' : 'Out of moves!';
@@ -1144,7 +1179,7 @@ function endLevel(won) {
   for (let i = 0; i < stars; i++) setTimeout(() => { sp[i].classList.add('on'); tone(900 + i * 250, .2, 'triangle', .06); }, 350 + i * 300);
   $('endBtns').innerHTML = won ? `<button class="btn pk-btn" id="eNext">Next level</button><button class="btn soft pk-btn pk-alt" id="eReplay">Replay</button><button class="btn soft pk-btn pk-alt" id="eMap">Map</button>`
                                : (extraUsed ? '' : `<button class="btn alt pk-btn" id="eMore">+5 moves</button>`) + `<button class="btn pk-btn" id="eReplay">Try again</button><button class="btn soft pk-btn pk-alt" id="eMap">Map</button>`;
-  if (!won && !extraUsed) $('eMore').onclick = () => { extraUsed = true; moves = 5; state = 'play'; show(null); busy = false; call('+5 moves!'); tone(660, .1, 'triangle', .06, 0, 300); };
+  if (!won && !extraUsed) $('eMore').onclick = () => { extraUsed = true; moves = 5; state = 'play'; inLevel = true; show(null); busy = false; call('+5 moves!'); tone(660, .1, 'triangle', .06, 0, 300); };
   if (won) { $('eNext').onclick = () => openStart(L.n + 1); [523, 659, 784, 1047].forEach((f, i) => tone(f, .22, 'triangle', .07, i * .1)); }
   else [392, 330, 262].forEach((f, i) => tone(f, .25, 'sine', .06, i * .13));
   $('eReplay').onclick = () => openStart(L.n); $('eMap').onclick = openMenu;

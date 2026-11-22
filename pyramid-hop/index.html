@@ -106,8 +106,33 @@ window.BB = (() => {
   return {
     get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
     get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+    // going back to all the games: a game sets BB.leaveRisk to a function that says whether a game in progress would be
+    // lost; if it would, BB.home() (and any link back home) asks first. BB.asking is true while the question is up, so a
+    // game that runs on its own can pause.
+    leaveRisk: null, asking: false,
+    home(href = '../') { if (BB.leaveRisk && BB.leaveRisk()) askLeave(href); else location.href = href; },
   };
 })();
+function askLeave(href) {
+  let d = document.getElementById('pk-leave');
+  if (!d) {
+    d = document.createElement('div'); d.id = 'pk-leave'; d.className = 'pk-leave';
+    d.innerHTML = '<div class="pk-card pk-leave-card" role="alertdialog" aria-modal="true" aria-labelledby="pk-leave-t" aria-describedby="pk-leave-d">'
+      + '<h2 id="pk-leave-t">Leave this game?</h2><p id="pk-leave-d">The game you’re playing won’t be saved.</p>'
+      + '<div class="pk-leave-row"><button type="button" class="pk-btn pk-small" data-stay>Keep playing</button><button type="button" class="pk-btn pk-alt pk-small" data-go>Leave</button></div></div>';
+    document.body.appendChild(d);
+    const close = () => { d.classList.remove('show'); BB.asking = false; };
+    d.addEventListener('pointerdown', e => e.stopPropagation());
+    d.addEventListener('click', e => { e.stopPropagation(); if (performance.now() - d.opened < 400) return;   // the tap that opened it
+      if (e.target === d || e.target.closest('[data-stay]')) close(); else if (e.target.closest('[data-go]')) location.href = d.dataset.href; });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && d.classList.contains('show')) { e.stopPropagation(); close(); } }, true);
+  }
+  d.dataset.href = href; d.opened = performance.now(); d.classList.add('show'); BB.asking = true; d.querySelector('[data-stay]').focus();
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href="../"]');
+  if (a && BB.leaveRisk && BB.leaveRisk()) { e.preventDefault(); askLeave(a.getAttribute('href')); }
+}, true);
 </script>
 </head>
 <body>
@@ -178,7 +203,7 @@ function startGame() { lvl = 1; score = 0; lives = 3; setupLevel(); state = 'pla
 const surf = document.getElementById('app'), ptrs = new Map(), SW = 36, SW_AGAIN = 64, AGAIN_MS = 220;
 const dirOf = (dx, dy) => dy < 0 ? (dx < 0 ? 0 : 1) : (dx < 0 ? 2 : 3);
 function onDir(d) { if (state === 'title' || (state === 'over' && overT > .8)) { startGame(); return; } move(d); }
-surf.addEventListener('pointerdown', e => { e.preventDefault(); { const r = cv.getBoundingClientRect(), lx = (e.clientX - r.left) * W / r.width, ly = (e.clientY - r.top) * H / r.height; if (lx < 48 && ly < 52 && lx > -20) { location.href = '../'; return; } } try { surf.setPointerCapture(e.pointerId); } catch (_) {} ptrs.set(e.pointerId, { ax: e.clientX, ay: e.clientY, t: performance.now(), moved: false }); });
+surf.addEventListener('pointerdown', e => { e.preventDefault(); { const r = cv.getBoundingClientRect(), lx = (e.clientX - r.left) * W / r.width, ly = (e.clientY - r.top) * H / r.height; if (lx < 48 && ly < 52 && lx > -20) { BB.home(); return; } } try { surf.setPointerCapture(e.pointerId); } catch (_) {} ptrs.set(e.pointerId, { ax: e.clientX, ay: e.clientY, t: performance.now(), moved: false }); });
 surf.addEventListener('pointermove', e => {
   const q = ptrs.get(e.pointerId); if (!q) return;
   const dx = e.clientX - q.ax, dy = e.clientY - q.ay;
@@ -774,7 +799,9 @@ function logoText(t, y) {
 /* ---------- loop ---------- */
 addEventListener('resize', resize); resize(); setupLevel();
 let last = performance.now();
-(function loop(now) { const dt = Math.min(.033, Math.max(0, (now - last) / 1000)); last = now; update(dt); draw(); requestAnimationFrame(loop); })(last);
+// leaving now would lose the game in progress (the shared kit asks first)
+BB.leaveRisk = () => state === 'play' || state === 'win';
+(function loop(now) { const dt = Math.min(.033, Math.max(0, (now - last) / 1000)); last = now; update(BB.asking ? 0 : dt); draw(); requestAnimationFrame(loop); })(last);
 })();
 </script>
 </body>

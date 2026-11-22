@@ -139,6 +139,13 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 .pk-dots button[aria-current="step"] { width:20px; background:var(--pk-clay); }
 .pk-steps-go { justify-self:end; display:flex; }
 @media (prefers-reduced-motion: reduce) { .pk-step, .pk-step.on { transition:none; transform:none; } }
+/* "Leave this game?": shown by BB.home() when a game in progress would be lost */
+.pk-leave { position:fixed; inset:0; z-index:9999; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(40,28,18,.55); }
+.pk-leave.show { display:flex; }
+.pk-leave-card { max-width:320px; width:100%; padding:20px 20px 18px; border-radius:20px; text-align:center; box-shadow:0 18px 40px rgba(40,20,10,.3); }
+.pk-leave-card h2 { margin:0 0 6px; font-size:1.25rem; }
+.pk-leave-card p { margin:0 0 16px; line-height:1.4; }
+.pk-leave-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
 </style>
 <script id="pub-kit-canvas">
 /* The Bear & Bean house style for canvas games: soft clay, drawn with a 2D context.
@@ -215,8 +222,33 @@ window.BB = (() => {
   return {
     get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
     get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+    // going back to all the games: a game sets BB.leaveRisk to a function that says whether a game in progress would be
+    // lost; if it would, BB.home() (and any link back home) asks first. BB.asking is true while the question is up, so a
+    // game that runs on its own can pause.
+    leaveRisk: null, asking: false,
+    home(href = '../') { if (BB.leaveRisk && BB.leaveRisk()) askLeave(href); else location.href = href; },
   };
 })();
+function askLeave(href) {
+  let d = document.getElementById('pk-leave');
+  if (!d) {
+    d = document.createElement('div'); d.id = 'pk-leave'; d.className = 'pk-leave';
+    d.innerHTML = '<div class="pk-card pk-leave-card" role="alertdialog" aria-modal="true" aria-labelledby="pk-leave-t" aria-describedby="pk-leave-d">'
+      + '<h2 id="pk-leave-t">Leave this game?</h2><p id="pk-leave-d">The game you’re playing won’t be saved.</p>'
+      + '<div class="pk-leave-row"><button type="button" class="pk-btn pk-small" data-stay>Keep playing</button><button type="button" class="pk-btn pk-alt pk-small" data-go>Leave</button></div></div>';
+    document.body.appendChild(d);
+    const close = () => { d.classList.remove('show'); BB.asking = false; };
+    d.addEventListener('pointerdown', e => e.stopPropagation());
+    d.addEventListener('click', e => { e.stopPropagation(); if (performance.now() - d.opened < 400) return;   // the tap that opened it
+      if (e.target === d || e.target.closest('[data-stay]')) close(); else if (e.target.closest('[data-go]')) location.href = d.dataset.href; });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && d.classList.contains('show')) { e.stopPropagation(); close(); } }, true);
+  }
+  d.dataset.href = href; d.opened = performance.now(); d.classList.add('show'); BB.asking = true; d.querySelector('[data-stay]').focus();
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href="../"]');
+  if (a && BB.leaveRisk && BB.leaveRisk()) { e.preventDefault(); askLeave(a.getAttribute('href')); }
+}, true);
 </script>
 </head>
 <body>
@@ -379,7 +411,7 @@ const BTN = { restart: [W - 50, 24, 36], sound: [W - 94, 24, 36] };
 const hitBtn = (p, b) => p.x > b[0] && p.x < b[0] + b[2] && p.y > b[1] && p.y < b[1] + b[2];
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); const p = local(e);
-  if (p.x < 48 && p.y < 64) { location.href = '../'; return; }
+  if (p.x < 48 && p.y < 64) { BB.home(); return; }
   if (hitBtn(p, BTN.sound)) { muted = !muted; BB.muted = muted; persist(state !== 'play'); tone(660, .08, 'triangle', .05); return; }
   if (hitBtn(p, BTN.restart)) { if (state === 'play') { newGame(); tone(400, .1, 'triangle', .05, 0, 200); } return; }
   if (state !== 'play') return;

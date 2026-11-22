@@ -39,8 +39,33 @@ window.BB = (() => {
   return {
     get muted() { return 'muted' in s ? !!s.muted : null; }, set muted(v) { s.muted = !!v; put(); },
     get theme() { return s.theme || null; }, set theme(v) { if (v) s.theme = v; else delete s.theme; put(); },
+    // going back to all the games: a game sets BB.leaveRisk to a function that says whether a game in progress would be
+    // lost; if it would, BB.home() (and any link back home) asks first. BB.asking is true while the question is up, so a
+    // game that runs on its own can pause.
+    leaveRisk: null, asking: false,
+    home(href = '../') { if (BB.leaveRisk && BB.leaveRisk()) askLeave(href); else location.href = href; },
   };
 })();
+function askLeave(href) {
+  let d = document.getElementById('pk-leave');
+  if (!d) {
+    d = document.createElement('div'); d.id = 'pk-leave'; d.className = 'pk-leave';
+    d.innerHTML = '<div class="pk-card pk-leave-card" role="alertdialog" aria-modal="true" aria-labelledby="pk-leave-t" aria-describedby="pk-leave-d">'
+      + '<h2 id="pk-leave-t">Leave this game?</h2><p id="pk-leave-d">The game you’re playing won’t be saved.</p>'
+      + '<div class="pk-leave-row"><button type="button" class="pk-btn pk-small" data-stay>Keep playing</button><button type="button" class="pk-btn pk-alt pk-small" data-go>Leave</button></div></div>';
+    document.body.appendChild(d);
+    const close = () => { d.classList.remove('show'); BB.asking = false; };
+    d.addEventListener('pointerdown', e => e.stopPropagation());
+    d.addEventListener('click', e => { e.stopPropagation(); if (performance.now() - d.opened < 400) return;   // the tap that opened it
+      if (e.target === d || e.target.closest('[data-stay]')) close(); else if (e.target.closest('[data-go]')) location.href = d.dataset.href; });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && d.classList.contains('show')) { e.stopPropagation(); close(); } }, true);
+  }
+  d.dataset.href = href; d.opened = performance.now(); d.classList.add('show'); BB.asking = true; d.querySelector('[data-stay]').focus();
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href="../"]');
+  if (a && BB.leaveRisk && BB.leaveRisk()) { e.preventDefault(); askLeave(a.getAttribute('href')); }
+}, true);
 </script>
 </head>
 <body>
@@ -383,8 +408,10 @@ window.PK = (() => {
 
   /* ---------- loop ---------- */
   let last = 0;
+  // leaving now would lose the game in progress (the shared kit asks first)
+  BB.leaveRisk = () => state === 'count' || state === 'play';
   function frame(now) {
-    let dt = Math.min(.05, (now - last) / 1000 || 0); last = now; dt *= FAST; time += dt;
+    let dt = Math.min(.05, (now - last) / 1000 || 0); last = now; dt *= FAST; if (BB.asking) dt = 0; time += dt;
     if (state === 'count') { cd -= dt; if (Math.ceil(cd) !== Math.ceil(cd + dt) && cd > 0) tone(520, .08, 'triangle', .04);
       if (cd <= -.5) { state = 'play'; pour(14); pourT = 1; tone(880, .15, 'triangle', .05); } }
     if (state === 'play' || state === 'count' || state === 'over') {
@@ -407,7 +434,7 @@ window.PK = (() => {
   cv.addEventListener('pointerdown', ev => {
     ev.preventDefault(); audio();
     const x = ev.clientX / SC, y = ev.clientY / SC;
-    if (Math.hypot(x - HOME()[0], y - HOME()[1]) < 22) { location.href = '../'; return; }
+    if (Math.hypot(x - HOME()[0], y - HOME()[1]) < 22) { BB.home(); return; }
     if (Math.hypot(x - SOUND()[0], y - SOUND()[1]) < 22) { save.muted = !save.muted; BB.muted = save.muted; store(); if (!save.muted) tone(660, .08, 'triangle', .05); return; }
     for (const b of btns()) if (Math.abs(x - b.x) < b.w / 2 && Math.abs(y - b.y) < b.h / 2) {
       if (b.id === '2p' || b.id === 'cpu') start(b.id);
