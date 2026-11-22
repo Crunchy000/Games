@@ -340,21 +340,23 @@ const shade = (c, t) => t < 0 ? mix(c, [0, 0, 0], -t) : mix(c, [255, 255, 255], 
 
 
 // every formation in a cave is one TYPE: a shape, a colour and a marking, so the same type always looks the same
+// each mineral, its colours, and the shapes it really grows in (h)
 const PALETTES = [
-  { n: 'Amethyst', c: '#9b5bd6', glow: '#b07cff', alt: '#f4c8ff' }, { n: 'Clear Quartz', c: '#c7d6e8', glow: '#cfe6ff', alt: '#6fa8ff' },
-  { n: 'Emerald', c: '#2fbf71', glow: '#4dffa0', alt: '#e0ff80' },  { n: 'Aquamarine', c: '#4cc9e6', glow: '#6fe3ff', alt: '#ffffff' },
-  { n: 'Rose Quartz', c: '#f095bd', glow: '#ffb0d6', alt: '#fff0f6' },     { n: 'Citrine', c: '#f2ae3a', glow: '#ffcf63', alt: '#ff6a2a' },
-  { n: 'Ruby', c: '#e0405e', glow: '#ff6a86', alt: '#ffc0cc' },     { n: 'Sapphire', c: '#3a63e0', glow: '#6f8fff', alt: '#a8ecff' },
-  { n: 'Smoky Quartz', c: '#8d7b6e', glow: '#c9b29c', alt: '#f1e2cf' },    { n: 'Peridot', c: '#a6d43a', glow: '#d4ff63', alt: '#fff27a' },
-  { n: 'Orange Calcite', c: '#ff7a2e', glow: '#ffa15c', alt: '#ffe08a' }, { n: 'Apatite', c: '#1fa39a', glow: '#45e0d4', alt: '#ff8fb8' },
-  { n: 'Iolite', c: '#625a86', glow: '#9d93cc', alt: '#d6cfff' },  { n: 'Golden Topaz', c: '#d9b13b', glow: '#ffe07a', alt: '#fff7d6' },
-  { n: 'Rubellite', c: '#d63aa0', glow: '#ff6ad0', alt: '#ffd0f0' },   { n: 'Morganite', c: '#f2a88a', glow: '#ffc8ae', alt: '#fff0e4' },
-  { n: 'Garnet', c: '#8f1d3f', glow: '#e0466e', alt: '#ff9ab0' },    { n: 'Kunzite', c: '#b89cf0', glow: '#d8c4ff', alt: '#f4eeff' },
-  { n: 'Prehnite', c: '#74e0b4', glow: '#a6ffd8', alt: '#f0fff8' },      { n: 'Black Tourmaline', c: '#2e2a38', glow: '#8c84b8', alt: '#bdb6e0' },
+  { n: 'Amethyst', c: '#9b5bd6', glow: '#b07cff', alt: '#f4c8ff', h: 'cluster tower' }, { n: 'Clear Quartz', c: '#c7d6e8', glow: '#cfe6ff', alt: '#6fa8ff', h: 'cluster tower fan' },
+  { n: 'Emerald', c: '#2fbf71', glow: '#4dffa0', alt: '#e0ff80', h: 'tower cluster' },  { n: 'Aquamarine', c: '#4cc9e6', glow: '#6fe3ff', alt: '#ffffff', h: 'tower cluster' },
+  { n: 'Rose Quartz', c: '#f095bd', glow: '#ffb0d6', alt: '#fff0f6', h: 'cluster tower' },     { n: 'Citrine', c: '#f2ae3a', glow: '#ffcf63', alt: '#ff6a2a', h: 'cluster tower' },
+  { n: 'Ruby', c: '#e0405e', glow: '#ff6a86', alt: '#ffc0cc', h: 'tower octa' },     { n: 'Sapphire', c: '#3a63e0', glow: '#6f8fff', alt: '#a8ecff', h: 'tower octa' },
+  { n: 'Smoky Quartz', c: '#8d7b6e', glow: '#c9b29c', alt: '#f1e2cf', h: 'cluster tower fan' },    { n: 'Peridot', c: '#a6d43a', glow: '#d4ff63', alt: '#fff27a', h: 'cluster tower' },
+  { n: 'Orange Calcite', c: '#ff7a2e', glow: '#ffa15c', alt: '#ffe08a', h: 'blades cluster' }, { n: 'Apatite', c: '#1fa39a', glow: '#45e0d4', alt: '#ff8fb8', h: 'tower cluster' },
+  { n: 'Iolite', c: '#625a86', glow: '#9d93cc', alt: '#d6cfff', h: 'tower blades' },  { n: 'Golden Topaz', c: '#d9b13b', glow: '#ffe07a', alt: '#fff7d6', h: 'tower cluster' },
+  { n: 'Rubellite', c: '#d63aa0', glow: '#ff6ad0', alt: '#ffd0f0', h: 'fan tower urchin' },   { n: 'Morganite', c: '#f2a88a', glow: '#ffc8ae', alt: '#fff0e4', h: 'tower cluster' },
+  { n: 'Garnet', c: '#8f1d3f', glow: '#e0466e', alt: '#ff9ab0', h: 'octa cluster' },    { n: 'Kunzite', c: '#b89cf0', glow: '#d8c4ff', alt: '#f4eeff', h: 'blades tower' },
+  { n: 'Prehnite', c: '#74e0b4', glow: '#a6ffd8', alt: '#f0fff8', h: 'fan urchin' },      { n: 'Black Tourmaline', c: '#2e2a38', glow: '#8c84b8', alt: '#bdb6e0', h: 'fan urchin tower' },
   // minerals that grow in two colours: always zoned from the first colour into the second
-  { n: 'Watermelon Tourmaline', c: '#3a9a4c', glow: '#ff8fa6', alt: '#ff6a8e', zoned: true }, { n: 'Ametrine', c: '#8d4fd0', glow: '#ffcf6a', alt: '#f5b83a', zoned: true },
-  { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true },
-  { n: 'Chevron Amethyst', c: '#8f4ed0', glow: '#e6d4ff', alt: '#f6f0ff', zoned: true },
+  { n: 'Watermelon Tourmaline', c: '#3a9a4c', glow: '#ff8fa6', alt: '#ff6a8e', zoned: true, h: 'tower fan' }, { n: 'Ametrine', c: '#8d4fd0', glow: '#ffcf6a', alt: '#f5b83a', zoned: true, h: 'tower cluster' },
+  { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true, h: 'cubes octa' },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true, h: 'tower octa' },
+  { n: 'Pyrite', c: '#c9a23a', glow: '#ffe08a', alt: '#fff2b8', h: 'cubes octa' },
+  { n: 'Chevron Amethyst', c: '#8f4ed0', glow: '#e6d4ff', alt: '#f6f0ff', zoned: true, h: 'tower cluster' },
 ];
 const SHAPES = [
   { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' }, { k: 'fan', n: 'Spike Fan', t: 'a fan of long thin spikes' },
@@ -600,9 +602,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 10, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 11, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 10) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 11) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -615,10 +617,10 @@ const inPoly = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 
 function planCave() {
   rnd = mulberry(S.seed); makeNoise();
   W = WORLD_W; H = WORLD_H; const scale = 1.15, MORE = 1.8, rock = pick(ROCKS).map(hex);
-  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => TRAITS.forEach(trait => { if (!(pal.zoned && trait.k === 'two')) combos.push({ shape, pal, trait }); }))); shuffle(combos);
+  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k)) TRAITS.forEach(trait => { if (!(pal.zoned && trait.k === 'two')) combos.push({ shape, pal, trait }); }); })); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
-  for (const c of combos) { if (hunts.length >= HUNTS) break; if (c.shape.k === 'cubes' && rnd() < .5) continue; if (!hunts.some(h => h.pal === c.pal && h.shape === c.shape)) hunts.push(c); }
+  for (const c of combos) { if (hunts.length >= HUNTS) break; if (!hunts.some(h => h.pal === c.pal && h.shape === c.shape)) hunts.push(c); }
   const isHunt = c => hunts.some(h => sameType(h, c));
   // lookalikes for every hunt: the same crystal with another marking, the same shape in another colour, the same colour in another shape
   const decoys = [], add = c => { if (c && !isHunt(c) && !decoys.some(d => sameType(d, c))) decoys.push(c); };
@@ -693,7 +695,7 @@ function planCave() {
     }
     counts.push(got.length);
   });
-  const pickOne = list => { const t = pick(list); return t.shape.k === 'cubes' && rnd() < .5 ? pick(list) : t; };   // cube stacks turn up about half as often
+  const pickOne = pick;
   for (const s of slots) if (!s.type) s.type = s.centre ? (decoys[0] || fillers[0]) : rnd() < .72 && decoys.length ? pickOne(decoys) : pickOne(fillers);
   // three fossils pressed into the rock, just behind the rim of the middle rings
   const fossils = [];
@@ -1079,7 +1081,7 @@ if (/[?&]debug\b/.test(location.search)) window.__cc = {
   sheet() {
     const c = document.createElement('canvas'), cw = 80, chh = 82; c.width = cw * SHAPES.length * 2; c.height = chh * PALETTES.length * 2; c.style.cssText = 'position:fixed;left:0;top:0;z-index:99;background:#1a1424;width:' + c.width / 2 + 'px';
     const g = c.getContext('2d'); g.scale(2, 2); const keep = rnd, ks = sparks; rnd = mulberry(7); sparks = [];
-    PALETTES.forEach((pal, r) => SHAPES.forEach((shape, k) => formation(g, k * cw + cw / 2, r * chh + chh - 10, -Math.PI / 2, 60, { shape, pal, trait: TRAITS[(k + r) % TRAITS.length] }, null)));
+    PALETTES.forEach((pal, r) => SHAPES.forEach((shape, k) => pal.h.split(' ').includes(shape.k) && formation(g, k * cw + cw / 2, r * chh + chh - 10, -Math.PI / 2, 60, { shape, pal, trait: TRAITS[(k + r) % TRAITS.length] }, null)));
     rnd = keep; sparks = ks; document.body.appendChild(c); return [c.width / 2, c.height / 2];
   }, lookAt, get cam() { return { x: camX, y: camY, z: zoom, tz: targetZoom }; },
   toScreen: (x, y) => [(x - camX) * zoom, (y - camY) * zoom], settle() { zoom = targetZoom; camX = targetCamX; camY = targetCamY; },
