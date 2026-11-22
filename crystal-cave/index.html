@@ -335,7 +335,7 @@ document.addEventListener('click', e => {
 const $ = id => document.getElementById(id);
 const stage = $('stage'), cv = $('game'), ctx = cv.getContext('2d'), wantCv = $('want'), wctx = wantCv.getContext('2d');
 // the cave is a wide world of its own; the screen is a camera on it
-let WORLD_W = 1200, WORLD_H = 1150;   // about three phone screens across at normal zoom; the crystal floor is a little wider
+let WORLD_W = 1200, WORLD_H = 1150, TOP = 0;   // TOP: the ring cave's bare top quarter is cropped off, and the rest fills the view   // about three phone screens across at normal zoom; the crystal floor is a little wider
 let W = WORLD_W, H = WORLD_H, DPR = 1, BDPR = 1, sparks = [], motes = [];
 /* ---------- seeded randomness and noise ---------- */
 let rnd = Math.random;
@@ -638,9 +638,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 31, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 32, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 31) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 32) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -679,7 +679,7 @@ function planCave() {
   const layers = [.9, .7, .48, .25, 0].map(d => ({ d, sh: layerShape(d) })), NL = layers.length, NEAR = NL - 1;
   // every formation: where it grows, which way, how big, and its own seed so it's drawn the same every time
   const slots = [], seedOf = () => (rnd() * 2147483647) | 0;
-  const roofOf = (li, y) => y < layers[li].sh.cy + layers[li].sh.ry * .42;   // only about the bottom third of each ring has crystals: its floor and lower sides
+  const roofOf = (li, y) => y < layers[li].sh.cy + layers[li].sh.ry * .42 || y < H * .25 + 30;   // only about the bottom third of each ring has crystals: its floor and lower sides
   const put = (li, x, y, ang, size) => { const cx = x + Math.cos(ang) * size * .4, cy = y + Math.sin(ang) * size * .4, r = size * .55; if (!underControls(cx, cy, r) && !underControls(x, y, 4) && !roofOf(li, y)) slots.push({ li, x, y, ang, size, seed: seedOf(), cx, cy, r }); };
   // sizes on a bell curve: most near the middle of each ring's range, few at the ends, and the ranges kept narrow
   const SIZES = [[29, 37], [31, 41], [34, 46], [38, 52]], GAP = [2.1, 1.85, 1.7, 1.55];   // room between neighbours round each rim
@@ -744,7 +744,7 @@ function planCave() {
     if (x < 20 || x > W - 20 || y < 20 || y > H - 20) continue;
     if (!layers.every((M, j) => j <= li || inPoly(M.sh.pts, x, y))) continue;
     if (slots.some(s => s.li >= li && Math.hypot(s.cx - x, s.cy - y) < s.r * .85 + r + 3) || fossils.some(f => Math.hypot(f.x - x, f.y - y) < 160)) continue;
-    if (!underControls(x, y, r + 8)) fossils.push({ li, x, y, r, rot: R(0, 6.3) });
+    if (!underControls(x, y, r + 8) && y > H * .25 + 40) fossils.push({ li, x, y, r, rot: R(0, 6.3) });
   }
   return { kind: 'rings', hunts, counts, decoys, layers, slots, fossils, rock, theme, scale };
 }
@@ -1222,7 +1222,7 @@ const TIPS = [
 const loadingEl = $('loading');
 function makeCave(fresh) {
   if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.fossils = []; S.score = 0; S.misses = 0; S.hints = 0; save(); }
-  WORLD_W = S.mode === 'floor' ? 1500 : 1200; WORLD_H = 1150; layout();
+  WORLD_W = S.mode === 'floor' ? 1500 : 1200; WORLD_H = 1150; TOP = S.mode === 'floor' ? 0 : Math.round(WORLD_H * .25); layout();
   BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(5.2e6 / (WORLD_W * WORLD_H)));   // the painted cave's resolution, capped to spare a phone's memory
   busyGen = true; $('tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)]; loadingEl.classList.add('show'); const id = ++genId;
   let plan;
@@ -1263,20 +1263,20 @@ $('bTheme').onclick = () => { BB.theme = isDark() ? 'light' : 'dark'; applyTheme
 $('bSound').onclick = () => { S.muted = !S.muted; BB.muted = S.muted; save(); renderSound(); audio(); tone(880, .08, 'sine'); };
 /* ---------- the camera: drag to look around, pinch or ＋/－ to zoom, the little map to jump ---------- */
 let viewW = 1, viewH = 1, zoom = 1, targetZoom = 1, camX = 0, camY = 0, targetCamX = 0, targetCamY = 0;
-const minZoom = () => Math.max(viewW / WORLD_W, viewH / WORLD_H, .4);   // never so far out that the controls cover more than the clear corners
+const minZoom = () => Math.max(viewW / WORLD_W, viewH / (WORLD_H - TOP), .4);   // never so far out that the controls cover more than the clear corners
 const maxZoom = () => Math.max(minZoom() * 1.5, 1.8);
 const clampZoom = z => Math.max(minZoom(), Math.min(maxZoom(), z));
 // the view can scroll up past the top of the cave by the height of the controls floating there, so nothing is ever stuck under them
 let padTop = 0;
 const measurePad = () => { const st = stage.getBoundingClientRect(), m = $('mini').getBoundingClientRect(), zb = document.querySelector('.zoom').getBoundingClientRect(); padTop = Math.max(m.bottom, zb.bottom) - st.top + 6; };
-function clampCam(x, y, z) { const y0 = -padTop / z; return { x: Math.max(0, Math.min(WORLD_W - viewW / z, x)), y: Math.max(y0, Math.min(Math.max(y0, WORLD_H - viewH / z), y)) }; }
+function clampCam(x, y, z) { const y0 = TOP - padTop / z; return { x: Math.max(0, Math.min(WORLD_W - viewW / z, x)), y: Math.max(y0, Math.min(Math.max(y0, WORLD_H - viewH / z), y)) }; }
 function zoomAt(z, sx, sy, now) {
   const nz = clampZoom(z), wx = sx / zoom + camX, wy = sy / zoom + camY, c = clampCam(wx - sx / nz, wy - sy / nz, nz);
   targetZoom = nz; targetCamX = c.x; targetCamY = c.y; if (now) { zoom = nz; camX = c.x; camY = c.y; }
 }
 function lookAt(x, y, z) { const nz = clampZoom(z), c = clampCam(x - viewW / nz / 2, y - viewH / nz / 2, nz); targetZoom = nz; targetCamX = c.x; targetCamY = c.y; }
 // open zoomed right out, looking into the heart of the cave
-function centreCamera() { zoom = targetZoom = minZoom(); const v = cave && cave.plan.view || { x: WORLD_W / 2, y: WORLD_H / 2 }, c = clampCam(v.x - viewW / zoom / 2, v.y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; }
+function centreCamera() { zoom = targetZoom = minZoom(); const v = cave && cave.plan.view || { x: WORLD_W / 2, y: (TOP + WORLD_H) / 2 }, c = clampCam(v.x - viewW / zoom / 2, v.y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; }
 const fitApp = () => { const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight) || innerHeight; document.documentElement.style.setProperty('--app-h', h + 'px'); };
 function layout() {
   fitApp();
@@ -1329,7 +1329,7 @@ addEventListener('keyup', e => keys.delete(e.code));
 const mini = $('mini'), mctx = mini.getContext('2d'), miniArt = document.createElement('canvas');
 let miniW = 120, miniH = 73;
 function sizeMini() {
-  const d = Math.min(2, window.devicePixelRatio || 1); miniW = viewW < 420 ? 104 : 136; miniH = Math.round(miniW * WORLD_H / WORLD_W);
+  const d = Math.min(2, window.devicePixelRatio || 1); miniW = viewW < 420 ? 104 : 136; miniH = Math.round(miniW * (WORLD_H - TOP) / WORLD_W);
   if (mini.width !== miniW * d || mini.height !== miniH * d) { mini.width = miniW * d; mini.height = miniH * d; mini.style.width = miniW + 'px'; mini.style.height = miniH + 'px'; paintMiniArt(); }
 }
 function paintMiniArt() {
@@ -1337,26 +1337,26 @@ function paintMiniArt() {
   miniArt.width = mini.width; miniArt.height = mini.height;
   let src = cave.pic;   // halve a step at a time so the small map stays smooth
   while (src.width > miniArt.width * 2.5) { const h = document.createElement('canvas'); h.width = Math.ceil(src.width / 2); h.height = Math.ceil(src.height / 2); h.getContext('2d').drawImage(src, 0, 0, h.width, h.height); if (src !== cave.pic) src.width = 0; src = h; }
-  miniArt.getContext('2d').drawImage(src, 0, 0, miniArt.width, miniArt.height); if (src !== cave.pic) src.width = 0;
+  const sy = src.height * TOP / WORLD_H; miniArt.getContext('2d').drawImage(src, 0, sy, src.width, src.height - sy, 0, 0, miniArt.width, miniArt.height); if (src !== cave.pic) src.width = 0;
 }
 function drawMini(t) {
   if (!miniArt.width) return;
   const d = mini.width / miniW, k = miniW / WORLD_W;
   mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.drawImage(miniArt, 0, 0);
-  const vx = camX * k, vy = camY * k, vw = Math.min(miniW - vx, viewW / zoom * k), vh = Math.min(miniH - vy, viewH / zoom * k);
+  const vx = camX * k, vy = Math.max(0, (camY - TOP) * k), vw = Math.min(miniW - vx, viewW / zoom * k), vh = Math.min(miniH - vy, viewH / zoom * k);
   mctx.fillStyle = 'rgba(8,4,16,.45)'; mctx.fillRect(0, 0, mini.width, mini.height);
   mctx.drawImage(miniArt, vx * d, vy * d, vw * d, vh * d, vx * d, vy * d, vw * d, vh * d);
   mctx.setTransform(d, 0, 0, d, 0, 0);
   for (const s of cave.plan.slots) {
     if (s.hunt === undefined) continue;
     const done = s.hunt < S.hunt - 1 || (s.hunt === S.hunt - 1 && S.found.includes(s.slot));
-    if (done && s.hunt === S.hunt - 1) { mctx.fillStyle = '#6fe39a'; mctx.beginPath(); mctx.arc(s.cx * k, s.cy * k, 2.2, 0, 6.3); mctx.fill(); }
+    if (done && s.hunt === S.hunt - 1) { mctx.fillStyle = '#6fe39a'; mctx.beginPath(); mctx.arc(s.cx * k, (s.cy - TOP) * k, 2.2, 0, 6.3); mctx.fill(); }
   }
-  if (hintSlot) { mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.5; mctx.beginPath(); mctx.arc(hintSlot.cx * k, hintSlot.cy * k, 4 + Math.sin(t * 6), 0, 6.3); mctx.stroke(); }
+  if (hintSlot) { mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.5; mctx.beginPath(); mctx.arc(hintSlot.cx * k, (hintSlot.cy - TOP) * k, 4 + Math.sin(t * 6), 0, 6.3); mctx.stroke(); }
   mctx.strokeStyle = 'rgba(255,255,255,.95)'; mctx.lineWidth = 1.5; mctx.strokeRect(vx + .75, vy + .75, Math.max(2, vw - 1.5), Math.max(2, vh - 1.5));
 }
 let miniDrag = false;
-function miniJump(e) { const r = mini.getBoundingClientRect(); lookAt((e.clientX - r.left) / r.width * WORLD_W, (e.clientY - r.top) / r.height * WORLD_H, targetZoom); }
+function miniJump(e) { const r = mini.getBoundingClientRect(); lookAt((e.clientX - r.left) / r.width * WORLD_W, TOP + (e.clientY - r.top) / r.height * (WORLD_H - TOP), targetZoom); }
 mini.addEventListener('pointerdown', e => { e.stopPropagation(); audio(); miniDrag = true; try { mini.setPointerCapture(e.pointerId); } catch (_) {} miniJump(e); });
 mini.addEventListener('pointermove', e => { if (miniDrag) miniJump(e); });
 ['pointerup', 'pointercancel'].forEach(t => mini.addEventListener(t, () => miniDrag = false));
