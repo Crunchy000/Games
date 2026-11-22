@@ -429,10 +429,8 @@ window.PK = (() => {
 
   /* ---------- loop ---------- */
   let last = 0;
-  // leaving now would lose the game in progress (the shared kit asks first)
-  BB.leaveRisk = () => state === 'count' || state === 'play';
   function frame(now) {
-    let dt = Math.min(.05, (now - last) / 1000 || 0); last = now; dt *= FAST; if (BB.asking) dt = 0; time += dt;
+    let dt = Math.min(.05, (now - last) / 1000 || 0); last = now; dt *= FAST; time += dt;
     if (state === 'count') { cd -= dt; if (Math.ceil(cd) !== Math.ceil(cd + dt) && cd > 0) tone(520, .08, 'triangle', .04);
       if (cd <= -.5) { state = 'play'; pour(14); pourT = 1; tone(880, .15, 'triangle', .05); } }
     if (state === 'play' || state === 'count' || state === 'over') {
