@@ -50,7 +50,7 @@
   #stage { position:relative; flex:1 1 0; min-height:0; margin:0 8px; overflow:hidden; touch-action:none; border-radius:16px; background:#0b0912; box-shadow:0 4px 14px rgba(30,15,45,.35); }
   #stage canvas#game { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
   #stage.dragging canvas#game { cursor:grabbing; }
-  #mini { position:absolute; left:10px; bottom:10px; z-index:2; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.45); border:2px solid rgba(251,247,252,.9); cursor:pointer; touch-action:none; }
+  #mini { position:absolute; left:10px; top:10px; z-index:2; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.45); border:2px solid rgba(251,247,252,.9); cursor:pointer; touch-action:none; }
   .zoom { position:absolute; right:10px; top:10px; display:flex; flex-direction:column; gap:6px; z-index:2; }
   .zoom button { width:42px; height:42px; font-size:1.4rem; padding:0; justify-content:center; }
   body .zoom button.pk-chip { background:rgba(251,247,252,.95) !important; color:#33283f !important; box-shadow:0 2px 8px rgba(0,0,0,.4) !important; }
@@ -69,7 +69,7 @@
     #want { width:100%; height:auto; aspect-ratio:1; max-width:180px; align-self:center; }
     .want { flex:none; } .side { flex-direction:row; justify-content:space-between; align-items:center; }
   }
-  .note { position:absolute; left:50%; top:10px; transform:translateX(-50%); background:rgba(251,247,252,.95); color:#33283f; font-weight:800; font-size:.85rem; padding:7px 14px; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.3); opacity:0; transition:opacity .2s; pointer-events:none; width:max-content; max-width:calc(100% - 130px); text-align:center; line-height:1.3; z-index:3; }
+  .note { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); background:rgba(251,247,252,.95); color:#33283f; font-weight:800; font-size:.85rem; padding:7px 14px; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.3); opacity:0; transition:opacity .2s; pointer-events:none; width:max-content; max-width:calc(100% - 24px); text-align:center; line-height:1.3; z-index:3; }
   .note.show { opacity:1; }
   /* while a cave is being grown */
   #loading { position:absolute; inset:0; z-index:4; display:grid; place-items:center; background:radial-gradient(circle at 50% 45%, #2a1f3d, #0b0912 70%);
@@ -638,9 +638,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 20, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 21, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 20) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 21) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -648,7 +648,7 @@ let cave = null;   // everything about the cave now on screen: its hunts, format
 const bell = (a, b) => a + (b - a) * (rnd() + rnd() + rnd()) / 3;   // sizes on a bell curve round the middle of a range
 const overlap = (r1, r2, d) => { if (d >= r1 + r2) return 0; if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
   const a = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)), b = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2)); return a + b - .5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)); };
-const underControls = (x, y, r) => (x - r < 300 && y + r > H - 285) || (x + r > W - 150 && y - r < 265);   // sized for a small phone zoomed right out
+const underControls = (x, y, r) => (x - r < 300 && y - r < 285) || (x + r > W - 150 && y - r < 265) || y + r > H - 55;   // the map, the zoom buttons (sized for a small phone zoomed right out) and a strip along the bottom
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const sameType = (a, b) => a.shape === b.shape && a.pal === b.pal && a.trait === b.trait;
 const inPoly = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
@@ -764,8 +764,16 @@ const MINERAL_FLOORS = [   // calcite cream, gypsum blue-grey, a lilac mineral
 ];
 function planFloor(T) {
   const { hunts, decoys, fillers, theme, rock } = T;
-  const y0 = H * R(.24, .28), off = R(0, 100), sideDrop = H * R(.2, .26);
-  const baseY = x => { const e = Math.abs(x - W / 2) / (W / 2); return y0 + sideDrop * e * e * e + fbm1(off + x / W * 7, 3) * H * .025; };
+  // the floor is a rounded square seen in perspective: a straight back edge with rounded corners, and sides that widen towards you
+  const y0 = H * R(.24, .27), hwBack = W * R(.32, .35), hwFront = W * .47, cr = R(110, 150);
+  const halfAt = y => lerp(hwBack, hwFront, clamp((y - y0) / (H - y0), 0, 1));
+  const baseY = x => {   // the top edge of the floor at x (below the world if x is beyond the floor)
+    const dx = Math.abs(x - W / 2);
+    if (dx <= hwBack - cr) return y0;
+    if (dx <= hwBack) return y0 + cr - Math.sqrt(Math.max(0, cr * cr - (dx - (hwBack - cr)) ** 2));
+    if (dx >= hwFront) return H + 999;
+    return Math.max(y0 + cr, y0 + (dx - hwBack) / (hwFront - hwBack) * (H - y0));
+  };
   const depth = y => clamp((y - y0) / (H - y0), 0, 1), persp = y => lerp(.85, 1.1, Math.pow(depth(y), .9));
   const mineral = pick(MINERAL_FLOORS), pool = { x: W * R(.4, .6), y: y0 + (H - y0) * R(.45, .55), rx: R(300, 380), ry: R(130, 170) };
   const seedOf = () => (rnd() * 2147483647) | 0, floorI = [];
@@ -779,7 +787,7 @@ function planFloor(T) {
   }
   const nearFossil = it => fossils.some(f => Math.hypot(f.x - it.cx, f.y - it.cy) < f.r + it.r + 8 || Math.hypot(f.x - it.x, f.y - it.y) < f.r + it.size * .3 + 8);
   // a staggered row along the back edge, leaning out into the cave
-  for (let x = R(10, 30), i = 0; x < W - 10; x += R(52, 80), i++) {
+  for (let x = W / 2 - hwBack + R(10, 30), i = 0; x < W / 2 + hwBack - 10; x += R(52, 80), i++) {
     const y = baseY(x) + (i % 2 ? R(4, 10) : R(16, 30)), lean = clamp((W / 2 - x) / (W / 2), -1, 1) * .5, it = mk('f', x, y, -Math.PI / 2 + lean + R(-.35, .35), bell(40, 50) * persp(y));
     if (!crowds(floorI, it)) floorI.push(it);
   }
@@ -826,7 +834,7 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
   const { theme, mineral, pool, y0, baseY, persp } = plan, floorCol = mineral.base, light = mineral.light;
   const toHex = c => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
   const tex = (k, col) => { if (plan.tex[k]) { for (let i = 0; i < 4; i++) rnd(); return plan.tex[k]; } return (plan.tex[k] = rockTexture(toHex(col))); };
-  const floorPath = (() => { const p = new Path2D(); p.moveTo(-10, H + 10); for (let x = -10; x <= W + 10; x += 10) p.lineTo(x, baseY(x)); p.lineTo(W + 10, H + 10); p.closePath(); return p; })();
+  const floorPath = (() => { const p = new Path2D(), x0 = W * .03, x1 = W * .97; p.moveTo(x0, H + 10); for (let x = x0; x <= x1; x += 6) p.lineTo(x, Math.min(baseY(x), H + 10)); p.lineTo(x1, H + 10); p.closePath(); return p; })();
   const formationOp = it => () => { rnd = mulberry(it.seed); curSlot = it.i; const n0 = glows.length; formation(g, it.x, it.y, it.ang, it.size, it.type, glows); for (let k = n0; k < glows.length; k++) glows[k][4] = it.i; curSlot = -1; };
   const wanted = it => (it.kind !== 'f' || !removed.has(it.i)) && (near(it.x, it.y, it.size * 1.1) || near(it.cx, it.cy, it.size * 1.1));
   // the roof and back: just darkness
