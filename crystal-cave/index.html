@@ -358,7 +358,7 @@ const SHAPES = [
   { k: 'cubes', n: 'Cube Stack', t: 'stacked cubes' },           { k: 'octa', n: 'Octahedra', t: 'double-pointed diamonds' },
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },          { k: 'urchin', n: 'Urchin', t: 'a burst of needles' },
 ];
-const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'speck', t: 'speckled' }, { k: 'two', t: 'two-tone' }];
+const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
 const typeName = ty => `${ty.pal.n} ${ty.shape.n}`, typeTraits = ty => `${ty.shape.t} · ${ty.trait.t}`;
 const ROCKS = [   // cave rock: far, mid, near tones
   ['#2a2a3d', '#1c1b2b', '#121119'], ['#33281f', '#231b16', '#15100d'], ['#2c2236', '#1d1626', '#120d18'], ['#22303a', '#172229', '#0e1519'], ['#2f2d2a', '#1f1e1c', '#131211'],
@@ -421,6 +421,18 @@ function inRock(sh, t, d) {
 // a style: base colour, its second colour (for two-tone), the marking, and where sparkles and glow go
 const styleOf = ty => ({ c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k });
 function sparkAt(x, y, s, st) { sparks.push({ x, y, s: clamp(s, 2.5, 12), c: st.glow, p: rnd() * 6.3, f: R(.6, 1.6) }); }
+// a jagged crack filled with gold, from a to b
+function goldVein(g, a, b, w) {
+  const pts = [a], n = 4, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+  for (let i = 1; i < n; i++) { const t = i / n + R(-.06, .06), j = R(-1, 1) * L * .12; pts.push([a[0] + dx * t + nx * j, a[1] + dy * t + ny * j]); }
+  pts.push(b);
+  const line = () => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); };
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  line(); g.strokeStyle = 'rgba(70,40,0,.55)'; g.lineWidth = w * 1.9; g.stroke();
+  line(); g.strokeStyle = '#e8b330'; g.lineWidth = w; g.stroke();
+  line(); g.strokeStyle = 'rgba(255,246,190,.9)'; g.lineWidth = w * .4; g.stroke();
+  if (rnd() < .5) { const k = RI(1, n - 1), [px, py] = pts[k]; g.beginPath(); g.moveTo(px, py); g.lineTo(px + nx * L * R(.15, .3) + dx * .08, py + ny * L * R(.15, .3) + dy * .08); g.strokeStyle = '#e8b330'; g.lineWidth = w * .7; g.stroke(); }
+}
 // markings drawn over a piece, in the piece's own frame: P(along, across) gives points; len along, w across
 function marks(g, P, len, w, st, tip) {
   if (st.trait === 'frost') {
@@ -431,9 +443,9 @@ function marks(g, P, len, w, st, tip) {
       g.fillStyle = dark ? rgba(shade(st.c, -.5), .5) : 'rgba(255,255,255,.35)';
       g.beginPath(); g.moveTo(...P(tip * f, -1)); g.lineTo(...P(tip * (f + .07), -1)); g.lineTo(...P(tip * (f + .07), 1)); g.lineTo(...P(tip * f, 1)); g.closePath(); g.fill();
     }
-  } else if (st.trait === 'speck') {
-    g.fillStyle = rgba(shade(st.c, -.65), .85);
-    for (let i = 0; i < 7; i++) { const [x, y] = P(tip * R(.15, .85), R(-.7, .7)); g.beginPath(); g.arc(x, y, Math.max(.8, w * R(.08, .16)), 0, 6.3); g.fill(); }
+  } else if (st.trait === 'gold') {
+    goldVein(g, P(tip * R(.2, .4), -.95), P(tip * R(.5, .8), .95), Math.max(.8, w * .14));
+    if (len > 30 && rnd() < .6) goldVein(g, P(tip * R(.55, .75), .95), P(tip * R(.75, .95), -.6), Math.max(.7, w * .1));
   }
 }
 // colour along a piece: base to tip, ending in the second colour if two-tone
@@ -466,7 +478,7 @@ function pointPc(g, x, y, a, len, w, st) {
   g.beginPath(); g.moveTo(x + nx * w, y + ny * w); g.lineTo(tx, ty); g.lineTo(x + dx * len * .15, y + dy * len * .15); g.closePath(); g.fillStyle = rgba(shade(mix(st.c, tipC, .5), -.25), .95); g.fill();
   g.beginPath(); g.moveTo(x - nx * w, y - ny * w); g.lineTo(tx, ty); g.lineTo(x + dx * len * .15, y + dy * len * .15); g.closePath(); g.fillStyle = rgba(shade(mix(st.c, tipC, .5), .3), .95); g.fill();
   if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.moveTo(x + dx * len * .62 + nx * w * .38, y + dy * len * .62 + ny * w * .38); g.lineTo(tx, ty); g.lineTo(x + dx * len * .62 - nx * w * .38, y + dy * len * .62 - ny * w * .38); g.closePath(); g.fill(); }
-  if (st.trait === 'speck' && rnd() < .5) { g.fillStyle = rgba(shade(st.c, -.65)); g.beginPath(); g.arc(x + dx * len * .4, y + dy * len * .4, Math.max(.7, w * .2), 0, 6.3); g.fill(); }
+  if (st.trait === 'gold' && rnd() < .55) goldVein(g, [x + dx * len * .25 + nx * w * .7, y + dy * len * .25 + ny * w * .7], [x + dx * len * .55 - nx * w * .4, y + dy * len * .55 - ny * w * .4], Math.max(.7, w * .22));
   if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.5), .55); g.lineWidth = Math.max(.7, w * .22); g.beginPath(); g.moveTo(x + dx * len * .4 + nx * w * .62, y + dy * len * .4 + ny * w * .62); g.lineTo(x + dx * len * .4 - nx * w * .62, y + dy * len * .4 - ny * w * .62); g.stroke(); }
   if (rnd() < .1) sparkAt(tx, ty, w * 1.2, st);
 }
@@ -493,7 +505,7 @@ function cube(g, x, y, s, rot, st, glows) {
   g.strokeStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.moveTo(...C); g.lineTo(...pts[1]); g.moveTo(...C); g.lineTo(...pts[5]); g.stroke();
   if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.moveTo(...C); for (const i of [5, 0, 1]) g.lineTo(...pts[i]); g.closePath(); g.fill(); }
   if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.55), .55); g.lineWidth = Math.max(.8, s * .14); g.beginPath(); g.moveTo(...v(Math.PI / 6 + .02, .55)); g.lineTo(...v(Math.PI * .5, .3)); g.lineTo(...v(Math.PI * 5 / 6 - .02, .55)); g.stroke(); }
-  if (st.trait === 'speck') { g.fillStyle = rgba(shade(st.c, -.65)); for (let i = 0; i < 5; i++) { const [px, py] = v(R(0, 6.3), R(.2, .8)); g.beginPath(); g.arc(px, py, Math.max(.7, s * .07), 0, 6.3); g.fill(); } }
+  if (st.trait === 'gold') goldVein(g, v(-Math.PI / 2 - .5, .95), v(Math.PI / 2 + R(-.4, .4), .9), Math.max(.8, s * .09));
   if (rnd() < .4) sparkAt(...pts[0], s * .5, st);
   if (glows && rnd() < .3) glows.push([x, y, s * 2.4, st.glow]);
 }
@@ -509,7 +521,7 @@ function octa(g, x, y, s, rot, st, glows) {
   g.strokeStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.moveTo(...T); g.lineTo(...M); g.lineTo(...B); g.stroke();
   if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.55)'; const a = v(-s * .4, -s * .87), b = v(s * .4, -s * .87); g.beginPath(); g.moveTo(...T); g.lineTo(...a); g.lineTo(...b); g.closePath(); g.fill(); }
   if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.55), .6); g.lineWidth = Math.max(.8, s * .16); g.beginPath(); g.moveTo(...v(-s * .78, -s * .3)); g.lineTo(...v(s * .78, -s * .3)); g.moveTo(...v(-s * .78, s * .3)); g.lineTo(...v(s * .78, s * .3)); g.stroke(); }
-  if (st.trait === 'speck') { g.fillStyle = rgba(shade(st.c, -.65)); for (let i = 0; i < 5; i++) { const [px, py] = v(R(-.5, .5) * s, R(-.9, .9) * s); g.beginPath(); g.arc(px, py, Math.max(.7, s * .07), 0, 6.3); g.fill(); } }
+  if (st.trait === 'gold') goldVein(g, v(-s * .85, -s * .2), v(s * .7, s * .45), Math.max(.8, s * .09));
   if (rnd() < .5) sparkAt(...T, s * .5, st);
   if (glows && rnd() < .3) glows.push([x, y, s * 2.6, st.glow]);
 }
