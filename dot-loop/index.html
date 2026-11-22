@@ -277,6 +277,7 @@ const COLORS = ['#ff6b6b', '#4dabf7', '#51cf66', '#fcc419', '#b47cff'];
 const TINTS = ['#ffe3e3', '#dbeeff', '#e0f8e3', '#fff3c4', '#efe3ff'];
 const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31, 33, 36];
 
+const firstVisit = !localStorage.getItem('dotloop');
 let save = { unlocked: 1, stars: {}, best: 0, muted: false };
 try { const s = JSON.parse(localStorage.getItem('dotloop')); if (s) save = Object.assign(save, s); } catch (e) {}
 if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
@@ -836,7 +837,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && sta
 addEventListener('resize', resize); resize();
 let resumed = false;
 if (save.cur && save.cur.grid) { try { resumeLevel(save.cur); resumed = true; } catch (e) { save.cur = null; persist(); } }
-if (!resumed) { L = levelCfg(1); fill(); for (const row of grid) for (const d of row) if (d) d.y = d.tr; openMenu(); }
+if (!resumed) { L = levelCfg(1); fill(); for (const row of grid) for (const d of row) if (d) d.y = d.tr; openMenu(); if (firstVisit) { show('ovHow'); persist(); } }   // first visit: how to play first
 if (/[?&]debug\b/.test(location.search)) window.__dl = { storeLevel, levelSnapshot, begin, get inLevel() { return inLevel; }, get blasting() { return blasting; }, get powers() { return powers; }, get armed() { return armed; }, powerX, powerY, get H() { return H; }, get frost() { return frost; }, get acornsGot() { return acornsGot; }, get harvesting() { return harvesting; }, openStart, levelCfg, get path() { return path; }, get state() { return state; }, get grid() { return grid; }, get moves() { return moves; }, get L() { return L; }, get score() { return score; }, collected: () => collected, BX, CS, get BY() { return BY; } };
 requestAnimationFrame(frame);
 })();

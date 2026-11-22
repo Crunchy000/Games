@@ -71,6 +71,13 @@
   #hint { color:#cbb08b; font-size:.85rem; text-align:center; padding:8px 0 calc(12px + env(safe-area-inset-bottom)); }
   .ov { position:absolute; inset:0; border-radius:20px; background:rgba(43,32,24,.72); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:10; text-align:center; padding:16px; animation:fade .3s; }
   .ov.show { display:flex; }
+  /* how to play: shown on a first visit and from the ? button */
+  .hov { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(30,20,12,.62); }
+  .hov.show { display:flex; }
+  .hcard { width:100%; max-width:340px; padding:18px 18px 16px; text-align:center; }
+  .hcard h2 { margin:6px 0 4px; font-size:1.4rem; }
+  .hcard .pk-step-art svg { width:100%; max-width:220px; height:auto; }
+  .hrow { text-align:center; }
   @keyframes fade { from { opacity:0; } }
   .ov h2 { margin:0 0 6px; font-size:2.2rem; font-weight:900; color:#ffd98a; text-shadow:0 3px 0 #7a3e12; }
   .ov p { margin:4px 0 14px; color:var(--cream); }
@@ -238,6 +245,7 @@ document.addEventListener('click', e => {
   <header>
     <button class="ib pk-home" aria-label="All games" onclick="BB.home()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5"/></svg></button>
     <h1>Bean <span>2048</span></h1>
+    <button class="ib pk-home" id="bHelp" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17.2v.1"/></svg></button>
     <button class="ib pk-home" id="bSound" aria-label="Sound"></button>
   </header>
   <div class="scores">
@@ -252,6 +260,17 @@ document.addEventListener('click', e => {
   </div></div>
   <div id="hint">Swipe to slide every bean. Two the same bump together and merge.</div>
 </div>
+  <div class="hov" id="ovHelp" role="dialog" aria-modal="true" aria-labelledby="helpTitle"><div class="pk-card hcard">
+    <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
+    <h2 id="helpTitle">How to play</h2>
+    <div class="pk-steps">
+      <section class="pk-step"><div class="pk-step-art"><svg viewBox="0 0 220 84" aria-hidden="true"><g transform="translate(58 42)"><ellipse cx="0" cy="3" rx="17" ry="14" fill="rgba(0,0,0,.18)"/><path d="M-6 -15C9 -18 19 -6 15 6C12 15 2 18 -8 15C-17 12 -18 1 -12 -6C-9 -10 -16 -12 -6 -15Z" fill="#f7c948" stroke="#7a3e12" stroke-width="1.6"/><text x="1" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="12" fill="#5a2e0c">2</text></g><g transform="translate(104 42)"><ellipse cx="0" cy="3" rx="17" ry="14" fill="rgba(0,0,0,.18)"/><path d="M-6 -15C9 -18 19 -6 15 6C12 15 2 18 -8 15C-17 12 -18 1 -12 -6C-9 -10 -16 -12 -6 -15Z" fill="#f7c948" stroke="#7a3e12" stroke-width="1.6"/><text x="1" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="12" fill="#5a2e0c">4</text></g><path d="M138 42h44m-9 -8l9 8l-9 8" fill="none" stroke="#c8643b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Swipe to slide</h3><p><b>Swipe</b> up, down, left or right and every bean slides that way as far as it can.</p></section>
+      <section class="pk-step"><div class="pk-step-art"><svg viewBox="0 0 220 84" aria-hidden="true"><g transform="translate(44 42)"><ellipse cx="0" cy="3" rx="17" ry="14" fill="rgba(0,0,0,.18)"/><path d="M-6 -15C9 -18 19 -6 15 6C12 15 2 18 -8 15C-17 12 -18 1 -12 -6C-9 -10 -16 -12 -6 -15Z" fill="#f7c948" stroke="#7a3e12" stroke-width="1.6"/><text x="1" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="12" fill="#5a2e0c">2</text></g><g transform="translate(86 42)"><ellipse cx="0" cy="3" rx="17" ry="14" fill="rgba(0,0,0,.18)"/><path d="M-6 -15C9 -18 19 -6 15 6C12 15 2 18 -8 15C-17 12 -18 1 -12 -6C-9 -10 -16 -12 -6 -15Z" fill="#f7c948" stroke="#7a3e12" stroke-width="1.6"/><text x="1" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="12" fill="#5a2e0c">2</text></g><path d="M112 42h16m-7 -7l7 7l-7 7" fill="none" stroke="#c8643b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(160 42)"><ellipse cx="0" cy="3" rx="17" ry="14" fill="rgba(0,0,0,.18)"/><path d="M-6 -15C9 -18 19 -6 15 6C12 15 2 18 -8 15C-17 12 -18 1 -12 -6C-9 -10 -16 -12 -6 -15Z" fill="#f39a4b" stroke="#7a3e12" stroke-width="1.6"/><text x="1" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="12" fill="#5a2e0c">4</text></g></svg></div><h3>Two the same merge</h3><p>When two beans with the <b>same number</b> bump together they merge into one bigger bean, and you score its number.</p></section>
+      <section class="pk-step"><div class="pk-step-art">🏆</div><h3>Grow the golden bean</h3><p>A new bean pops in after every move. Keep merging to make <b>2048</b> before the board fills up. <b>Undo</b> takes back a move.</p></section>
+    </div>
+    <div class="hrow"><button class="btn pk-btn" id="bHelpOk">Let's play</button></div>
+  </div></div>
+
 <script>
 (() => {
 'use strict';
@@ -259,6 +278,7 @@ const N = 4, $ = id => document.getElementById(id);
 const COLORS = { 2: ['#fff1d6', '#7a5a3a'], 4: ['#ffe0a3', '#7a4a1a'], 8: ['#ffb36b', '#fff'], 16: ['#ff8a5c', '#fff'], 32: ['#ff6b6b', '#fff'], 64: ['#ff5c9d', '#fff'],
   128: ['#d66bff', '#fff'], 256: ['#9b7bff', '#fff'], 512: ['#5c9dff', '#fff'], 1024: ['#2ec4a6', '#fff'], 2048: ['#ffd23f', '#6a3e00'] };
 const colorOf = v => COLORS[v] || ['#4a2f1a', '#ffd98a'];
+const firstVisit = !localStorage.getItem('beanmerge');   // nothing saved yet: show how to play
 let S = { grid: null, score: 0, best: 0, won: false, keep: false, undo: [], muted: false };
 try { const s = JSON.parse(localStorage.getItem('beanmerge') || 'null'); if (s) S = Object.assign(S, s); } catch (e) {}
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
@@ -391,6 +411,7 @@ wrap.addEventListener('pointermove', e => {
 });
 ['pointerup', 'pointercancel'].forEach(ev => wrap.addEventListener(ev, () => start = null));
 addEventListener('keydown', e => {
+  if (document.getElementById('ovHelp').classList.contains('show')) { if (e.key === 'Escape' || e.key === 'Enter') { document.getElementById('ovHelp').classList.remove('show'); save(); } return; }
   const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', a: 'left', d: 'right', w: 'up', s: 'down' }[e.key];
   if (k) { e.preventDefault(); audio(); move(k); } else if (e.key === 'z' || e.key === 'u') undo();
 });
@@ -405,11 +426,49 @@ layout();
 if (S.grid && S.grid.flat().some(Boolean)) { loadGrid(S.grid); if (stuck()) { $('loseText').textContent = `You scored ${S.score.toLocaleString('en-GB')}.`; $('ovLose').classList.add('show'); } } else newGame();
 render();
 if (/[?&]debug\b/.test(location.search)) window.__bm = { grid: snapshot, move, get score() { return S.score; }, get busy() { return busy; }, set: g => { loadGrid(g); persist(); render(); }, stuck, newGame };
+const helpOv = document.getElementById('ovHelp');
+document.getElementById('bHelp').onclick = () => helpOv.classList.add('show');
+const closeHelp = () => { helpOv.classList.remove('show'); save(); };   // saving marks the first visit as done
+document.getElementById('bHelpOk').onclick = closeHelp;
+helpOv.addEventListener('pointerdown', e => { if (e.target === helpOv) closeHelp(); });
+if (firstVisit) helpOv.classList.add('show');
 })();
 </script>
 <script id="pub-kit-says">
 (() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
   const go = () => { const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.isIntersecting && pick(e.target))) : null; document.querySelectorAll('.pk-says').forEach(el => { pick(el); if (io) io.observe(el); }); };
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
+</script>
+<script id="pub-kit-steps">
+(() => { const go = () => document.querySelectorAll('.pk-steps').forEach(el => {
+  if (el.dataset.ready) return; el.dataset.ready = '1';
+  const steps = [...el.children].filter(c => c.classList.contains('pk-step')), n = steps.length; if (n < 2) { steps.forEach(s => s.classList.add('on')); return; }
+  const row = el.nextElementSibling, finish = row && row.querySelector('button');
+  const mk = (tag, cls, txt) => { const b = document.createElement(tag); if (tag === 'button') b.type = 'button'; b.className = cls; if (txt) b.textContent = txt; return b; };
+  const nav = mk('div', 'pk-steps-nav'), back = mk('button', 'pk-steps-back'), dots = mk('div', 'pk-dots'), right = mk('div', 'pk-steps-go'), next = mk('button', 'pk-btn pk-small', 'Next');
+  if (!finish) next.classList.add('pk-alt');   // a title screen keeps its own Start button below
+  steps.forEach((s, i) => { const d = mk('button', ''); d.setAttribute('aria-label', `Step ${i + 1} of ${n}`); d.onclick = () => show(i); dots.appendChild(d); });
+  right.appendChild(next);
+  if (finish) { finish.classList.add('pk-small'); right.appendChild(finish); if (!row.querySelector('button, a, input')) row.remove(); }
+  nav.append(back, dots, right); el.after(nav);
+  let at = 0;
+  function show(i) {
+    at = Math.max(0, Math.min(n - 1, i));
+    steps.forEach((s, k) => { s.classList.toggle('on', k === at); s.classList.toggle('before', k < at); s.setAttribute('aria-hidden', k !== at); s.inert = k !== at; });
+    [...dots.children].forEach((d, k) => d.setAttribute('aria-current', k === at ? 'step' : 'false'));
+    back.textContent = at ? 'Back' : 'Skip'; back.hidden = !at && !finish;
+    next.hidden = at === n - 1; if (finish) finish.hidden = at !== n - 1;
+  }
+  back.onclick = () => at ? show(at - 1) : finish && finish.click();
+  next.onclick = () => show(at + 1);
+  let x0 = null;
+  el.addEventListener('pointerdown', e => { x0 = e.clientX; });
+  el.addEventListener('pointerup', e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) show(at + (dx < 0 ? 1 : -1)); });
+  addEventListener('keydown', e => { if (!el.offsetParent) return; if (e.key === 'ArrowRight') { show(at + 1); e.preventDefault(); } else if (e.key === 'ArrowLeft') { show(at - 1); e.preventDefault(); } });
+  const box = el.closest('.ov') || el.parentElement; let open = false;
+  new MutationObserver(() => { const o = !!el.offsetParent; if (o && !open) show(0); open = o; }).observe(box, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  open = !!el.offsetParent; show(0);
+});
   document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
 </script>
 </body>

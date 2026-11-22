@@ -288,6 +288,7 @@ const DARK = ['#b3123a', '#c96a00', '#c79a00', '#16884a', '#1462b8', '#6a2fc4'];
 const LIGHT = ['#ffc2cf', '#ffd59a', '#fff3a3', '#b8f5d2', '#bfe3ff', '#e0ccff'];
 const NAMES = ['hearts', 'drops', 'stars', 'cubes', 'gems', 'hexes'];
 
+const firstVisit = !localStorage.getItem('gummypop');
 let save = { unlocked: 1, stars: {}, muted: false };
 const BOOST_EACH = 3;   // boosters: three of each, refilled at the start of every level and every attempt
 let boost = { hammer: BOOST_EACH, swap: BOOST_EACH };
@@ -1255,7 +1256,7 @@ addEventListener('resize', () => { if (resize()) { boardCache = null; bgDirty = 
 resize();
 let resumed = false;
 if (save.cur && save.cur.grid) { try { resumeLevel(save.cur); resumed = true; } catch (e) { save.cur = null; persist(); } }
-if (!resumed) { L = levelCfg(1); block = L.blocks; fillBoard(); grid.flat().forEach(p => { if (p) p.y = p.tr; }); state = 'menu'; openMenu(); }
+if (!resumed) { L = levelCfg(1); block = L.blocks; fillBoard(); grid.flat().forEach(p => { if (p) p.y = p.tr; }); state = 'menu'; openMenu(); if (firstVisit) { show('ovHow'); persist(); } }   // first visit: how to play first
 if (/[?&]debug\b/.test(location.search)) window.__gp = { storeLevel, levelSnapshot, get inLevel() { return inLevel; }, get boost() { return boost; }, boosterRects, openStart, get state() { return state; }, get busy() { return busy; }, get score() { return score; }, get moves() { return moves; }, get level() { return L && L.n; }, findMove, trySwap, openStart, startLevel, goalsDone, levelCfg, allFed, useHammer, get grid() { return grid; }, get popups() { return popups; }, get block() { return block; }, get honeyGot() { return honeyGot; }, get L() { return L; }, set tool(v) { tool = v; }, set moves(v) { moves = v; } };
 requestAnimationFrame(loop);
 })();
