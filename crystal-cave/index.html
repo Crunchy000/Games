@@ -469,13 +469,15 @@ function goldVein(g, a, b, w) {
 function marks(g, P, len, w, st, tip) {
   if (st.trait === 'frost') {
     // frosted: the top part is a rough, matte white, with a ragged edge where the frost stops, and no shine
-    const f0 = tip * .5, edge = [];
+    const f0 = tip * .66, edge = [];   // about a third less than before, so the colour shows
     for (let k = 0; k <= 6; k++) edge.push(P(f0 + (k % 2 ? 1 : -1) * tip * R(.04, .09), -1 + k / 3));
     g.beginPath(); g.moveTo(...edge[0]); for (const q of edge) g.lineTo(...q); g.lineTo(...P(tip, 1)); g.lineTo(...P(len, 0)); g.lineTo(...P(tip, -1)); g.closePath();
-    g.fillStyle = 'rgba(246,249,255,.9)'; g.fill();
-    g.strokeStyle = 'rgba(170,182,200,.75)'; g.lineWidth = Math.max(.6, w * .07); g.beginPath(); edge.forEach((q, k) => k ? g.lineTo(...q) : g.moveTo(...q)); g.stroke();
+    const [ax, ay] = P(f0, 0), [bx, by] = P(len, 0), fg = g.createLinearGradient(ax, ay, bx, by);   // see-through where it starts, solid white at the tip
+    fg.addColorStop(0, 'rgba(246,249,255,.3)'); fg.addColorStop(.45, 'rgba(246,249,255,.72)'); fg.addColorStop(1, 'rgba(250,252,255,.97)');
+    g.fillStyle = fg; g.fill();
+    g.strokeStyle = 'rgba(200,210,225,.45)'; g.lineWidth = Math.max(.6, w * .07); g.beginPath(); edge.forEach((q, k) => k ? g.lineTo(...q) : g.moveTo(...q)); g.stroke();
     for (let k = 0; k < 16; k++) {   // the rough texture
-      const a = R(f0 + tip * .08, len * .96), lim = a > tip ? (len - a) / (len - tip) : 1, [x, y] = P(a, R(-.85, .85) * lim);
+      const a = R(f0 + (len - f0) * .3, len * .96), lim = a > tip ? (len - a) / (len - tip) : 1, [x, y] = P(a, R(-.85, .85) * lim);
       g.fillStyle = k % 3 ? 'rgba(196,206,222,.85)' : '#fff'; g.beginPath(); g.arc(x, y, Math.max(.5, w * R(.05, .1)), 0, 6.3); g.fill();
     }
   } else if (st.trait === 'band') {
@@ -550,7 +552,8 @@ function cube(g, x, y, s, rot, st, glows) {
   for (const fc of [left, right]) { const M = fc.reduce((m, p) => [m[0] + p[0] / 4, m[1] + p[1] / 4], [0, 0]); g.beginPath(); fc.forEach((p, i) => { const q = [M[0] + (p[0] - M[0]) * .7, M[1] + (p[1] - M[1]) * .7]; i ? g.lineTo(...q) : g.moveTo(...q); }); g.closePath(); g.stroke(); }
   g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = Math.max(.6, s * .045); g.beginPath(); g.moveTo(...pts[5]); g.lineTo(...pts[0]); g.lineTo(...pts[1]); g.stroke();
   if (st.trait === 'frost') {   // a rough, matte white top
-    g.fillStyle = 'rgba(246,249,255,.9)'; g.beginPath(); g.moveTo(...C); for (const i of [5, 0, 1]) g.lineTo(...pts[i]); g.closePath(); g.fill();
+    const fg = g.createLinearGradient(...C, ...pts[0]); fg.addColorStop(0, 'rgba(246,249,255,.3)'); fg.addColorStop(1, 'rgba(250,252,255,.95)');
+    g.fillStyle = fg; g.beginPath(); g.moveTo(...C); for (const i of [5, 0, 1]) g.lineTo(...pts[i]); g.closePath(); g.fill();
     for (let k = 0; k < 10; k++) { const [px, py] = v(-Math.PI / 2 + R(-.8, .8), R(.15, .85)); g.fillStyle = k % 3 ? 'rgba(196,206,222,.85)' : '#fff'; g.beginPath(); g.arc(px, py, Math.max(.5, s * .06), 0, 6.3); g.fill(); }
   }
   if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.6), .6); g.lineWidth = Math.max(.8, s * .12); g.beginPath(); g.moveTo(...v(Math.PI / 6 + .02, .55)); g.lineTo(...v(Math.PI * .5, .3)); g.lineTo(...v(Math.PI * 5 / 6 - .02, .55)); g.stroke(); }
@@ -1339,10 +1342,10 @@ requestAnimationFrame(() => { layout(); makeCave(!S.seed); });
 requestAnimationFrame(frame);
 if (/[?&]debug\b/.test(location.search)) window.__cc = {
   get S() { return S; }, get cave() { return cave; }, get targets() { return targetsNow(); }, tapAt, makeCave, nextHunt, hint, get busy() { return busyGen; },
-  sheet() {
+  sheet(only) {
     const c = document.createElement('canvas'), cw = 80, chh = 82; c.width = cw * SHAPES.length * 2; c.height = chh * PALETTES.length * 2; c.style.cssText = 'position:fixed;left:0;top:0;z-index:99;background:#1a1424;width:' + c.width / 2 + 'px';
     const g = c.getContext('2d'); g.scale(2, 2); const keep = rnd, ks = sparks; rnd = mulberry(7); sparks = [];
-    PALETTES.forEach((pal, r) => SHAPES.forEach((shape, k) => pal.h.split(' ').includes(shape.k) && formation(g, k * cw + cw / 2, r * chh + chh - 10, -Math.PI / 2, 60, { shape, pal, trait: TRAITS[(k + r) % TRAITS.length] }, null)));
+    PALETTES.forEach((pal, r) => SHAPES.forEach((shape, k) => pal.h.split(' ').includes(shape.k) && formation(g, k * cw + cw / 2, r * chh + chh - 10, -Math.PI / 2, 60, { shape, pal, trait: only ? TRAITS.find(t => t.k === only) : TRAITS[(k + r) % TRAITS.length] }, null)));
     rnd = keep; sparks = ks; document.body.appendChild(c); return [c.width / 2, c.height / 2];
   }, lookAt, get cam() { return { x: camX, y: camY, z: zoom, tz: targetZoom }; },
   toScreen: (x, y) => [(x - camX) * zoom, (y - camY) * zoom], settle() { zoom = targetZoom; camX = targetCamX; camY = targetCamY; },
