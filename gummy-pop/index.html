@@ -183,7 +183,7 @@ window.BB = (() => {
     <section class="pk-step"><div class=pk-step-art>🍬</div><h3>Match three</h3><p>Swipe a gummy onto a neighbour (or tap one, then the other) to swap them. Line up <b>3 or more</b> of a kind to pop them.</p></section>
     <section class="pk-step"><div class=pk-step-art>🚀</div><h3>Make specials</h3><p>🚀 <b>4 in a row</b>: a Rocket clears its row or column.<br>💥 <b>L or T</b>: a Bomb blasts around it.<br>🌈 <b>5 in a row</b>: a Rainbow Orb pops every gummy of one kind.<br>✨ Swap two specials for a mega combo!</p></section>
     <section class="pk-step"><div class=pk-step-art>🍯</div><h3>Tricky squares</h3><p>🍯 Drop <b>honey pots</b> out of the bottom for Bear.<br>🔒 Match a <b>locked</b> gummy once to free it.<br>🧊 Pop beside <b>sugar cubes</b> to clear them.<br>🍫 <b>Chocolate</b> spreads unless you clear some.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🍭</div><h3>Boosters and moves</h3><p>Lolly Pop pops any square; Free Swap swaps without a match. Spare moves turn into bonus rockets, and once a level you can have 5 more.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🍭</div><h3>Boosters and moves</h3><p>Every level and every try gives you 3 Lolly Pops (pop any square) and 3 Free Swaps (swap without a match). Spare moves turn into bonus rockets, and once a level you can have 5 more.</p></section>
   </div>
   <div class="row"><button class="btn pk-btn" id="btnHowOk">Got it</button></div>
   </div></div>
@@ -231,10 +231,11 @@ const DARK = ['#b3123a', '#c96a00', '#c79a00', '#16884a', '#1462b8', '#6a2fc4'];
 const LIGHT = ['#ffc2cf', '#ffd59a', '#fff3a3', '#b8f5d2', '#bfe3ff', '#e0ccff'];
 const NAMES = ['hearts', 'drops', 'stars', 'cubes', 'gems', 'hexes'];
 
-let save = { unlocked: 1, stars: {}, muted: false, boost: { hammer: 3, swap: 3 } };
+let save = { unlocked: 1, stars: {}, muted: false };
+const BOOST_EACH = 3;   // boosters: three of each, refilled at the start of every level and every attempt
+let boost = { hammer: BOOST_EACH, swap: BOOST_EACH };
 try { const s = JSON.parse(localStorage.getItem('gummypop')); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
 if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
-if (!save.boost) save.boost = { hammer: 3, swap: 3 };
 const IMG = { bear: new Image() }; IMG.bear.src = '../icons/bear.png?v=406624f3';
 const persist = () => { try { localStorage.setItem('gummypop', JSON.stringify(save)); } catch (e) {} };
 
@@ -460,6 +461,7 @@ function fillBoard() {
 }
 
 function startLevel(n) {
+  boost = { hammer: BOOST_EACH, swap: BOOST_EACH };
   L = levelCfg(n); score = 0; shownScore = 0; moves = L.moves; chainMax = 0; collected = [0, 0, 0, 0, 0, 0]; sel = null; hint = null; idleT = 0;
   frost = L.frost ? L.frost.map(r => r.slice()) : Array.from({ length: N }, () => Array(N).fill(0));
   block = L.blocks.map(row => row.map(b => b ? { ...b, s: 1, hit: 0 } : null)); honeyGot = 0; tool = null; extraUsed = false; flyers = [];
@@ -680,7 +682,7 @@ async function trySwap(r1, c1, r2, c2) {
   await Promise.all([tween(A, { x: c2, y: r2 }, .16), tween(B, { x: c1, y: r1 }, .16)]);
   grid[r1][c1] = B; grid[r2][c2] = A; A.tr = r2; A.tc = c2; B.tr = r1; B.tc = c1;
   const ka = key(r2, c2), kb = key(r1, c1);
-  const spend = () => { if (free) { tool = null; save.boost.swap--; persist(); } else moves--; };
+  const spend = () => { if (free) { tool = null; boost.swap--; persist(); } else moves--; };
   if ((A.sp === 'rainbow' && !B.k) || (B.sp === 'rainbow' && !A.k) || (A.sp && B.sp)) {
     spend(); await specialCombo(A, r2, c2, B, r1, c1); await gravity(); await cascade(null); await endOfMove(!free); return;
   }
@@ -713,7 +715,7 @@ async function spreadChoc() {
 async function useHammer(r, c) {
   const p = grid[r][c], b = block[r][c];
   if (!b && (!p || p.k === 'honey')) { sNo(); return; }
-  busy = true; tool = null; save.boost.hammer--; persist(); sel = null; hint = null; idleT = 0; chocHit = false;
+  busy = true; tool = null; boost.hammer--; persist(); sel = null; hint = null; idleT = 0; chocHit = false;
   lolly = { x: cx(c), y: cy(r), life: .45 }; tone(1000, .08, 'triangle', .06, 0, -500);
   await wait(260);
   rings.push({ x: cx(c), y: cy(r), r: CS * 1.1, life: .4, max: .4 }); shake = Math.max(shake, 4); buzz(20);
@@ -745,7 +747,7 @@ async function specialCombo(A, ra, ca, B, rb, cb) {
   await clearSet([...set], [], 2);
 }
 async function afterMove() {
-  if (!tool || !save.boost[tool]) tool = null;
+  if (!tool || !boost[tool]) tool = null;
   if (goalsDone() && L.kind !== 'score') { await finale(true); return; }
   if (moves <= 0) { await finale(L.kind === 'score' ? score >= L.target : goalsDone()); return; }
   busy = false;
@@ -800,7 +802,7 @@ cv.addEventListener('pointerdown', e => {
   if (p.y < 60 && p.x < 60) { openPause(); return; }
   if (state === 'play' && !busy) {
     const b = boosterRects().find(b => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h);
-    if (b) { if (tool === b.id) tool = null; else if (save.boost[b.id] > 0) { tool = b.id; sel = null; hint = null; tone(880, .08, 'triangle', .05, 0, 300); } else sNo(); return; }
+    if (b) { if (tool === b.id) tool = null; else if (boost[b.id] > 0) { tool = b.id; sel = null; hint = null; tone(880, .08, 'triangle', .05, 0, 300); } else sNo(); return; }
   }
   if (state !== 'play' || busy || !inB(p.r, p.c)) return;
   if (tool === 'hammer') { useHammer(p.r, p.c); return; }
@@ -874,7 +876,7 @@ function swapIcon(x, y) {
 function drawBoosters() {
   const R = boosterRects();
   for (const b of R) {
-    const on = tool === b.id, cnt = save.boost[b.id];
+    const on = tool === b.id, cnt = boost[b.id];
     ctx.save(); ctx.globalAlpha = cnt || on ? 1 : .55;
     if (on) { ctx.shadowColor = 'rgba(255,200,40,.9)'; ctx.shadowBlur = 14 + Math.sin(time * 6) * 5; }
     rr(ctx, b.x, b.y, b.w, b.h, 22); ctx.fillStyle = on ? '#fff3a8' : 'rgba(255,255,255,.9)'; ctx.fill(); ctx.shadowBlur = 0;
@@ -1100,12 +1102,10 @@ function openPause() { if (state !== 'play') return; $('btnSound').textContent =
 function endLevel(won) {
   state = 'end'; busy = true;
   const stars = won ? L.stars.filter(v => score >= v).length || 1 : 0;
-  let treat = '';
-  if (won && stars === 3) { const b = Math.random() < .5 ? 'hammer' : 'swap'; save.boost[b]++; treat = ` Bear's treat for 3 stars: +1 ${b === 'hammer' ? 'Lolly Pop' : 'Free Swap'}!`; }
   if (won) { save.stars[L.n] = Math.max(save.stars[L.n] || 0, stars); save.unlocked = Math.max(save.unlocked, L.n + 1); persist(); }
   $('endTitle').textContent = won ? 'Level complete!' : 'Out of moves!';
   $('endScore').textContent = score.toLocaleString('en-GB') + ' points';
-  $('endText').textContent = (won ? (chainMax >= 4 ? `Best cascade: ${chainMax} in a row!` : 'Lovely work.') : (L.kind === 'score' ? `You needed ${L.target.toLocaleString('en-GB')}.` : extraUsed ? 'So close. Try again?' : 'So close! Want 5 more moves?')) + treat;
+  $('endText').textContent = (won ? (chainMax >= 4 ? `Best cascade: ${chainMax} in a row!` : 'Lovely work.') : (L.kind === 'score' ? `You needed ${L.target.toLocaleString('en-GB')}.` : extraUsed ? 'So close. Try again?' : 'So close! Want 5 more moves?'));
   const sp = $('endStars').children; [...sp].forEach(s => s.classList.remove('on'));
   for (let i = 0; i < stars; i++) setTimeout(() => { sp[i].classList.add('on'); tone(900 + i * 250, .2, 'triangle', .06); }, 350 + i * 300);
   $('endBtns').innerHTML = won ? `<button class="btn pk-btn" id="eNext">Next level</button><button class="btn soft pk-btn pk-alt" id="eReplay">Replay</button><button class="btn soft pk-btn pk-alt" id="eMap">Map</button>`
@@ -1128,7 +1128,7 @@ addEventListener('resize', () => { resize(); boardCache = null; bgDirty = true; 
 resize();
 L = levelCfg(1); block = L.blocks; fillBoard(); grid.flat().forEach(p => { if (p) p.y = p.tr; }); state = 'menu';
 openMenu();
-if (/[?&]debug\b/.test(location.search)) window.__gp = { get state() { return state; }, get busy() { return busy; }, get score() { return score; }, get moves() { return moves; }, get level() { return L && L.n; }, findMove, trySwap, openStart, startLevel, goalsDone, levelCfg, allFed, useHammer, get grid() { return grid; }, get popups() { return popups; }, get block() { return block; }, get honeyGot() { return honeyGot; }, get L() { return L; }, set tool(v) { tool = v; }, set moves(v) { moves = v; } };
+if (/[?&]debug\b/.test(location.search)) window.__gp = { get boost() { return boost; }, boosterRects, openStart, get state() { return state; }, get busy() { return busy; }, get score() { return score; }, get moves() { return moves; }, get level() { return L && L.n; }, findMove, trySwap, openStart, startLevel, goalsDone, levelCfg, allFed, useHammer, get grid() { return grid; }, get popups() { return popups; }, get block() { return block; }, get honeyGot() { return honeyGot; }, get L() { return L; }, set tool(v) { tool = v; }, set moves(v) { moves = v; } };
 requestAnimationFrame(loop);
 })();
 </script>

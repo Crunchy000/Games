@@ -180,7 +180,7 @@ window.BB = (() => {
     <section class="pk-step"><div class=pk-step-art>🔴</div><h3>Link the dots</h3><p>Drag across neighbouring dots of the <b>same colour</b> (up, down, left or right), and let go to clear them. Drag back to undo a link.</p></section>
     <section class="pk-step"><div class=pk-step-art>⭕</div><h3>Close a loop</h3><p>Join back onto your own line to make a <b>loop</b>: it clears <b>every</b> dot of that colour, and any dots trapped inside.</p></section>
     <section class="pk-step"><div class=pk-step-art>🌰</div><h3>Tricky bits</h3><p>❄️ <b>Frost</b> melts when you clear the dots on it.<br>🌰 <b>Acorns</b> can’t be linked: drop them out of the bottom.<br>🌈 <b>Rainbow dots</b> link up with any colour.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🔨</div><h3>Power-ups</h3><p>Every level and every try gives you one of each, and they don’t use a move. Tap one, then tap a dot:<br>🔨 <b>Pop</b> clears that dot.<br>🎨 <b>Colour</b> clears every dot of its colour.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔨</div><h3>Power-ups</h3><p>Every level and every try gives you three of each, and they don’t use a move. Tap one, then tap a dot:<br>🔨 <b>Pop</b> clears that dot.<br>🎨 <b>Colour</b> clears every dot of its colour.</p></section>
     <section class="pk-step"><div class=pk-step-art>⏱️</div><h3>Two ways to play</h3><p><b>Levels:</b> collect the dots shown before you run out of moves; spare moves earn stars.</p><p><b>60-second dash:</b> clear all you can. Every loop adds 2 seconds.</p></section>
   </div>
   <div style="text-align:center"><button class="btn pk-btn" id="btnHowOk">Got it</button></div>
@@ -315,6 +315,7 @@ const POWERS = [
   { id: 'pop', icon: '🔨', name: 'Pop', tip: 'Tap a dot to pop it' },
   { id: 'colour', icon: '🎨', name: 'Colour', tip: 'Tap a dot to clear its whole colour' },
 ];
+const POWER_EACH = 3;   // of each power-up, refilled at the start of every level and every attempt
 let powers = {}, armed = null;
 const powerX = i => W / 2 + (i - (POWERS.length - 1) / 2) * 76, powerY = () => H - 44;
 let path = [], loop = false, drag = null, pointer = null, tint = 0, tintCol = 0, rings = [], parts = [], popups = [], callout = null, pause = false;
@@ -355,7 +356,7 @@ function hasMove() {
 function begin(cfg) {
   L = cfg; moves = cfg.moves || 0; score = 0; collected = [0, 0, 0, 0, 0]; path = []; loop = false; drag = null;
   frost = new Map(cfg.frost || []); frostMelted = 0; acornsToDrop = cfg.acorns || 0; acornsGot = 0; harvesting = false;
-  powers = Object.fromEntries(POWERS.map(q => [q.id, 1])); armed = null;
+  powers = Object.fromEntries(POWERS.map(q => [q.id, POWER_EACH])); armed = null;
   rings = []; parts = []; popups = []; callout = null; tint = 0; timeLeft = cfg.timed ? 60 : 0; state = 'play'; pause = false; fill();
 }
 
@@ -452,7 +453,7 @@ function usePower(id, [r, c]) {
   const col = d.k === 'dot' ? d.t : -1;
   const cells = id === 'pop' ? [[r, c]] : [];
   if (id === 'colour') for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const q = grid[y][x]; if (q && q.k === 'dot' && q.t === col && !q.dying) cells.push([y, x]); }
-  powers[id] = 0; armed = null;
+  powers[id]--; armed = null;
   let i = 0;
   for (const [y, x] of cells) {
     const q = grid[y][x]; q.dying = .0001; q.delay = i++ * .02;
@@ -532,6 +533,7 @@ function drawPowers() {
     if (on) { ctx.beginPath(); ctx.arc(x, y, 29, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(200,100,59,.35)'; ctx.lineWidth = 3; ctx.stroke(); }
     text(q.icon, x, y + 1, 22, '#3b3550', 'center', 400);
     text(have ? q.name : 'used', x, y + 34, 11, '#9a92ad', 'center', 800);
+    if (have) { ctx.beginPath(); ctx.arc(x + 19, y - 17, 9, 0, Math.PI * 2); ctx.fillStyle = '#3b3550'; ctx.fill(); text(have + '', x + 19, y - 16.5, 11, '#fff', 'center', 900); }
     ctx.globalAlpha = 1;
   });
   if (armed && !callout) text(POWERS.find(q => q.id === armed).tip, W / 2, powerY() - 42, 13, '#c8643b', 'center', 800);
