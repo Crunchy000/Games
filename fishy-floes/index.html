@@ -195,7 +195,7 @@ window.BB = (() => {
     <button class="pk-btn" id="newGame">New game</button>
     <button class="pk-btn pk-alt" id="resetWins">Reset wins</button>
   </div>
-  <p class="hint">First, take turns putting your penguins on floes with one fish. Then on your turn, slide a penguin in a straight line as far as you like. It can't jump gaps or other penguins. The floe it leaves sinks, and you keep its fish. A penguin with nowhere to go takes its floe and climbs out, and one with an island all to itself scoops up the most fish it could get there. Most fish wins!<br>In <b>1 each</b>, both penguins hop onto random floes, picked to be fair.<br>Tap a name to rename · Who starts swaps every game</p>
+  <p class="hint">The penguins hop onto fair, random floes to start. On your turn, slide a penguin in a straight line as far as you like by tapping a glowing floe (with more than one penguin, one is picked for you: tap another of yours to switch). It can't jump gaps or other penguins. The floe it leaves sinks, and you keep its fish. A penguin with nowhere to go takes its floe and climbs out, and one with an island all to itself scoops up the most fish it could get there. Most fish wins!<br>Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -208,11 +208,11 @@ window.BB = (() => {
   const SIZES = { small: { rows: [5, 6, 5, 6, 5, 6], pens: 3 }, big: { rows: [7, 8, 7, 8, 7, 8, 7, 8], pens: 4 } };
   const DIRS = [[2, 0], [-2, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]];   // the six ways across a hex grid, in doubled columns
 
-  let names = DEFAULT_NAMES.slice(), wins = [0, 0], size = 'big', mode = '2p', pens = 'team', muted = false, starter = 0, saved = null;
+  let names = DEFAULT_NAMES.slice(), wins = [0, 0], size = 'big', mode = '2p', pens = 'one', muted = false, starter = 0, saved = null;
   try {
     const s = JSON.parse(localStorage.getItem('fishyfloes') || '{}');
     if (s.names) names = s.names; if (s.wins) wins = s.wins; if (SIZES[s.size]) size = s.size;
-    if (s.mode === 'cpu') mode = 'cpu'; if (s.pens === 'one') pens = 'one'; muted = !!s.muted; if (s.starter) starter = 1; if (s.game) saved = s.game;
+    if (s.mode === 'cpu') mode = 'cpu'; if (s.penMode === 'team') pens = 'team'; muted = !!s.muted; if (s.starter) starter = 1; if (s.game) saved = s.game;
   } catch (e) {}
   if (BB.muted === null) BB.muted = muted; else muted = BB.muted;   // sound is shared by every game
 
@@ -266,7 +266,11 @@ window.BB = (() => {
   }
   // 1 each: two one-fish floes that mirror each other across the board, not side by side, with about the same
   // number of fish around them (within two hops, plus half of what each can slide to). Null if this board has no such pair.
-  function fairStart(s) {
+  // the penguins hop on at random, fairly: each pair of opposing penguins stands on two one-fish floes that mirror
+  // each other across the board, not side by side, with about the same fish around them (within two hops, plus
+  // half of what each can slide to), preferring floes out in the open; no penguin lands right next to another.
+  // Returns [Bear's floes, Bean's floes], or null if this board has no such set.
+  function fairStart(s, n) {
     const wide = Math.max(...SIZES[size].rows), mx = 2 * wide - 2, idx = {};
     s.tiles.forEach((t, i) => idx[key(t.x, t.r)] = i);
     const around = i => {
@@ -284,24 +288,40 @@ window.BB = (() => {
       const j = idx[key(mx - t.x, t.r)];
       if (j === undefined || s.tiles[j].fish !== 1 || mx - 2 * t.x < 6) return;
       const a = around(i), b = around(j);
-      pairs.push({ i, j, diff: Math.abs(a - b), room: Math.min(a, b) });
+      pairs.push({ i, j, diff: Math.abs(a - b), room: Math.min(a, b), luck: Math.random() });
     });
-    if (!pairs.length) return null;
-    // the fairest pairs, and of those the roomier half (out in the open rather than tucked against the edge)
-    const least = Math.min(...pairs.map(q => q.diff)), fair = pairs.filter(q => q.diff <= least + 1).sort((x, y) => y.room - x.room);
-    const open = fair.slice(0, Math.max(1, Math.ceil(fair.length / 2))), pick = open[Math.floor(Math.random() * open.length)];
-    return Math.random() < .5 ? [pick.i, pick.j] : [pick.j, pick.i];
+    if (pairs.length < n) return null;
+    // the fairest pairs first, the roomier ones before those tucked against the edge, with a shuffle among equals
+    const least = Math.min(...pairs.map(q => q.diff));
+    const fair = pairs.filter(q => q.diff <= least + 1).sort((x, y) => y.room - x.room);
+    const ranked = fair.slice(0, Math.max(n, Math.ceil(fair.length / 2))).sort((x, y) => x.luck - y.luck)
+      .concat(fair.slice(Math.max(n, Math.ceil(fair.length / 2))), pairs.filter(q => q.diff > least + 1).sort((x, y) => x.diff - y.diff));
+    const near = (a, b) => DIRS.some(([dx, dr]) => s.tiles[a].x + dx === s.tiles[b].x && s.tiles[a].r + dr === s.tiles[b].r);
+    const chosen = [];
+    for (const q of ranked) {
+      if (chosen.length === n) break;
+      if (chosen.some(c => [c.i, c.j].some(t => near(t, q.i) || near(t, q.j)))) continue;
+      chosen.push(q);
+    }
+    if (chosen.length < n) return null;
+    const out = [[], []];
+    chosen.forEach(q => { const flip = Math.random() < .5; out[0].push(flip ? q.j : q.i); out[1].push(flip ? q.i : q.j); });
+    return out;
   }
   function newGame(keepStarter) {
     if (!keepStarter) starter = 1 - starter;
     st = { tiles: newBoard(), pens: [], fish: [0, 0], floes: [0, 0], phase: 'place', turn: starter, out: [false, false] };
-    if (pens === 'one') {
-      let at = fairStart(st);
-      for (let k = 0; !at && k < 60; k++) { st.tiles = newBoard(); at = fairStart(st); }
-      st.pens = [{ p: 0, t: at[0] }, { p: 1, t: at[1] }]; st.phase = 'move';
-      lastMsg = 'The penguins hop on'; setTimeout(sPlace, 60);
+    lastMsg = '';
+    // the penguins hop on to fair floes straight away (on the rare board with no fair set, a fresh board is dealt;
+    // failing that, players place them by hand as before)
+    let at = fairStart(st, perPlayer());
+    for (let k = 0; !at && k < 80; k++) { st.tiles = newBoard(); at = fairStart(st, perPlayer()); }
+    if (at) {
+      st.pens = [];
+      for (let k = 0; k < perPlayer(); k++) st.pens.push({ p: 0, t: at[0][k] }, { p: 1, t: at[1][k] });
+      st.phase = 'move'; lastMsg = 'The penguins hop on'; setTimeout(sPlace, 60);
     }
-    rebuildIndex(); hist = []; sel = -1; anims = []; lastMsg = ''; busy = false; persist(); layout(); render(); draw(); maybeCpu();
+    rebuildIndex(); hist = []; sel = -1; anims = []; busy = false; autoSelect(); persist(); layout(); render(); draw(); maybeCpu();
   }
 
   /* ---------- rules ---------- */
@@ -423,12 +443,17 @@ window.BB = (() => {
     setTimeout(() => { busy = false; retireIslands(st); nextTurn(); afterTurn(); }, dur + 250);
     render();
   }
-  function afterTurn() { persist(); render(); draw(); maybeCpu(); }
+  function autoSelect() {
+    if (st.phase !== 'move' || isCpu(st.turn)) { sel = -1; return; }
+    const mine = st.pens.map((pn, k) => k).filter(k => st.pens[k].p === st.turn && st.pens[k].t >= 0 && movesFrom(st.pens[k].t).length);
+    if (!mine.includes(sel)) sel = mine.length ? mine[Math.floor(Math.random() * mine.length)] : -1;
+  }
+  function afterTurn() { autoSelect(); persist(); render(); draw(); maybeCpu(); }
   function undo() {
     if (busy || !hist.length) return;
     do { const h = hist.pop(); st = h.st; lastMsg = h.lastMsg; } while (hist.length && isCpu(st.turn) && st.phase !== 'over');
     if (st.phase === 'over' && hist.length) { const h = hist.pop(); st = h.st; lastMsg = h.lastMsg; }
-    rebuildIndex(); sel = -1; anims = []; persist(); render(); draw(); tone(600, .08, 'sine', .03, 0, -220);
+    rebuildIndex(); sel = -1; anims = []; autoSelect(); persist(); render(); draw(); tone(600, .08, 'sine', .03, 0, -220);
   }
 
   /* ---------- the computer: looks one reply ahead, and values floes it can still reach ---------- */
@@ -618,17 +643,21 @@ window.BB = (() => {
   }
   cv.addEventListener('pointerdown', e => {
     audio(); if (busy || st.phase === 'over' || isCpu(st.turn)) return;
-    const i = hit(e.clientX, e.clientY); if (i < 0) { sel = -1; return; }
+    const i = hit(e.clientX, e.clientY); if (i < 0) return;
     if (st.phase === 'place') { if (placeable(i)) place(i); else { sNope(); lastMsg = st.tiles[i].fish !== 1 ? 'Penguins start on a floe with one fish' : 'There’s already a penguin there'; render(); } return; }
     const k = penOn(i);
     if (k >= 0 && st.pens[k].p === st.turn) {
-      if (!movesFrom(i).length) { sNope(); lastMsg = 'That penguin is boxed in. Try another'; sel = -1; render(); return; }
-      sel = sel === k ? -1 : k; if (sel >= 0) sPick(); render(); return;
+      if (!movesFrom(i).length) { sNope(); lastMsg = 'That penguin is boxed in. Try another'; render(); return; }
+      if (sel !== k) { sel = k; sPick(); lastMsg = ''; } render(); return;
     }
     if (sel >= 0 && movesFrom(st.pens[sel].t).includes(i)) { move(sel, i); return; }
+    // not the chosen penguin's floe, but one of your others can get there: send that one
+    const can = st.pens.map((pn, q) => q).filter(q => st.pens[q].p === st.turn && st.pens[q].t >= 0 && movesFrom(st.pens[q].t).includes(i));
+    if (can.length === 1) { move(can[0], i); return; }
+    if (can.length > 1) { sNope(); lastMsg = 'More than one of your penguins can get there: tap the one to send'; render(); return; }
     if (k >= 0) { sNope(); lastMsg = `That's ${names[st.pens[k].p]}'s penguin`; } else if (sel < 0) lastMsg = 'Tap one of your penguins first';
     else { sNope(); lastMsg = 'Penguins slide in straight lines, and can’t jump gaps or other penguins'; }
-    sel = -1; render();
+    autoSelect(); render();
   });
 
   /* ---------- the panels ---------- */
@@ -650,12 +679,12 @@ window.BB = (() => {
     if (st.phase === 'over') { const w = winner(); $('status').innerHTML = w < 0 ? 'A draw! Fish for everyone 🐟' : `${nm(w)} wins! 🎉`; }
     else if (isCpu(st.turn)) $('status').innerHTML = `${nm(1)} is thinking…`;
     else if (st.phase === 'place') $('status').innerHTML = `${nm(st.turn)}: place a penguin on a one-fish floe`;
-    else $('status').innerHTML = sel >= 0 ? `${nm(st.turn)}: slide to a glowing floe` : `${nm(st.turn)}'s turn · pick a penguin`;
+    else $('status').innerHTML = sel >= 0 ? `${nm(st.turn)}: tap a glowing floe` + (st.pens.filter(pn => pn.p === st.turn && pn.t >= 0 && movesFrom(pn.t).length).length > 1 ? ' · or tap another penguin' : '') : `${nm(st.turn)}'s turn · pick a penguin`;
     const left = st.tiles.filter(t => !t.gone).length;
     $('left').textContent = st.phase === 'over' ? `${st.fish[0]} fish to ${st.fish[1]}` + (st.fish[0] === st.fish[1] ? ` · floes ${st.floes[0]} to ${st.floes[1]}` : '') + ' · Tap New game for a rematch'
       : lastMsg ? `${lastMsg} · ${left} floes left` : `${left} floes left`;
   }
-  function persist() { try { localStorage.setItem('fishyfloes', JSON.stringify({ names, wins, size, mode, pens, muted, starter, game: st && st.phase !== 'over' ? { st, size, pens } : null })); } catch (e) {} }
+  function persist() { try { localStorage.setItem('fishyfloes', JSON.stringify({ names, wins, size, mode, penMode: pens, muted, starter, game: st && st.phase !== 'over' ? { st, size, pens } : null })); } catch (e) {} }
 
   /* ---------- confetti ---------- */
   const ccv = $('confetti'), cx = ccv.getContext('2d'); let bits = [], raf = 0;
@@ -697,10 +726,10 @@ window.BB = (() => {
   addEventListener('resize', () => { layout(); draw(); });
 
   segs(); $('sound').textContent = muted ? '🔇' : '🔊';
-  if (saved && saved.st && saved.size === size && (saved.pens || 'team') === pens) { st = saved.st; rebuildIndex(); layout(); render(); maybeCpu(); }
+  if (saved && saved.st && saved.size === size && (saved.pens || 'team') === pens) { st = saved.st; rebuildIndex(); autoSelect(); layout(); render(); maybeCpu(); }
   else newGame(true);
   requestAnimationFrame(frame);
-  if (DEBUG) window.__ff = { get st() { return st; }, place, move, movesFrom, penMoves, canMove, get busy() { return busy; }, get sel() { return sel; }, pos, cpuMove, cpuPlace, newGame, undo, islandsOf, bestHaul, retireIslands, fairStart, get hist() { return hist.length; } };
+  if (DEBUG) window.__ff = { get st() { return st; }, place, move, movesFrom, penMoves, canMove, get busy() { return busy; }, get sel() { return sel; }, pos, cpuMove, cpuPlace, newGame, undo, autoSelect, islandsOf, bestHaul, retireIslands, fairStart, get hist() { return hist.length; } };
 })();
 </script>
 <script id="pub-kit-says">
