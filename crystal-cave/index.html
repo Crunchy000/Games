@@ -313,7 +313,7 @@ document.addEventListener('click', e => {
 const $ = id => document.getElementById(id);
 const stage = $('stage'), cv = $('game'), ctx = cv.getContext('2d'), wantCv = $('want'), wctx = wantCv.getContext('2d');
 // the cave is a wide world of its own; the screen is a camera on it
-const WORLD_W = 1900, WORLD_H = 1150;
+const WORLD_W = 1200, WORLD_H = 1150;   // about three phone screens across at normal zoom
 let W = WORLD_W, H = WORLD_H, DPR = 1, BDPR = 1, sparks = [], motes = [];
 /* ---------- seeded randomness and noise ---------- */
 let rnd = Math.random;
@@ -602,9 +602,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 13, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 15, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 13) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 15) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -637,7 +637,9 @@ function planCave() {
   // every formation: where it grows, which way, how big, and its own seed so it's drawn the same every time
   const slots = [], seedOf = () => (rnd() * 2147483647) | 0;
   const put = (li, x, y, ang, size) => slots.push({ li, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 });
-  const stals = [], SIZES = [[25, 42], [28, 50], [32, 60], [38, 78]], GAP = [1.75, 1.55, 1.4, 1.3];   // room between neighbours round each rim
+  // sizes on a bell curve: most near the middle of each ring's range, few at the ends, and the ranges kept narrow
+  const bell = (a, b) => a + (b - a) * (rnd() + rnd() + rnd()) / 3;
+  const stals = [], SIZES = [[29, 41], [32, 47], [36, 54], [41, 63]], GAP = [1.75, 1.55, 1.4, 1.3];   // room between neighbours round each rim
   // place up to max formations on layer li's visible rock face, clear of the ones already there; they go in before index first
   const scatter = (li, first, max, sizeOf) => {
     const L = layers[li], mine = slots.slice(first), band = [];
@@ -660,31 +662,38 @@ function planCave() {
     const first = slots.length;
     for (let i = 0; i < n; i++) {
       const t = start + i / n * Math.PI * 2 + R(-.06, .06), [x, y] = inRock(L.sh, t, R(-6, 2)), inward = Math.atan2(L.sh.cy - y, L.sh.cx - x);
-      if (x > 6 && x < W - 6 && y > 6 && y < H - 6) put(li, x, y, inward + R(-.35, .35), R(sz[0], sz[1]) * scale);
+      if (x > 6 && x < W - 6 && y > 6 && y < H - 6) put(li, x, y, inward + R(-.35, .35), bell(sz[0], sz[1]) * scale);
     }
     // and a row along each ledge's floor
     for (let i = 0, nf = Math.round(L.sh.rx * 1.2 / ((sz[0] + sz[1]) / 2 * scale * 1.5)); i < nf; i++) {
       const x = R(L.sh.x0 + L.sh.rx * .2, L.sh.x1 - L.sh.rx * .2), y = L.sh.floor(x) + R(2, 10);
-      if (y < H - 6) put(li, x, y, -Math.PI / 2 + R(-.5, .5), R(sz[0] * .85, sz[1] * .8) * scale);
+      if (y < H - 6) put(li, x, y, -Math.PI / 2 + R(-.5, .5), bell(sz[0] * .9, sz[1] * .88) * scale);
     }
     if (li === NEAR - 1) { const x = L.sh.cx + R(-1, 1) * L.sh.rx * .3; put(li, x, L.sh.floor(x) + 5, -Math.PI / 2 + R(-.15, .15), 190); slots[slots.length - 1].centre = true; }
     // crystals scattered across the rock face between this ring and the next, drawn first so the rim's crystals sit over them
-    scatter(li, first, Math.round(n * .8), () => R(sz[0], sz[1]) * scale * R(.8, 1));
+    scatter(li, first, Math.round(n * .8), () => bell(sz[0], sz[1]) * scale);
   });
   { const sh = layers[NEAR].sh, perim = Math.PI * Math.sqrt(2 * (sh.rx ** 2 + sh.ry ** 2)), n = Math.round(perim / (92 * scale * 1.2)), start = R(0, Math.PI * 2), first = slots.length;
     for (let i = 0; i < n; i++) {
       const t = start + i / n * Math.PI * 2 + R(-.1, .1), [x, y] = inRock(sh, t, R(-4, 10)), inward = Math.atan2(sh.cy - y, sh.cx - x);
-      if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(NEAR, x, y, inward + R(-.4, .4), R(66, 120) * scale);
+      if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(NEAR, x, y, inward + R(-.4, .4), bell(70, 104) * scale);
     }
-    scatter(NEAR, first, 12, () => R(50, 96) * scale); }
-  // which formations can be hunted: big enough to tap, on screen, and not mostly behind nearer rock or crystals
+    scatter(NEAR, first, 12, () => bell(58, 86) * scale); }
+  // drawn from the back of the cave to the front: ring by ring, and within a ring from the top of the screen down
+  slots.sort((a, b) => a.li - b.li || a.y - b.y);
+  // how much of each formation is hidden: by nearer rock in front of it, and by formations drawn over it
+  const lens = (r1, r2, d) => { if (d >= r1 + r2) return 0; if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
+    const a = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)), b = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2)); return a + b - .5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)); };
+  const probe = [[0, 0]]; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; probe.push([Math.cos(a) * .55, Math.sin(a) * .55], [Math.cos(a + .39) * .9, Math.sin(a + .39) * .9]); }
   slots.forEach((s, i) => {
     s.i = i;
+    const byRock = probe.filter(([a, b]) => !layers.every((L, j) => j <= s.li || inPoly(L.sh.pts, s.cx + a * s.r, s.cy + b * s.r))).length / probe.length;
+    let hid = 0;
+    for (let k = i + 1; k < slots.length; k++) { const o = slots[k]; if (Math.abs(o.cy - s.cy) > o.r + s.r) continue; hid += lens(s.r, o.r * .85, Math.hypot(o.cx - s.cx, o.cy - s.cy)); }
+    s.hidden = Math.min(1, byRock + hid / (Math.PI * s.r * s.r));
     const onScreen = s.cx > s.r * .6 && s.cx < W - s.r * .6 && s.cy > s.r * .6 && s.cy < H - s.r * .6;
-    const clear = layers.every((L, j) => j <= s.li || [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => inPoly(L.sh.pts, s.cx + a * s.r * .5, s.cy + b * s.r * .5)));
-    const covered = slots.some((o, k) => k > i && Math.hypot(o.cx - s.cx, o.cy - s.cy) < (o.r + s.r) * .55 && o.r > s.r * .5);
-    s.huntable = !s.centre && onScreen && clear && !covered && s.r >= 15;
-    s.spare = !s.centre && onScreen && clear && !slots.some((o, k) => k > i && Math.hypot(o.cx - s.cx, o.cy - s.cy) < (o.r + s.r) * .4 && o.r > s.r * .7) && s.r >= 11;   // a fallback if a cave runs short
+    s.huntable = !s.centre && onScreen && s.hidden <= .5 && s.r >= 15;   // never a hunt crystal if more than half of it is covered
+    s.spare = !s.centre && onScreen && s.hidden <= .5 && s.r >= 11;       // a fallback if a cave runs short
   });
   // the hunted ones, spread about; everything else is a lookalike or another kind
   const pool = shuffle(slots.filter(s => s.huntable)).concat(shuffle(slots.filter(s => s.spare && !s.huntable))), counts = [];
