@@ -24,7 +24,7 @@
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
 }</script>
 <title>Crystal Cave</title>
-<meta name="description" content="A cosy hidden-crystal hunt through rings of rock or across a glittering crystal floor. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, among dozens of lookalikes, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A cosy hidden-crystal hunt through rings of rock or across a glittering crystal floor. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://www.bearandbean.uk/crystal-cave/">
 <style>
   :root { --bg:#efe7f1; --ink:#33283f; --muted:#85789a; --panel:#e2d6e8; --card:#fbf7fc; --accent:#8a4fd0; }
@@ -300,7 +300,7 @@ document.addEventListener('click', e => {
   <h2>Crystal Cave</h2>
   <div class="pk-steps">
     <section class="pk-step"><div class=pk-step-art>💎</div><h3>Find the crystal</h3><p>Bear and Bean are collecting one special crystal. Find every one hidden in the cave that matches it: same <b>shape, colour and markings</b>.</p></section>
-    <section class="pk-step"><div class=pk-step-art>👀</div><h3>Watch for lookalikes</h3><p>The cave is full of crystals that <b>almost</b> match: the same colour in another shape, or the same shape with other markings.</p></section>
+    <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check all three</h3><p>A match is the same <b>mineral</b>, the same <b>shape</b> and the same <b>marking</b>. Some crystals share one of those, so look closely.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p>The cave is wide! <b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom in close. Tap the little map to jump.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: glassy and shiny, with a twinkle. <b>Frosted tips</b>: rough, matte white ends with no shine. <b>Banded</b>: stripes across. <b>Gold fractures</b>: gold cracks. <b>Two-tone</b>: a second colour at the tip.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Tap to collect</h3><p><b>Tap</b> a match to collect it. A wrong tap costs 10 points; a hint 🔍 costs 25. Fossils 🐚 hidden in the rock are a bonus.</p></section>
@@ -638,9 +638,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 23, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 24, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 23) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 24) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -669,7 +669,10 @@ function planCave() {
     add(combos.find(c => c.shape === h.shape && c.pal !== h.pal && c.trait === h.trait && !isHunt(c) && !decoys.includes(c)));
     add(combos.find(c => c.pal === h.pal && c.shape !== h.shape && !isHunt(c) && !decoys.includes(c)));
   }
-  const fillers = combos.filter(c => !isHunt(c)).slice(0, 16);
+  // everything else in the cave: kinds that share at most one feature (mineral, shape or marking) with any crystal being hunted, so there are as few lookalikes as possible
+  const shared = (a, b) => (a.pal === b.pal) + (a.shape === b.shape) + (a.trait === b.trait);
+  let fillers = combos.filter(c => !isHunt(c) && hunts.every(h => shared(c, h) <= 1)).slice(0, 24);
+  if (fillers.length < 8) fillers = combos.filter(c => !isHunt(c)).slice(0, 24);   // never short of kinds
   const theme = [hunts[0].pal, hunts[1].pal, hunts[2].pal];
   if (S.mode === 'floor') return planFloor({ hunts, decoys, fillers, theme, rock });
   // five rings of rock, from a small deep pocket out to the rocks right in front of you
@@ -755,7 +758,7 @@ function assignHunts(slots, hunts, decoys, fillers) {
     }
     counts.push(got.length);
   });
-  for (const s of slots) if (!s.type) s.type = rnd() < .72 && decoys.length ? pick(decoys) : pick(fillers);
+  for (const s of slots) if (!s.type) s.type = pick(fillers);
   return counts;
 }
 // the crystal floor: a flat floor of mineral crust seen in perspective like a meadow, fading into darkness at the back
