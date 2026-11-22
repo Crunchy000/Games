@@ -77,6 +77,17 @@
   }
   .note { position:absolute; left:50%; top:10px; transform:translateX(-50%); background:rgba(255,250,243,.94); color:#3b2e22; font-weight:800; font-size:.85rem; padding:7px 14px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2); opacity:0; transition:opacity .2s; pointer-events:none; white-space:nowrap; max-width:calc(100% - 20px); overflow:hidden; text-overflow:ellipsis; z-index:3; }
   .note.show { opacity:1; }
+  /* a little loading screen while a meadow is planted, so nothing jumps about as it opens */
+  #loading { position:absolute; inset:0; z-index:4; display:grid; place-items:center; background:linear-gradient(#a8d5f2, #e8f4dc 38%, #68984c 40%, #2f5a22);
+    opacity:0; pointer-events:none; transition:opacity .35s; }
+  #loading.show { opacity:1; pointer-events:auto; transition:none; }
+  #loading > div { display:flex; flex-direction:column; align-items:center; gap:10px; background:rgba(255,250,243,.94); color:#3b2e22; font-weight:800; font-size:.95rem; padding:16px 22px 14px; border-radius:18px; box-shadow:0 6px 18px rgba(0,0,0,.2); }
+  #loading svg { width:46px; height:46px; }
+  #loading .spin { transform-origin:0 0; animation:spin 2.4s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #loading .spin { animation:none; } }
+  #tray.fresh #want { animation:pop .6s ease; }
+  @keyframes pop { 40% { transform:scale(1.12); } }
   .ov { position:fixed; inset:0; background:rgba(40,25,10,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:10; }
   .ov.show { display:flex; animation:fade .25s ease; }
   @keyframes fade { from { opacity:0; } }
@@ -186,12 +197,14 @@ window.BB = (() => {
       <button class="ib pk-home" id="bSound" aria-label="Sound"></button>
     </div>
   </header>
-  <div class="info"><div><small>Round</small><span id="rnd">1</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍<span class="lbl"> Hint</span></button><button class="tool sm pk-chip" id="bNew" aria-label="New meadow">↻</button></div>
+  <div class="info"><div><small>Hunt</small><span id="rnd">1/20</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍<span class="lbl"> Hint</span></button><button class="tool sm pk-chip" id="bNew" aria-label="New meadow">↻</button></div>
   <div class="main">
   <div id="stage" aria-label="The meadow. Pinch to zoom, drag to look around, tap a matching flower to pick it.">
     <canvas id="game"></canvas>
     <canvas id="mini" aria-label="Map of the whole meadow: tap or drag to look there"></canvas>
     <div class="note" id="note" role="status" aria-live="polite"></div>
+    <div id="loading" class="show" role="status"><div><svg viewBox="-20 -20 40 40" aria-hidden="true"><g class="spin">
+      <ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ffd13b"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ff6b8b" transform="rotate(72)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#6eb5ff" transform="rotate(144)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#c59cff" transform="rotate(216)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ff5c38" transform="rotate(288)"/></g><circle r="4.5" fill="#4a230b"/></svg><span>Planting the meadow…</span></div></div>
     <div class="zoom"><button class="tool pk-chip" id="bIn" aria-label="Zoom in">＋</button><button class="tool pk-chip" id="bOut" aria-label="Zoom out">－</button></div>
   </div>
   <div id="tray">
@@ -214,13 +227,13 @@ window.BB = (() => {
     <li>Spot a lucky <b>four-leaf clover</b> 🍀 for bonus points.</li>
     <li>Stuck? A <b>hint</b> (25 points) takes you to one.</li>
   </ul>
-  <p>Each round asks for more flowers, and the day moves on from morning to starlight. Tap the time to change it whenever you like.</p>
+  <p>Each meadow has <b>20 flowers to hunt</b>, one after another, with more to find as you go. The day moves on every five hunts, from morning to starlight; tap the time to change it whenever you like. Tap ↻ for a whole new meadow.</p>
   <div class="row2"><button class="btn pk-btn" data-close>Let's look</button></div>
 </div></div>
 
 <div class="ov" id="ovWin"><div class="card pk-card">
   <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
-  <h2 id="winTitle">Round 1 cleared!</h2>
+  <h2 id="winTitle">Meadow cleared!</h2>
   <div class="stats" id="winStats"></div>
   <div id="winGold"></div>
   <div class="pk-says" data-lines='["What a lovely posy! Bean, put the kettle on.", "You could spot a daisy in a snowstorm!", "Mind the bees, they were here first.", "Every one a perfect match. Sharp eyes!"]'><img src="../icons/bear.png?v=406624f3" alt=""><div><b>Bear says</b><span>What a lovely posy! Bean, put the kettle on.</span></div></div>
@@ -418,13 +431,16 @@ const keysHeld = new Set();
 let currentTimeIndex = 0;
 let fireflies = [];
 
-/* ---------- saved progress: round, score, gold paws ---------- */
-let S = { v: 1, round: 1, score: 0, best: 0, golds: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
-try { const s = JSON.parse(localStorage.getItem('findaflower') || 'null'); if (s && s.v === 1) S = Object.assign(S, s); } catch (e) {}
+/* ---------- saved progress: the meadow (its seed), the hunt, what has been picked, score and gold paws ---------- */
+let S = { v: 2, meadow: 1, seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, golds: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+try { const s = JSON.parse(localStorage.getItem('findaflower') || 'null'); if (s && s.v === 2) S = Object.assign(S, s); else if (s) ['score', 'best', 'golds', 'seenHelp'].forEach(k => { if (k in s) S[k] = s[k]; }); } catch (e) {}
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;
 const save = () => { S.best = Math.max(S.best, S.score); try { localStorage.setItem('findaflower', JSON.stringify(S)); } catch (e) {} };
 
-let round = S.round;
+const HUNTS = 20, PER_TIME = 5;
+const huntSize = h => 3 + Math.floor((h - 1) / PER_TIME);   // 3, 4, 5 then 6 flowers a hunt
+let MP = null;   // this meadow's shape: hills, clouds, path and picnic spot
+let hunts = [], huntFlowers = [], liveFlowers = [], pickedFlowers = [];
 let score = S.score;
 let targetSpec = null;
 let targetsRemaining = 0;
@@ -443,12 +459,16 @@ let hintTimer = 0;
 let hoverWorldX = -9999;
 let hoverWorldY = -9999;
 
+    // a meadow is laid out from its seed, so repainting it (or reopening the game) draws exactly the same meadow
+    const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    let rng = Math.random;
+    function seeded(n, fn) { const keep = rng; rng = mulberry(n); try { return fn(); } finally { rng = keep; } }
     function rand(min, max) {
-      return Math.random() * (max - min) + min;
+      return rng() * (max - min) + min;
     }
 
     function pick(arr) {
-      return arr[Math.floor(Math.random() * arr.length)];
+      return arr[Math.floor(rng() * arr.length)];
     }
 
     function getMinZoom() {
@@ -493,12 +513,12 @@ function showToast(t) { const n = $('note'); n.textContent = t; n.classList.add(
 
 function fitApp() { const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight) || innerHeight; document.documentElement.style.setProperty('--app-h', h + 'px'); }
 
-// the meadow is sized from the screen when a round starts, and stays that size until the next round,
+// the meadow is sized from the screen when it is planted, and stays that size until the next meadow,
 // so turning the phone or the address bar sliding away never reshuffles the field
 function sizeWorld() {
   worldW = Math.max(1600, Math.floor(viewW * 2.3));
   worldH = Math.max(1050, Math.floor(viewH * 1.65));
-  bdpr = Math.min(dpr, Math.sqrt(14e6 / (worldW * worldH)));
+  bdpr = Math.min(dpr, Math.sqrt(8e6 / (worldW * worldH)));
   backdropCanvas.width = Math.floor(worldW * bdpr);
   backdropCanvas.height = Math.floor(worldH * bdpr);
   bCtx.setTransform(bdpr, 0, 0, bdpr, 0, 0);
@@ -509,8 +529,10 @@ function layout() {
   dpr = Math.min(window.devicePixelRatio || 1, 2);
   const r = stage.getBoundingClientRect();
   viewW = Math.max(1, r.width); viewH = Math.max(1, r.height);
-  canvas.width = Math.floor(viewW * dpr);
-  canvas.height = Math.floor(viewH * dpr);
+  // only when the size really changes: setting a canvas's size throws its memory away and allocates it again
+  const cw = Math.floor(viewW * dpr), ch = Math.floor(viewH * dpr);
+  if (canvas.width !== cw) canvas.width = cw;
+  if (canvas.height !== ch) canvas.height = ch;
   if (!worldW) return;
   zoom = clampZoom(zoom); targetZoom = clampZoom(targetZoom);
   const c = clampCam(camX, camY, zoom); camX = c.x; camY = c.y;
@@ -518,11 +540,12 @@ function layout() {
   sizeMini();
 }
 
+// open looking at Bear and Bean's picnic
 function centreCamera() {
   zoom = targetZoom = clampZoom(1.0);
-  const centered = clampCam((worldW - viewW / zoom) * 0.5, (worldH - viewH / zoom) * 0.22, zoom);
-  camX = targetCamX = prevCamX = centered.x;
-  camY = targetCamY = prevCamY = centered.y;
+  const c = clampCam(campPos.x - viewW / zoom * 0.5, campPos.y - viewH / zoom * 0.58, zoom);
+  camX = targetCamX = prevCamX = c.x;
+  camY = targetCamY = prevCamY = c.y;
   panSwayPos = 0;
   panSwayVel = 0;
 }
@@ -557,14 +580,23 @@ const sWin = () => [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => tone(523 * Math.p
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
     // Rolling meadow crest curve across the world width (eliminates the flat horizontal line!)
+    // the rolling crest of the meadow, shaped afresh for every meadow
     function getMeadowCrestY(x) {
-      const base = worldH * 0.25;
-      return (
-        base +
-        Math.sin(x * 0.0019 + 0.5) * 34 +
-        Math.cos(x * 0.0043 - 0.3) * 16 +
-        Math.sin(x * 0.009) * 6
-      );
+      return worldH * MP.crest + Math.sin(x * MP.c1f + MP.c1p) * MP.c1a + Math.cos(x * MP.c2f + MP.c2p) * MP.c2a + Math.sin(x * 0.009 + MP.c3p) * 6;
+    }
+    const farRidgeY = x => worldH * MP.crest - MP.farLift - Math.sin(x * MP.f1f + MP.f1p) * MP.f1a - Math.cos(x * MP.f2f + MP.f2p) * MP.f2a;
+    const midRidgeY = x => worldH * MP.crest - MP.midLift - Math.cos(x * MP.m1f + MP.m1p) * MP.m1a - Math.sin(x * MP.m2f + MP.m2p) * MP.m2a;
+    function planMeadowShape() {
+      const clouds = [], n = 3 + Math.floor(rng() * 4);
+      for (let c = 0; c < n; c++) clouds.push({ x: (c + rng() * 0.7) / n, y: 0.18 + rng() * 0.36, s: 0.7 + rng() * 0.6 });
+      return {
+        crest: rand(0.22, 0.27), c1f: rand(0.0013, 0.0024), c1p: rand(0, 6.3), c1a: rand(20, 42), c2f: rand(0.0034, 0.005), c2p: rand(0, 6.3), c2a: rand(8, 20), c3p: rand(0, 6.3),
+        farLift: rand(50, 78), f1f: rand(0.001, 0.0018), f1p: rand(0, 6.3), f1a: rand(26, 50), f2f: rand(0.0022, 0.0034), f2p: rand(0, 6.3), f2a: rand(10, 24),
+        midLift: rand(18, 34), m1f: rand(0.0013, 0.0022), m1p: rand(0, 6.3), m1a: rand(18, 32), m2f: rand(0.0034, 0.005), m2p: rand(0, 6.3), m2a: rand(6, 14),
+        treeP: rand(0, 6.3), treeCut: rand(-0.5, 0.1), sunJ: rand(-0.08, 0.08), clouds,
+        path: [rand(0.5, 0.72), rand(0.2, 0.42), rand(0.4, 0.6), rand(0.58, 0.78), rand(0.66, 0.86), rand(0.5, 0.7)],
+        campX: rand(0.28, 0.72), campD: rand(0.26, 0.5)
+      };
     }
 
     function depthToWorldY(depth, xNorm = 0.5) {
@@ -589,7 +621,7 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
         found: false,
         stemHeight: isLupine ? rand(76, 128) : rand(66, 124),
         stemCurve: rand(-18, 18),
-        leafSide: Math.random() < 0.5 ? -1 : 1,
+        leafSide: rng() < 0.5 ? -1 : 1,
         headTilt: isLupine ? rand(-0.08, 0.08) : rand(-0.18, 0.18),
         rotationOffset: rand(0, Math.PI * 2),
         phase: rand(0, Math.PI * 2),
@@ -985,10 +1017,6 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
       targetCtx.translate(headX, headY);
       targetCtx.rotate(fl.headTilt + swayOffset * 0.018);
 
-      if (tod.glowPetals && (fl.isTarget || fl.animated)) {
-        targetCtx.shadowColor = fl.palette.outer;
-        targetCtx.shadowBlur = 12 * scale;
-      }
 
       if (isLupine) {
         drawLupineHead(targetCtx, fl.palette, fl.speckles, scale, fl.found);
@@ -1189,7 +1217,7 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
 
     function drawScenicHillsAndSky() {
       const tod = TIMES_OF_DAY[currentTimeIndex];
-      const baseCrest = worldH * 0.25;
+      const baseCrest = worldH * MP.crest;
 
       // 1. Multi-stop atmospheric sky gradient
       const sky = bCtx.createLinearGradient(0, 0, 0, baseCrest + 90);
@@ -1215,7 +1243,7 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
       }
 
       // 3. Sun or Crescent Moon + wide atmospheric corona
-      const orbX = worldW * tod.sunX;
+      const orbX = worldW * Math.min(0.9, Math.max(0.1, tod.sunX + MP.sunJ));
       const orbY = baseCrest * tod.sunY;
       const haloGrad = bCtx.createRadialGradient(orbX, orbY, 10, orbX, orbY, 320);
       haloGrad.addColorStop(0, tod.sunColor);
@@ -1247,11 +1275,10 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
       bCtx.fillRect(0, baseCrest - 75, worldW, 100);
 
       // 5. Layered volumetric clouds with sunlit crowns and shaded bases
-      const cloudSeeds = [0.09, 0.28, 0.49, 0.68, 0.87];
-      for (let c = 0; c < cloudSeeds.length; c++) {
-        const cx = worldW * cloudSeeds[c];
-        const cy = baseCrest * (0.24 + (c % 3) * 0.15);
-        const cScale = 0.85 + (c % 2) * 0.32;
+      for (let c = 0; c < MP.clouds.length; c++) {
+        const cx = worldW * MP.clouds[c].x;
+        const cy = baseCrest * MP.clouds[c].y;
+        const cScale = MP.clouds[c].s;
 
         // Cloud shaded base
         bCtx.fillStyle = tod.cloudBottom;
@@ -1274,7 +1301,7 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
       bCtx.beginPath();
       bCtx.moveTo(0, worldH);
       for (let x = 0; x <= worldW + 24; x += 24) {
-        const y = baseCrest - 64 - Math.sin(x * 0.0013 + 0.2) * 42 - Math.cos(x * 0.0029) * 20;
+        const y = farRidgeY(x);
         bCtx.lineTo(x, y);
       }
       bCtx.lineTo(worldW, worldH);
@@ -1297,7 +1324,7 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
       bCtx.beginPath();
       bCtx.moveTo(0, worldH);
       for (let x = 0; x <= worldW + 24; x += 24) {
-        const y = baseCrest - 26 - Math.cos(x * 0.0017 - 0.6) * 28 - Math.sin(x * 0.0042) * 12;
+        const y = midRidgeY(x);
         bCtx.lineTo(x, y);
       }
       bCtx.lineTo(worldW, worldH);
@@ -1310,8 +1337,8 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
 
       // Distant soft tree copses & hedgerows along the mid-hill ridge
       for (let tx = 40; tx < worldW - 40; tx += 92) {
-        if (Math.sin(tx * 0.013) < -0.25) continue;
-        const ridgeY = baseCrest - 26 - Math.cos(tx * 0.0017 - 0.6) * 28 - Math.sin(tx * 0.0042) * 12;
+        if (Math.sin(tx * 0.013 + MP.treeP) < MP.treeCut) continue;
+        const ridgeY = midRidgeY(tx);
         const clusterCount = 2 + (Math.floor(tx) % 3);
         for (let k = 0; k < clusterCount; k++) {
           const bx = tx + k * 16;
@@ -1357,9 +1384,8 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
 function inPicnic(fx, fy) { return Math.abs(fx - campPos.x) < 68 * campPos.scale && Math.abs(fy - campPos.y) < 34 * campPos.scale; }
 
 function initCampPos() {
-  const xNorm = 0.50;
-  const depth = 0.33;
-  campPos = { xNorm, depth, x: xNorm * worldW, y: depthToWorldY(depth, xNorm), scale: 1.18 };
+  const xNorm = MP.campX, depth = MP.campD;
+  campPos = { xNorm, depth, x: xNorm * worldW, y: depthToWorldY(depth, xNorm), scale: depthToScale(depth) * 1.84 };
 }
 
 // Bear and Bean's picnic picture (and, until it loads or if it can't, their faces on a drawn blanket);
@@ -1426,7 +1452,7 @@ function drawBearAndBeanCampStatic(targetCtx) {
       targetCtx.translate(bx, by);
 
       // Draw collected flowers & clovers nestled inside the basket opening
-      const foundTargets = targetFlowers.filter((f) => f.found);
+      const foundTargets = pickedFlowers.slice(-6);
       const foundClovers = luckyClovers.filter((c) => c.found);
 
       for (let i = 0; i < foundTargets.length; i++) {
@@ -2068,6 +2094,9 @@ function drawBearAndBeanCampStatic(targetCtx) {
     }
 
     function bakeStaticBackdrop(staticFlowers) {
+      return seeded(S.seed * 7 + 1, () => bakeMeadow(staticFlowers));
+    }
+    function bakeMeadow(staticFlowers) {
       drawScenicHillsAndSky();
       initCampPos();
 
@@ -2076,15 +2105,9 @@ function drawBearAndBeanCampStatic(targetCtx) {
       // Subtle winding footpath landmark
       bCtx.save();
       bCtx.beginPath();
-      bCtx.moveTo(0, worldH * 0.62);
-      bCtx.bezierCurveTo(
-        worldW * 0.32,
-        worldH * 0.48,
-        worldW * 0.66,
-        worldH * 0.78,
-        worldW,
-        worldH * 0.56
-      );
+      const pp = MP.path;
+      bCtx.moveTo(0, worldH * pp[0]);
+      bCtx.bezierCurveTo(worldW * pp[1], worldH * pp[2], worldW * pp[3], worldH * pp[4], worldW, worldH * pp[5]);
       bCtx.strokeStyle = tod.pathColor;
       bCtx.lineWidth = 42;
       bCtx.lineCap = "round";
@@ -2097,11 +2120,11 @@ function drawBearAndBeanCampStatic(targetCtx) {
       for (let g = 0; g < grassCount; g++) {
         items.push({
           kind: "grass",
-          depth: Math.pow(Math.random(), 1.45),
-          xNorm: Math.random(),
+          depth: Math.pow(rng(), 1.45),
+          xNorm: rng(),
           height: rand(24, 66),
           curve: rand(-16, 16),
-          tone: Math.random()
+          tone: rng()
         });
       }
 
@@ -2109,8 +2132,8 @@ function drawBearAndBeanCampStatic(targetCtx) {
       for (let c = 0; c < cloverCount; c++) {
         items.push({
           kind: "clover",
-          depth: Math.pow(Math.random(), 0.9),
-          xNorm: Math.random(),
+          depth: Math.pow(rng(), 0.9),
+          xNorm: rng(),
           phase: rand(0, Math.PI * 2),
           fourLeaf: false
         });
@@ -2120,11 +2143,11 @@ function drawBearAndBeanCampStatic(targetCtx) {
       for (let ct = 0; ct < cattailCount; ct++) {
         items.push({
           kind: "cattail",
-          depth: Math.pow(Math.random(), 1.2),
-          xNorm: Math.random(),
+          depth: Math.pow(rng(), 1.2),
+          xNorm: rng(),
           height: rand(105, 155),
           lean: rand(-14, 14),
-          double: Math.random() < 0.55
+          double: rng() < 0.55
         });
       }
 
@@ -2190,7 +2213,7 @@ function drawBearAndBeanCampStatic(targetCtx) {
       bCtx.closePath();
       bCtx.clip();
 
-      const baseCrest = worldH * 0.25;
+      const baseCrest = worldH * MP.crest;
       const haze = bCtx.createLinearGradient(0, baseCrest - 30, 0, baseCrest + (worldH - baseCrest) * 0.24);
       haze.addColorStop(0, tod.hazeColor);
       haze.addColorStop(1, "rgba(232, 245, 218, 0)");
@@ -2202,89 +2225,108 @@ function drawBearAndBeanCampStatic(targetCtx) {
 function rebake() { bakeStaticBackdrop(cachedStaticFlowers); paintMiniArt(); }
 
 /* ---------- rounds ---------- */
-function startRound(next) {
-  if (next) round++;
-  S.round = round; S.misses = 0; S.hints = 0; save();
-  roundDone = false;
-  currentTimeIndex = (round - 1) % TIMES_OF_DAY.length;
-  $('bTime').textContent = TIMES_OF_DAY[currentTimeIndex].label;
-  hintedFlower = null;
-  hintTimer = 0;
-  sparkles = [];
+/* ---------- meadows and hunts: each meadow has 20 flowers to hunt, one after another ---------- */
+function newMeadow(fresh) {
+  if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.clovers = []; S.misses = 0; S.hints = 0; save(); }
+  if (S.hunt > HUNTS) S.hunt = HUNTS;
+  roundDone = false; hintedFlower = null; hintTimer = 0; sparkles = [];
 
+  // plan the meadow from its seed: its shape, the 20 flowers to hunt (no two alike), where everything grows
+  let staticFlowers = [];
+  seeded(S.seed, () => {
+    MP = planMeadowShape();
+    const combos = [];
+    ARCHETYPES.forEach(a => PALETTES.forEach(pl => combos.push({ arch: a, palette: pl })));
+    for (let i = combos.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [combos[i], combos[j]] = [combos[j], combos[i]]; }
+    hunts = combos.slice(0, HUNTS).map(c => ({ arch: c.arch, palette: c.palette, speckles: rng() < 0.5 }));
+    const taken = new Set(hunts.map(h => h.arch.key + '|' + h.palette.label));
+
+    luckyClovers = [];
+    for (let c = 0; c < 3; c++) {
+      const depth = rand(0.32, 0.92), xNorm = rand(0.06, 0.94);
+      luckyClovers.push({ xNorm, depth, phase: rand(0, Math.PI * 2), fourLeaf: true, found: false, hitRadius: Math.max(32, 6.6 * depthToScale(depth) * 2.4) });
+    }
+
+    // every hunt's flowers grow in the meadow from the start (so they're lookalikes for the other hunts), and are
+    // drawn live on top of the baked meadow, so none is ever hidden
+    huntFlowers = [];
+    hunts.forEach((spec, h) => {
+      for (let t = 0; t < huntSize(h + 1); t++) {
+        const fl = makeFlower(rand(0.06, 0.94), rand(0.28, 0.92), spec, false, true);
+        fl.hunt = h; fl.slot = t; huntFlowers.push(fl);
+      }
+    });
+
+    // about a thousand other flowers, never one of the kinds being hunted; the first two dozen sway as you pan
+    movingFlowers = [];
+    for (let i = 0; i < 980; i++) {
+      const isAnimated = i < 24;
+      const depth = isAnimated ? rand(0.25, 0.94) : Math.pow(rng(), 1.75);
+      let dArch, dPalette;
+      do { dArch = pick(ARCHETYPES); dPalette = pick(PALETTES); } while (taken.has(dArch.key + '|' + dPalette.label));
+      const fl = makeFlower(rng(), depth, { arch: dArch, palette: dPalette, speckles: rng() < 0.45 }, false, isAnimated);
+      (isAnimated ? movingFlowers : staticFlowers).push(fl);
+    }
+  });
+  luckyClovers.sort((a, b) => a.depth - b.depth);
+  S.clovers.forEach(i => { if (luckyClovers[i]) luckyClovers[i].found = true; });
+
+  // flowers already picked in earlier hunts (when coming back to a meadow part way through)
+  pickedFlowers = [];
+  huntFlowers.forEach(fl => { if (fl.hunt < S.hunt - 1 || (fl.hunt === S.hunt - 1 && S.found.includes(fl.slot))) { fl.found = true; pickedFlowers.push(fl); } });
+  liveFlowers = movingFlowers.concat(huntFlowers).sort((a, b) => a.depth - b.depth);
+  cachedStaticFlowers = staticFlowers;
+
+  showHunt();   // the tray first, so the meadow is measured at its final size
   layout();
   sizeWorld();
-  centreCamera();
   sizeMini();
   initCampPos();
-
-  const arch = pick(ARCHETYPES);
-  const palette = pick(PALETTES);
-  const speckles = Math.random() < 0.5;
-  targetSpec = { arch, palette, speckles };
-
-  totalTargetsThisRound = Math.min(6, 3 + Math.floor(round / 2));
-  targetsRemaining = totalTargetsThisRound;
-
-  $('wantName').textContent = `${palette.label} ${arch.name}`;
-  $('wantTraits').textContent = arch.traitText + (speckles ? ' · speckled' : '');
-  renderTargetPreview();
-
-  targetFlowers = [];
-  luckyClovers = [];
-  movingFlowers = [];
-  const staticFlowers = [];
-
-  // 3 rare four-leaf clovers, drawn on top so they are never hidden
-  for (let c = 0; c < 3; c++) {
-    const depth = rand(0.32, 0.92);
-    const xNorm = rand(0.06, 0.94);
-    const scale = depthToScale(depth);
-    luckyClovers.push({
-      xNorm, depth, phase: rand(0, Math.PI * 2), fourLeaf: true, found: false,
-      worldX: xNorm * worldW, worldY: depthToWorldY(depth, xNorm), hitRadius: Math.max(32, 6.6 * scale * 2.4)
-    });
-  }
-  luckyClovers.sort((a, b) => a.depth - b.depth);
-
-  for (let t = 0; t < totalTargetsThisRound; t++) {
-    const depth = rand(0.28, 0.92);
-    const xNorm = rand(0.06, 0.94);
-    const tf = makeFlower(xNorm, depth, targetSpec, true, true);
-    const live = getLiveTargetWorldPos(tf);
-    tf.worldHeadX = live.x; tf.worldHeadY = live.y; tf.hitRadius = live.r;
-    targetFlowers.push(tf);
-  }
-
-  const movingCount = 24;
-  const totalDistractors = Math.min(1150, 820 + round * 40);
-  for (let i = 0; i < totalDistractors; i++) {
-    const isAnimated = i < movingCount;
-    const depth = isAnimated ? rand(0.25, 0.94) : Math.pow(Math.random(), 1.75);
-    let dArch = pick(ARCHETYPES);
-    const dPalette = pick(PALETTES);
-    // never an exact match for the bloom we're after
-    if (dPalette.label === palette.label && (dArch.key === arch.key || dArch.petals === arch.petals)) {
-      dArch = ARCHETYPES[(ARCHETYPES.indexOf(dArch) + 1) % ARCHETYPES.length];
-    }
-    const fl = makeFlower(Math.random(), depth, { arch: dArch, palette: dPalette, speckles: Math.random() < 0.45 }, false, isAnimated);
-    (isAnimated ? movingFlowers : staticFlowers).push(fl);
-  }
-
-  targetFlowers.sort((a, b) => a.depth - b.depth);
-  movingFlowers.sort((a, b) => a.depth - b.depth);
-
-  cachedStaticFlowers = staticFlowers;
+  luckyClovers.forEach(lc => { lc.worldX = lc.xNorm * worldW; lc.worldY = depthToWorldY(lc.depth, lc.xNorm); });
+  huntFlowers.forEach(fl => { const p = getLiveTargetWorldPos(fl); fl.worldHeadX = p.x; fl.worldHeadY = p.y; fl.hitRadius = p.r; });
+  centreCamera();
+  currentTimeIndex = Math.min(TIMES_OF_DAY.length - 1, Math.floor((S.hunt - 1) / PER_TIME));
+  $('bTime').textContent = TIMES_OF_DAY[currentTimeIndex].label;
   rebake();
-  initPollinators();
   initMeadowCritters();
   initFireflies();
+  startHunt();
+}
+
+// the tray: the flower to find now
+function showHunt() {
+  targetSpec = hunts[S.hunt - 1];
+  $('wantName').textContent = `${targetSpec.palette.label} ${targetSpec.arch.name}`;
+  $('wantTraits').textContent = targetSpec.arch.traitText + (targetSpec.speckles ? ' · speckled' : '');
+  renderTargetPreview();
+}
+
+function startHunt() {
+  roundDone = false; hintedFlower = null; hintTimer = 0;
+  showHunt();
+  targetFlowers = huntFlowers.filter(fl => fl.hunt === S.hunt - 1);
+  huntFlowers.forEach(fl => { fl.isTarget = fl.hunt === S.hunt - 1; });
+  totalTargetsThisRound = targetFlowers.length;
+  targetsRemaining = targetFlowers.filter(fl => !fl.found).length;
+  // the day moves on every five hunts
+  const block = Math.min(TIMES_OF_DAY.length - 1, Math.floor((S.hunt - 1) / PER_TIME));
+  if ((S.hunt - 1) % PER_TIME === 0 && block !== currentTimeIndex) {
+    currentTimeIndex = block; $('bTime').textContent = TIMES_OF_DAY[block].label; rebake();
+  }
+  initPollinators();
   updateHud();
+}
+
+function nextHunt() {
+  S.hunt++; S.found = []; save();
+  const tray = $('tray'); tray.classList.remove('fresh'); void tray.offsetWidth; tray.classList.add('fresh');
+  startHunt();
+  showToast(`Now find: ${targetSpec.palette.label} ${targetSpec.arch.name}`);
 }
 
 function updateHud() {
   const foundCount = totalTargetsThisRound - targetsRemaining;
-  $('rnd').textContent = round;
+  $('rnd').textContent = `${S.hunt}/${HUNTS}`;
   $('score').textContent = score;
   $('got').textContent = `${foundCount}/${totalTargetsThisRound}`;
   $('got').setAttribute('aria-label', `${foundCount} of ${totalTargetsThisRound} flowers found`);
@@ -2293,11 +2335,11 @@ function updateHud() {
 }
 
 function win() {
-  const gold = S.misses <= 3 && !S.hints; if (gold) S.golds++;
+  const gold = S.misses <= 10 && !S.hints; if (gold) S.golds++;
   sWin(); buzz([20, 40, 60]);
   const clovers = luckyClovers.filter(c => c.found).length;
-  $('winTitle').textContent = `Round ${round} cleared!`;
-  $('winStats').innerHTML = `<div><b>${totalTargetsThisRound}</b>flowers</div><div><b>${clovers}</b>clovers</div><div><b>${score}</b>score</div>`;
+  $('winTitle').textContent = `Meadow ${S.meadow} cleared!`;
+  $('winStats').innerHTML = `<div><b>${pickedFlowers.length}</b>flowers</div><div><b>${clovers}</b>clovers</div><div><b>${score}</b>score</div>`;
   $('winGold').innerHTML = gold ? '<span class="gold">🐾 Gold paw: sharp eyes!</span>' : '';
   save();
   $('ovWin').classList.add('show');
@@ -2488,10 +2530,12 @@ function loop(now) {
   ctx.scale(zoom, zoom);
   ctx.translate(-camX, -camY);
 
-  ctx.drawImage(backdropCanvas, camX * bdpr, camY * bdpr, visibleW * bdpr, visibleH * bdpr, camX, camY, visibleW, visibleH);
+  const sw = Math.min(visibleW * bdpr, backdropCanvas.width - camX * bdpr), sh = Math.min(visibleH * bdpr, backdropCanvas.height - camY * bdpr);
+  if (sw > 0 && sh > 0) ctx.drawImage(backdropCanvas, camX * bdpr, camY * bdpr, sw, sh, camX, camY, sw / bdpr, sh / bdpr);
 
-  for (let i = 0; i < movingFlowers.length; i++) {
-    const mf = movingFlowers[i];
+  for (let i = 0; i < liveFlowers.length; i++) {
+    const mf = liveFlowers[i];
+    if (mf.found) continue;   // picked: it's in the basket now
     const approxX = mf.xNorm * worldW;
     const approxY = depthToWorldY(mf.depth, mf.xNorm);
     if (approxX < camX - 110 || approxX > camX + visibleW + 110 || approxY < camY - 150 || approxY > camY + visibleH + 150) continue;
@@ -2511,10 +2555,6 @@ function loop(now) {
     drawCloverPatch(ctx, lc, getPanReactiveSway(lc));
   }
 
-  for (let i = 0; i < targetFlowers.length; i++) {
-    const tf = targetFlowers[i];
-    drawFlowerTo(ctx, tf, getPanReactiveSway(tf));
-  }
 
   // bees, butterflies and (after dusk) fireflies
   updateAndDrawPollinators(dt, time);
@@ -2576,7 +2616,7 @@ function flowerAt(wx, wy) {
     if (inPicnic(fx, fy)) continue;   // cleared for the picnic
     check(fl);
   }
-  movingFlowers.forEach(check);
+  liveFlowers.forEach(fl => { if (!fl.found) check(fl); });
   return best;
 }
 
@@ -2606,6 +2646,7 @@ function evaluatePickAtWorld(wx, wy) {
 
   if (hitClover && (!hitTarget || bestCloverDist < bestDist)) {
     hitClover.found = true;
+    S.clovers.push(luckyClovers.indexOf(hitClover));
     score += 75; S.score = score; save();
     spawnSparkles(hitClover.worldX, hitClover.worldY);
     sClover(); buzz(15);
@@ -2616,15 +2657,16 @@ function evaluatePickAtWorld(wx, wy) {
 
   if (hitTarget) {
     hitTarget.found = true;
+    pickedFlowers.push(hitTarget); S.found.push(hitTarget.slot);
     if (hitTarget === hintedFlower) { hintedFlower = null; hintTimer = 0; }
     targetsRemaining--;
-    score += 100 * round;
+    score += 100;
     spawnSparkles(hitTarget.worldHeadX, hitTarget.worldHeadY);
     sFound(totalTargetsThisRound - targetsRemaining - 1); buzz(12);
     if (targetsRemaining <= 0) {
       score += 150; roundDone = true;
-      showToast('That\'s the lot! +150');
-      setTimeout(win, 900);
+      if (S.hunt >= HUNTS) { showToast('That\'s the whole meadow! +150'); setTimeout(win, 900); }
+      else { showToast('That\'s the lot! +150'); setTimeout(nextHunt, 1100); }
     } else {
       showToast(`Picked! ${targetsRemaining} more to find`);
     }
@@ -2804,14 +2846,14 @@ $('bHint').onclick = () => {
 let confirmNew = false;
 $('bNew').onclick = () => {
   audio();
-  if (targetsRemaining < totalTargetsThisRound && !roundDone && !confirmNew) { confirmNew = true; showToast('Tap again for a new meadow'); setTimeout(() => confirmNew = false, 2000); return; }
+  if (pickedFlowers.length && !roundDone && !confirmNew) { confirmNew = true; showToast('Tap again for a new meadow'); setTimeout(() => confirmNew = false, 2000); return; }
   confirmNew = false;
-  startRound(false);
+  freshMeadow();
   tone(440, .1, 'triangle', .04, 0, 220);
 };
 
 const closeAll = () => document.querySelectorAll('.ov').forEach(o => o.classList.remove('show'));
-$('bNext').onclick = () => { closeAll(); startRound(true); };
+$('bNext').onclick = () => { closeAll(); freshMeadow(); };
 $('bHelp').onclick = () => $('ovHelp').classList.add('show');
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { closeAll(); S.seenHelp = true; save(); }));
 document.querySelectorAll('.ov').forEach(o => o.addEventListener('pointerdown', e => { if (e.target === o && o.id !== 'ovWin') { closeAll(); S.seenHelp = true; save(); } }));
@@ -2820,13 +2862,34 @@ $('bSound').onclick = () => { S.muted = !S.muted; BB.muted = S.muted; save(); re
 addEventListener('resize', layout);
 if (window.visualViewport) visualViewport.addEventListener('resize', layout);
 
+// a new meadow: the loading screen goes up first, so the work happens out of sight
+const loadingEl = $('loading');
+let loadingSince = performance.now();
+function showLoading() { loadingEl.classList.add('show'); loadingSince = performance.now(); }
+function hideLoading() {   // stays up at least half a second so it never just flickers
+  const wait = Math.max(0, 500 - (performance.now() - loadingSince));
+  setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => loadingEl.classList.remove('show'))), wait);
+}
+function freshMeadow() {
+  S.meadow++;
+  showLoading();
+  requestAnimationFrame(() => setTimeout(() => { newMeadow(true); layout(); hideLoading(); }, 30));
+}
+if (window.ResizeObserver) new ResizeObserver(() => layout()).observe(stage);
+
 applyTheme(); renderSound();
-startRound(false);
-if (!S.seenHelp) $('ovHelp').classList.add('show');
 requestAnimationFrame(loop);
+// wait (briefly) for Bear and Bean's picnic picture so the meadow is planted once, not twice
+const settle = im => im.complete ? Promise.resolve() : new Promise(res => { im.addEventListener('load', res, { once: true }); im.addEventListener('error', res, { once: true }); });
+Promise.race([Promise.all([picnicImg, ...faces].map(settle)), new Promise(res => setTimeout(res, 3500))]).then(() => {
+  newMeadow(!S.seed);
+  layout();
+  hideLoading();
+  if (!S.seenHelp) $('ovHelp').classList.add('show');
+});
 if (/[?&]debug\b/.test(location.search)) window.__ff = {
   get targets() { return targetFlowers; }, get clovers() { return luckyClovers; }, get S() { return S; },
-  get cam() { return { camX, camY, zoom, viewW, viewH, worldW, worldH }; }, startRound, live: getLiveTargetWorldPos,
+  get cam() { return { camX, camY, zoom, viewW, viewH, worldW, worldH }; }, newMeadow, freshMeadow, get hunts() { return hunts; }, get live() { return liveFlowers; }, get picked() { return pickedFlowers; }, get MP() { return MP; }, get camp() { return campPos; }, wl: getLiveTargetWorldPos, live2: getLiveTargetWorldPos,
   pickAt: evaluatePickAtWorld, lookAt(x, y, z = 1.2) { targetZoom = zoom = clampZoom(z); const c = clampCam(x - viewW / zoom / 2, y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; },
 };
 })();
