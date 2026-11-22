@@ -24,7 +24,7 @@
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
 }</script>
 <title>Crystal Cave</title>
-<meta name="description" content="A cosy hidden-crystal hunt in a wide, glittering cave. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, among dozens of lookalikes, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A cosy hidden-crystal hunt across a wide cave floor, lit by a skylight. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, among dozens of lookalikes, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://www.bearandbean.uk/crystal-cave/">
 <style>
   :root { --bg:#efe7f1; --ink:#33283f; --muted:#85789a; --panel:#e2d6e8; --card:#fbf7fc; --accent:#8a4fd0; }
@@ -313,7 +313,7 @@ document.addEventListener('click', e => {
 const $ = id => document.getElementById(id);
 const stage = $('stage'), cv = $('game'), ctx = cv.getContext('2d'), wantCv = $('want'), wctx = wantCv.getContext('2d');
 // the cave is a wide world of its own; the screen is a camera on it
-const WORLD_W = 1900, WORLD_H = 1150;
+const WORLD_W = 2000, WORLD_H = 1300;
 let W = WORLD_W, H = WORLD_H, DPR = 1, BDPR = 1, sparks = [], motes = [];
 /* ---------- seeded randomness and noise ---------- */
 let rnd = Math.random;
@@ -357,6 +357,9 @@ const SHAPES = [
 ];
 const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'speck', t: 'speckled' }, { k: 'two', t: 'two-tone' }];
 const typeName = ty => `${ty.pal.n} ${ty.shape.n}`, typeTraits = ty => `${ty.shape.t} · ${ty.trait.t}`;
+const SKIES = [   // what shows through the skylight, and the colour of its light
+  { top: '#5fa8ea', bottom: '#cfeafc', light: [255, 244, 214] }, { top: '#f2a07b', bottom: '#ffe2ae', light: [255, 214, 160] }, { top: '#8fc2e8', bottom: '#f3f7f2', light: [236, 246, 255] },
+];
 const ROCKS = [   // cave rock: far, mid, near tones
   ['#2a2a3d', '#1c1b2b', '#121119'], ['#33281f', '#231b16', '#15100d'], ['#2c2236', '#1d1626', '#120d18'], ['#22303a', '#172229', '#0e1519'], ['#2f2d2a', '#1f1e1c', '#131211'],
 ];
@@ -382,40 +385,6 @@ function rockTexture(base) {
 
 
 /* ---------- the cave's shape: for each depth layer, an organic oval opening in the rock with a flatter floor ---------- */
-function layerShape(depth) {
-  const cx = W / 2 + R(-1, 1) * W * .04, cy = H * lerp(.5, .46, depth), rx = W * lerp(.6, .11, depth), ry = H * lerp(.47, .15, depth), off = R(0, 100);
-  const floorY = cy + ry * R(.62, .74), pts = [];
-  for (let i = 0; i < 160; i++) {
-    const t = i / 160 * Math.PI * 2, w = 1 + fbm1(off + Math.cos(t) * 1.7 + Math.sin(t) * 2.3, 4) * .22 + fbm1(off + t * 5, 2) * .05;
-    let x = cx + Math.cos(t) * rx * w, y = cy + Math.sin(t) * ry * w;
-    if (y > floorY) y = floorY + (y - floorY) * .25 + fbm1(off + x / W * 9, 3) * ry * .05;
-    pts.push([x, y]);
-  }
-  const upper = pts.filter(p => p[1] < cy).sort((a, b) => a[0] - b[0]), lower = pts.filter(p => p[1] >= cy).sort((a, b) => a[0] - b[0]);
-  const at = (list, x, fallback) => { for (let i = 1; i < list.length; i++) if (list[i][0] >= x && list[i - 1][0] <= x) { const t = (x - list[i - 1][0]) / ((list[i][0] - list[i - 1][0]) || 1); return lerp(list[i - 1][1], list[i][1], t); } return fallback; };
-  return { pts, cx, cy, rx, ry, ceil: x => at(upper, x, -999), floor: x => at(lower, x, H + 999), x0: Math.min(...pts.map(p => p[0])), x1: Math.max(...pts.map(p => p[0])) };
-}
-function rockPath(g, sh) {
-  const p = new Path2D(), pts = sh.pts;
-  p.rect(-20, -20, W + 40, H + 40);
-  p.moveTo((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2);
-  for (let i = 1; i <= pts.length; i++) { const a = pts[i % pts.length], b = pts[(i + 1) % pts.length]; p.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
-  p.closePath(); return p;
-}
-function openingPath(sh) {
-  const p = new Path2D(), pts = sh.pts; p.moveTo((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2);
-  for (let i = 1; i <= pts.length; i++) { const a = pts[i % pts.length], b = pts[(i + 1) % pts.length]; p.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
-  p.closePath(); return p;
-}
-// a point just inside the rock behind the edge of a layer's opening, at angle t, pushed in by d
-function inRock(sh, t, d) {
-  const i = Math.round(((t % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2) * sh.pts.length) % sh.pts.length, [x, y] = sh.pts[i];
-  const nx = x - sh.cx, ny = y - sh.cy, l = Math.hypot(nx, ny) || 1; return [x + nx / l * d, y + ny / l * d];
-}
-
-
-/* ---------- crystals: every piece is drawn from its type's style (colour, second colour, marking) ---------- */
-// a style: base colour, its second colour (for two-tone), the marking, and where sparkles and glow go
 const styleOf = ty => ({ c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k });
 function sparkAt(x, y, s, st) { sparks.push({ x, y, s: clamp(s, 2.5, 12), c: st.glow, p: rnd() * 6.3, f: R(.6, 1.6) }); }
 // markings drawn over a piece, in the piece's own frame: P(along, across) gives points; len along, w across
@@ -581,21 +550,20 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 2, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 3, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 2) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 3) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from earlier versions don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
 let cave = null;   // everything about the cave now on screen: its hunts, formations, fossils and the painted picture
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const sameType = (a, b) => a.shape === b.shape && a.pal === b.pal && a.trait === b.trait;
-const inPoly = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
 
 // plan a cave from its seed: its hunts, the lookalikes, where every formation grows and which ones are hunted
 function planCave() {
   rnd = mulberry(S.seed); makeNoise();
-  W = WORLD_W; H = WORLD_H; const scale = 1.15, MORE = 1.8, rock = pick(ROCKS).map(hex);
+  W = WORLD_W; H = WORLD_H; const rock = pick(ROCKS).map(hex);
   const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => TRAITS.forEach(trait => combos.push({ shape, pal, trait })))); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
@@ -610,64 +578,86 @@ function planCave() {
   }
   const fillers = combos.filter(c => !isHunt(c)).slice(0, 16);
   const theme = [hunts[0].pal, hunts[1].pal, hunts[2].pal];
-  // four rings of rock, far to near
-  // five rings of rock, from a small deep pocket out to the rocks right in front of you
-  const layers = [.9, .7, .48, .25, 0].map(d => ({ d, sh: layerShape(d) })), NL = layers.length, NEAR = NL - 1;
-  // every formation: where it grows, which way, how big, and its own seed so it's drawn the same every time
-  const slots = [], seedOf = () => (rnd() * 2147483647) | 0;
-  const put = (li, x, y, ang, size) => slots.push({ li, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 });
-  const stals = [], SIZES = [[10, 20], [13, 28], [18, 38], [26, 56]], GAP = [2.3, 1.9, 1.55, 1.35];
-  layers.forEach((L, li) => {
-    for (let i = 0; i < RI(7, 12) * (1 + li * .7); i++) { const x = R(L.sh.x0 + 20, L.sh.x1 - 20), y = L.sh.ceil(x); if (y > 0) stals.push({ li, x, y, len: R(14, 40) * (1 + li * .3) * scale, w: R(4, 9) * (1 + li * .25) * scale }); }
-    if (li === NEAR) return;
-    // as many as fit around the ring, spaced for their size
-    const sz = SIZES[li], perim = Math.PI * Math.sqrt(2 * (L.sh.rx ** 2 + L.sh.ry ** 2)) * 1.08;
-    const n = Math.round(perim / ((sz[0] + sz[1]) / 2 * scale * GAP[li]) * R(.92, 1.08)), start = R(0, Math.PI * 2);
-    for (let i = 0; i < n; i++) {
-      const t = start + i / n * Math.PI * 2 + R(-.06, .06), [x, y] = inRock(L.sh, t, R(-6, 2)), inward = Math.atan2(L.sh.cy - y, L.sh.cx - x);
-      if (x > 6 && x < W - 6 && y > 6 && y < H - 6) put(li, x, y, inward + R(-.35, .35), R(sz[0], sz[1]) * scale);
+  // the shape of the cave: a back wall across the top, curving down a little at each side, and the floor in front of it
+  const y0 = H * R(.3, .34), off = R(0, 100), sideDrop = H * R(.24, .3);
+  const baseY = x => { const e = Math.abs(x - W / 2) / (W / 2); return y0 + sideDrop * e * e * e + fbm1(off + x / W * 7, 3) * H * .03; };
+  const depth = y => clamp((y - y0) / (H - y0), 0, 1), persp = y => lerp(.42, 1.35, Math.pow(depth(y), .9));
+  // a skylight in the roof, and where its light lands on the floor
+  const sky = pick(SKIES), hole = { x: W * R(.36, .64), y: H * R(.055, .085), rx: R(120, 165), ry: R(42, 58), off: R(0, 100) };
+  const pool = { x: hole.x + R(-1, 1) * W * .1, y: y0 + (H - y0) * R(.38, .5), rx: R(250, 320), ry: R(95, 125) };
+  const inHole = (x, y, pad = 0) => ((x - hole.x) / (hole.rx + pad)) ** 2 + ((y - hole.y) / (hole.ry + pad)) ** 2 < 1;
+  // everything that stands in the cave, each with its own seed so it's drawn the same every time
+  const seedOf = () => (rnd() * 2147483647) | 0, wallF = [], floorI = [];
+  const mk = (kind, x, y, ang, size, extra) => Object.assign({ kind, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 }, extra);
+  // seams across the wall's face, with crystals growing out of them in runs: some up from the ledge, some hanging under it
+  const seams = [];
+  for (let i = 0, n = RI(4, 6); i < n; i++) { const o = R(0, 100), y = lerp(H * .15, y0 - 20, (i + R(.1, .9)) / n); seams.push({ o, y, at: x => y + fbm1(o + x / 320, 3) * 34 }); }
+  for (const sm of seams) for (let x = R(20, 80); x < W - 20; ) {
+    const run = RI(3, 7);
+    for (let k = 0; k < run && x < W - 20; k++, x += R(20, 38)) {
+      const y = sm.at(x); if (y > baseY(x) - 34 || inHole(x, y, 60)) continue;
+      const up = rnd() < .55, s = R(16, 32) * lerp(.85, 1.05, y / y0), it = mk('f', x, y + (up ? -2 : 3), up ? -Math.PI / 2 + R(-.5, .5) : Math.PI / 2 + R(-.5, .5), s, { wall: true });
+      if (!wallF.some(o => Math.hypot(o.cx - it.cx, o.cy - it.cy) < (o.r + it.r) * .8)) wallF.push(it);
     }
-    // and a row along each ledge's floor
-    for (let i = 0, nf = Math.round(L.sh.rx * 1.2 / ((sz[0] + sz[1]) / 2 * scale * 1.7)); i < nf; i++) {
-      const x = R(L.sh.x0 + L.sh.rx * .2, L.sh.x1 - L.sh.rx * .2), y = L.sh.floor(x) + R(2, 10);
-      if (y < H - 6) put(li, x, y, -Math.PI / 2 + R(-.5, .5), R(sz[0] * .8, sz[1] * .7) * scale);
-    }
-    if (li === NEAR - 1) { const x = L.sh.cx + R(-1, 1) * L.sh.rx * .3; put(li, x, L.sh.floor(x) + 5, -Math.PI / 2 + R(-.15, .15), 190); slots[slots.length - 1].centre = true; }
+    x += R(90, 260);
+  }
+  // a row of crystals along the foot of the wall, leaning out into the cave
+  for (let x = R(10, 40); x < W - 10; x += R(26, 58)) {
+    const y = baseY(x) + R(-2, 8), lean = clamp((W / 2 - x) / (W / 2), -1, 1) * .5;
+    floorI.push(mk('f', x, y, -Math.PI / 2 + lean + R(-.35, .35), R(20, 40) * persp(y) * 1.15));
+  }
+  // the floor: crystals scattered like flowers in a meadow, smaller towards the back, plus boulders and stalagmites
+  const clash = it => floorI.some(o => Math.abs(o.y - it.y) < 90 && Math.hypot(o.cx - it.cx, o.cy - it.cy) < (o.r + it.r) * .72);
+  for (let i = 0, want = 430; i < 9000 && floorI.length < want; i++) {
+    const x = R(-10, W + 10), y = R(y0 + 6, H + 30), b = baseY(x); if (y < b + 12) continue;
+    const sc = persp(y), big = rnd() < .06 ? R(1.6, 2.1) : 1, it = mk('f', x, y, -Math.PI / 2 + R(-.45, .45), R(22, 40) * sc * big * 1.1);
+    if (!clash(it)) floorI.push(it);
+  }
+  for (let i = 0, n = 0; i < 400 && n < RI(18, 26); i++) {
+    const x = R(0, W), y = R(y0 + 20, H + 20); if (y < baseY(x) + 20) continue;
+    const sc = persp(y), it = rnd() < .5 ? mk('boulder', x, y, -Math.PI / 2, R(26, 52) * sc) : mk('mite', x, y, -Math.PI / 2, R(36, 80) * sc, { w: R(9, 16) * sc });
+    if (it.kind === 'boulder') { it.cy = y - it.size * .35; it.r = it.size * .7; } else { it.cy = y - it.size * .45; it.r = it.w * 1.3; }
+    if (!clash(it) && Math.hypot((x - pool.x) / pool.rx, (y - pool.y) / pool.ry) > 1.1) { floorI.push(it); n++; }
+  }
+  // the showpiece in the pool of light
+  floorI.push(mk('f', pool.x + R(-40, 40), pool.y + R(10, 30), -Math.PI / 2 + R(-.1, .1), R(150, 175), { centre: true }));
+  floorI.sort((a, b) => a.y - b.y);   // back to front, so nearer things are drawn over farther ones
+  const items = wallF.concat(floorI);
+  // how much of each crystal is hidden behind things drawn after it
+  const lens = (r1, r2, d) => { if (d >= r1 + r2) return 0; if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
+    const a = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)), b = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2)); return a + b - .5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)); };
+  items.forEach((s, i) => {
+    if (s.kind !== 'f') return;
+    let hid = 0;
+    for (let k = i + 1; k < items.length; k++) { const o = items[k]; if (Math.abs(o.cy - s.cy) > o.r + s.r) continue; hid += lens(s.r, o.r * .85, Math.hypot(o.cx - s.cx, o.cy - s.cy)); }
+    s.hidden = Math.min(1, hid / (Math.PI * s.r * s.r));
   });
-  { const sh = layers[NEAR].sh, perim = Math.PI * Math.sqrt(2 * (sh.rx ** 2 + sh.ry ** 2)), n = Math.round(perim / (80 * scale * 1.15)), start = R(0, Math.PI * 2);
-    for (let i = 0; i < n; i++) {
-      const t = start + i / n * Math.PI * 2 + R(-.1, .1), [x, y] = inRock(sh, t, R(-4, 10)), inward = Math.atan2(sh.cy - y, sh.cx - x);
-      if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(NEAR, x, y, inward + R(-.4, .4), R(56, 104) * scale);
-    } }
-  // which formations can be hunted: big enough to tap, on screen, and not mostly behind nearer rock or crystals
+  const slots = items.filter(s => s.kind === 'f'), decor = items.filter(s => s.kind !== 'f');
   slots.forEach((s, i) => {
     s.i = i;
     const onScreen = s.cx > s.r * .6 && s.cx < W - s.r * .6 && s.cy > s.r * .6 && s.cy < H - s.r * .6;
-    const clear = layers.every((L, j) => j <= s.li || [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => inPoly(L.sh.pts, s.cx + a * s.r * .5, s.cy + b * s.r * .5)));
-    const covered = slots.some((o, k) => k > i && Math.hypot(o.cx - s.cx, o.cy - s.cy) < (o.r + s.r) * .55 && o.r > s.r * .5);
-    s.huntable = !s.centre && onScreen && clear && !covered && s.r >= 15;
-    s.spare = !s.centre && onScreen && clear && !slots.some((o, k) => k > i && Math.hypot(o.cx - s.cx, o.cy - s.cy) < (o.r + s.r) * .4 && o.r > s.r * .7) && s.r >= 11;   // a fallback if a cave runs short
+    s.huntable = !s.centre && onScreen && s.hidden <= .3 && s.r >= 13;
+    s.spare = !s.centre && onScreen && s.hidden <= .45 && s.r >= 11;   // a fallback if a cave runs short
   });
   // the hunted ones, spread about; everything else is a lookalike or another kind
-  const pool = shuffle(slots.filter(s => s.huntable)).concat(shuffle(slots.filter(s => s.spare && !s.huntable))), counts = [];
+  const huntPool = shuffle(slots.filter(s => s.huntable)).concat(shuffle(slots.filter(s => s.spare && !s.huntable))), counts = [];
   hunts.forEach((h, k) => {
     const want = huntSize(k + 1), got = [];
-    for (const gap of [160, 70, 0]) for (const s of pool) {   // spread them out, but never leave a hunt short
+    for (const gap of [180, 80, 0]) for (const s of huntPool) {   // spread them out, but never leave a hunt short
       if (got.length >= want) break; if (s.type || got.some(o => Math.hypot(o.cx - s.cx, o.cy - s.cy) < gap)) continue; s.type = h; s.hunt = k; s.slot = got.length; got.push(s);
     }
     counts.push(got.length);
   });
   for (const s of slots) if (!s.type) s.type = s.centre ? (decoys[0] || fillers[0]) : rnd() < .72 && decoys.length ? pick(decoys) : pick(fillers);
-  // three fossils pressed into the rock, just behind the rim of the middle rings
+  // three fossils: pressed into the wall or lying on the floor, never hidden behind anything
   const fossils = [];
-  for (let tries = 0; fossils.length < 3 && tries < 200; tries++) {
-    const li = RI(1, NL - 2), L = layers[li], [x, y] = inRock(L.sh, R(0, Math.PI * 2), R(10, 26) * scale), r = R(9, 12) * scale;
-    if (x < 20 || x > W - 20 || y < 20 || y > H - 20) continue;
-    if (!layers.every((M, j) => j <= li || inPoly(M.sh.pts, x, y))) continue;
-    if (slots.some(s => s.li >= li && Math.hypot(s.cx - x, s.cy - y) < s.r + r + 6) || fossils.some(f => Math.hypot(f.x - x, f.y - y) < 60)) continue;
-    fossils.push({ li, x, y, r, rot: R(0, 6.3) });
+  for (let tries = 0; fossils.length < 3 && tries < 600; tries++) {
+    const x = R(60, W - 60), onWall = rnd() < .4, y = onWall ? R(H * .14, baseY(x) - 40) : R(baseY(x) + 40, H - 40), r = (onWall ? R(10, 13) : R(9, 13) * persp(y) * 1.2);
+    if (inHole(x, y, 60) || r < 9) continue;
+    if (items.some(s => Math.hypot(s.cx - x, s.cy - y) < s.r + r + 6) || fossils.some(f => Math.hypot(f.x - x, f.y - y) < 160)) continue;
+    fossils.push({ wall: onWall, x, y, r, rot: R(0, 6.3) });
   }
-  return { hunts, counts, decoys, layers, slots, stals, fossils, rock, theme, scale };
+  return { hunts, counts, decoys, slots, decor, items, fossils, seams, rock, theme, sky, hole, pool, y0, baseY, persp, view: { x: pool.x, y: (y0 + pool.y) / 2 } };
 }
 
 // an ammonite pressed into the rock
@@ -685,59 +675,131 @@ function fossil(g, f, rockCol) {
   for (let a = 0; a < Math.PI * 2; a += .45) { const r1 = f.r * Math.exp(-a * .17), r2 = f.r * Math.exp(-(a + Math.PI * 2) * .17); g.beginPath(); g.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); g.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); g.stroke(); }
   g.restore();
 }
+// a rounded boulder, lit from above
+function boulder(g, x, y, s, col) {
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y, s * .8, s * .2, 0, 0, 6.3); g.fill();
+  const pts = [], o = R(0, 50);
+  for (let i = 0; i < 18; i++) { const a = Math.PI + i / 17 * Math.PI, k = 1 + fbm1(o + i * .4, 2) * .25; pts.push([x + Math.cos(a) * s * .75 * k, y + Math.sin(a) * s * .7 * k]); }
+  const gr = g.createLinearGradient(x, y - s * .7, x, y); gr.addColorStop(0, rgba(shade(col, .3))); gr.addColorStop(1, rgba(shade(col, -.35)));
+  g.fillStyle = gr; g.beginPath(); g.moveTo(pts[0][0], y); pts.forEach(p => g.lineTo(p[0], p[1])); g.lineTo(pts[pts.length - 1][0], y); g.closePath(); g.fill();
+  g.strokeStyle = rgba(shade(col, .45), .5); g.lineWidth = Math.max(1, s * .04); g.beginPath(); pts.slice(4, 13).forEach((p, i) => i ? g.lineTo(p[0], p[1] + s * .04) : g.moveTo(p[0], p[1] + s * .04)); g.stroke();
+}
+// a stalagmite growing up from the floor
+function stalagmite(g, x, y, len, w, col) {
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x, y, w * 1.4, w * .35, 0, 0, 6.3); g.fill();
+  const gr = g.createLinearGradient(x - w, 0, x + w, 0); gr.addColorStop(0, rgba(shade(col, -.25))); gr.addColorStop(.4, rgba(shade(col, .2))); gr.addColorStop(1, rgba(shade(col, -.35)));
+  g.fillStyle = gr; g.beginPath(); g.moveTo(x - w, y); g.quadraticCurveTo(x - w * .45, y - len * .55, x + R(-2, 2), y - len); g.quadraticCurveTo(x + w * .5, y - len * .5, x + w, y); g.closePath(); g.fill();
+}
 
 // paint a planned cave into one picture, a few milliseconds at a time so the page stays responsive; resolves when done
 function paintCave(plan) {
   const S2 = document.createElement('canvas'); S2.width = Math.round(W * BDPR); S2.height = Math.round(H * BDPR);
   const g = S2.getContext('2d'); if (!g) { S2.width = S2.height = 0; return Promise.reject(new Error('no canvas')); }
   g.setTransform(BDPR, 0, 0, BDPR, 0, 0);
-  const glows = [], ops = [], { layers, rock, theme, scale } = plan;
+  const glows = [], ops = [], { rock, theme, sky, hole, pool, y0, baseY, persp } = plan, light = sky.light;
+  const wallCol = mix(rock[0], [70, 62, 58], .25), floorCol = mix(shade(rock[0], .2), [128, 108, 88], .3), toHex = c => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
+  const holePath = (() => { const p = new Path2D(); for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2, k = 1 + fbm1(hole.off + Math.cos(a) * 2 + Math.sin(a) * 1.3, 3) * .2; const x = hole.x + Math.cos(a) * hole.rx * k, y = hole.y + Math.sin(a) * hole.ry * k; i ? p.lineTo(x, y) : p.moveTo(x, y); } p.closePath(); return p; })();
+  const floorPath = (() => { const p = new Path2D(); p.moveTo(-10, H + 10); for (let x = -10; x <= W + 10; x += 10) p.lineTo(x, baseY(x)); p.lineTo(W + 10, H + 10); p.closePath(); return p; })();
+  const edgePath = (() => { const p = new Path2D(); for (let x = -10; x <= W + 10; x += 10) x > -10 ? p.lineTo(x, baseY(x)) : p.moveTo(x, baseY(x)); return p; })();
   sparks = []; motes = [];
+  // the back wall, the skylight and the hanging bits
   ops.push(() => {
     rnd = mulberry(S.seed ^ 0x9e3779b9);
-    const bg = g.createRadialGradient(W / 2, H * .5, 0, W / 2, H * .5, Math.max(W, H) * .7);
-    bg.addColorStop(0, rgba(mix(hex(theme[0].glow), rock[0], .82))); bg.addColorStop(.5, rgba(shade(rock[0], -.3))); bg.addColorStop(1, '#05040a');
-    g.fillStyle = bg; g.fillRect(0, 0, W, H);
-    const px = W / 2 + R(-1, 1) * W * .06, py = H * R(.42, .48), pr = Math.min(W, H) * R(.08, .13);
-    const deep = g.createRadialGradient(px, py, 0, px, py, pr * 1.6); deep.addColorStop(0, 'rgba(0,0,0,.75)'); deep.addColorStop(.6, 'rgba(0,0,0,.35)'); deep.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = deep; g.beginPath(); g.ellipse(px, py, pr * 1.6 * R(1, 1.4), pr * 1.6, 0, 0, 6.3); g.fill();
-    for (let i = 0; i < 40; i++) { const a = R(0, 6.3), d = pr * R(.4, 2.4), x = px + Math.cos(a) * d * 1.3, y = py + Math.sin(a) * d * .8, c = hex(pick(theme).glow);
-      const gl = g.createRadialGradient(x, y, 0, x, y, R(2, 5)); gl.addColorStop(0, rgba(c, R(.35, .8))); gl.addColorStop(1, rgba(c, 0)); g.fillStyle = gl; g.fillRect(x - 6, y - 6, 12, 12); }
-  });
-  layers.forEach((L, li) => {
-    const col = rock[[0, 0, 1, 1, 2][li]], lit = hex(theme[li % 3].glow);
-    ops.push(() => {
-      rnd = mulberry((S.seed + li * 7919) | 0);
-      const path = rockPath(g, L.sh);
-      g.save(); g.fillStyle = rockTexture('#' + shade(col, li === 0 ? .08 : 0).map(v => Math.round(v).toString(16).padStart(2, '0')).join('')); g.fill(path, 'evenodd');
-      g.clip(path, 'evenodd'); g.lineJoin = 'round';
-      // soft glow and shadow along the edge: stacked strokes, widest and faintest first (a blur filter over the whole cave is far too slow on a phone)
-      const edge = openingPath(L.sh), soft = (col, a, w0, w1, op) => { g.globalCompositeOperation = op; for (let k = 0; k < 3; k++) { g.strokeStyle = rgba(col, a / 2.2); g.lineWidth = w1 - (w1 - w0) * k / 2; g.stroke(edge); } g.globalCompositeOperation = 'source-over'; };
-      soft(mix(lit, [255, 255, 255], .1), .16 - li * .02, 8 + li * 4, 46 + li * 18, 'screen');
-      g.strokeStyle = rgba(mix(lit, [255, 255, 255], .25), .24 - li * .03); g.lineWidth = 2 + li; g.stroke(edge);
-      soft([0, 0, 0], .3, 14 + li * 10, 58 + li * 34, 'multiply');
-      const lip = g.createRadialGradient(L.sh.cx, L.sh.cy, Math.min(L.sh.rx, L.sh.ry), L.sh.cx, L.sh.cy, Math.max(W, H) * .8);
-      lip.addColorStop(0, 'rgba(0,0,0,0)'); lip.addColorStop(1, `rgba(0,0,0,${.3 + li * .09})`); g.fillStyle = lip; g.fillRect(0, 0, W, H);
-      g.restore();
-      if (li < layers.length - 1) { g.fillStyle = rgba(mix(lit, [10, 8, 20], .88), .18); g.fillRect(0, 0, W, H); }
-      for (const f of plan.fossils) if (f.li === li) fossil(g, f, col);
-      for (const st of plan.stals) if (st.li === li) stalactite(g, st.x, st.y, st.len, st.w, shade(col, .12));
-    });
-    for (const s of plan.slots) if (s.li === li) ops.push(() => { rnd = mulberry(s.seed); formation(g, s.x, s.y, s.ang, s.size, s.type, glows); });
-  });
-  ops.push(() => {
-    g.globalCompositeOperation = 'lighter';
-    for (const [x, y, r, c] of glows) { const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rgba(hex(c), .07)); gl.addColorStop(1, rgba(hex(c), 0)); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    g.fillStyle = rockTexture(toHex(shade(wallCol, .06))); g.fillRect(0, 0, W, H);
+    // strata across the wall
+    g.globalCompositeOperation = 'multiply';
+    for (let i = 0; i < 6; i++) { const y = R(H * .05, y0 + H * .2), o = R(0, 50); g.strokeStyle = `rgba(0,0,0,${R(.08, .16)})`; g.lineWidth = R(2, 5); g.beginPath(); for (let x = 0; x <= W; x += 20) { const yy = y + fbm1(o + x / 300, 3) * 40; x ? g.lineTo(x, yy) : g.moveTo(x, yy); } g.stroke(); }
+    for (const sm of plan.seams) { const p = new Path2D(); for (let x = 0; x <= W; x += 16) x ? p.lineTo(x, sm.at(x)) : p.moveTo(x, sm.at(x)); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 9; g.stroke(p); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 3; g.stroke(p);
+      g.save(); g.translate(0, 5); g.globalCompositeOperation = 'screen'; g.strokeStyle = 'rgba(255,240,220,.12)'; g.lineWidth = 2.5; g.stroke(p); g.restore(); }
     g.globalCompositeOperation = 'source-over';
-    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.max(W, H) * .78);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    const sh = g.createLinearGradient(0, 0, 0, y0 + H * .25); sh.addColorStop(0, 'rgba(0,0,0,.55)'); sh.addColorStop(1, 'rgba(0,0,0,.05)'); g.fillStyle = sh; g.fillRect(0, 0, W, H);
+    // light spilling onto the wall round the skylight
+    g.globalCompositeOperation = 'screen';
+    const sp = g.createRadialGradient(hole.x, hole.y, hole.rx * .6, hole.x, hole.y, hole.rx * 4); sp.addColorStop(0, rgba(light, .4)); sp.addColorStop(1, rgba(light, 0)); g.fillStyle = sp; g.fillRect(0, 0, W, H * .6);
+    g.globalCompositeOperation = 'source-over';
+    // the sky through the hole, with the thickness of the roof showing as a lip below it
+    g.save(); g.translate(0, 12); g.fillStyle = rgba(shade(wallCol, -.55)); g.fill(holePath); g.translate(0, -5); g.fillStyle = rgba(shade(wallCol, -.3)); g.fill(holePath); g.restore();
+    g.save(); g.clip(holePath);
+    const sk = g.createLinearGradient(0, hole.y - hole.ry * 1.3, 0, hole.y + hole.ry * 1.3); sk.addColorStop(0, sky.top); sk.addColorStop(1, sky.bottom); g.fillStyle = sk; g.fillRect(hole.x - hole.rx * 1.5, hole.y - hole.ry * 1.5, hole.rx * 3, hole.ry * 3);
+    g.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 4; i++) { const cx = hole.x + R(-1, 1) * hole.rx, cy = hole.y + R(-.6, .5) * hole.ry; for (let j = 0; j < 4; j++) { g.beginPath(); g.ellipse(cx + j * 14 - 20, cy + R(-4, 4), R(14, 24), R(7, 11), 0, 0, 6.3); g.fill(); } }
+    g.restore();
+    g.strokeStyle = rgba(light, .45); g.lineWidth = 1.5; g.stroke(holePath);
+    // vines hanging through the skylight
+    for (let i = 0; i < RI(4, 7); i++) {
+      const a = R(.15, .85) * Math.PI, x = hole.x + Math.cos(a) * hole.rx * R(-1, 1), y = hole.y + hole.ry * R(.3, .9), len = R(50, 150), sway = R(-30, 30);
+      g.strokeStyle = '#3f7a3a'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + sway, y + len * .5, x + sway * .4, y + len); g.stroke();
+      for (let t = .12; t < 1; t += R(.08, .16)) { const lx = lerp(lerp(x, x + sway, t), lerp(x + sway, x + sway * .4, t), t), ly = y + len * t; g.fillStyle = rnd() < .5 ? '#5fa34f' : '#4b8d41'; g.beginPath(); g.ellipse(lx + (rnd() < .5 ? -5 : 5), ly, 6, 3.2, R(-.8, .8), 0, 6.3); g.fill(); }
+    }
+    // stalactites round the roof
+    for (let i = 0; i < RI(30, 42); i++) { const x = R(0, W); if (Math.abs(x - hole.x) < hole.rx * 1.2) continue; stalactite(g, x, R(-6, H * .03), R(24, 80), R(7, 15), shade(wallCol, .15)); }
+    for (const f of plan.fossils) if (f.wall) fossil(g, f, wallCol);
+  });
+  for (const s of plan.slots) if (s.wall) ops.push(() => { rnd = mulberry(s.seed); formation(g, s.x, s.y, s.ang, s.size, s.type, glows); });
+  // the floor
+  ops.push(() => {
+    rnd = mulberry(S.seed ^ 0x2545f491);
+    g.save(); g.clip(floorPath);
+    g.fillStyle = rockTexture(toHex(floorCol)); g.fillRect(0, 0, W, H);
+    const fl = g.createLinearGradient(0, y0, 0, H); fl.addColorStop(0, 'rgba(0,0,0,.35)'); fl.addColorStop(.35, 'rgba(0,0,0,.05)'); fl.addColorStop(1, 'rgba(0,0,0,.3)'); g.fillStyle = fl; g.fillRect(0, 0, W, H);
+    // cracks, pebbles and puddles that hold a little sky
+    g.strokeStyle = rgba(shade(floorCol, -.45), .5); g.lineCap = 'round';
+    for (let i = 0; i < 26; i++) { let x = R(0, W), y = R(y0, H); const s = persp(y); g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 6; k++) { x += R(-40, 40) * s; y += R(-8, 8) * s; g.lineTo(x, y); } g.stroke(); }
+    for (let i = 0; i < 520; i++) { const x = R(0, W), y = R(y0, H + 10), s = persp(y), r = R(1.5, 5) * s, c = shade(floorCol, R(-.3, .3)); g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x + r * .3, y + r * .35, r, r * .55, 0, 0, 6.3); g.fill(); g.fillStyle = rgba(c); g.beginPath(); g.ellipse(x, y, r, r * .6, 0, 0, 6.3); g.fill(); }
+    for (let i = 0; i < RI(2, 3); i++) {
+      const x = R(W * .1, W * .9), y = R(y0 + (H - y0) * .3, H - 60); if (Math.hypot((x - pool.x) / pool.rx, (y - pool.y) / pool.ry) < 1.3) continue;
+      const s = persp(y), rx = R(60, 120) * s, ry = rx * R(.28, .36);
+      const pg = g.createLinearGradient(0, y - ry, 0, y + ry); pg.addColorStop(0, sky.bottom); pg.addColorStop(1, sky.top);
+      g.fillStyle = rgba(shade(floorCol, -.5)); g.beginPath(); g.ellipse(x, y + 2, rx + 4, ry + 3, 0, 0, 6.3); g.fill(); g.fillStyle = rgba(shade(floorCol, -.62)); g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill();
+      g.globalAlpha = .32; g.fillStyle = pg; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill(); g.globalAlpha = 1;
+      g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(x - rx * .2, y - ry * .3, rx * .4, ry * .2, 0, Math.PI * 1.1, Math.PI * 1.7); g.stroke();
+    }
+    // where the floor meets the wall: a soft shadow tucked under it, and a lit lip
+    g.globalCompositeOperation = 'multiply'; for (let k = 0; k < 3; k++) { g.strokeStyle = 'rgba(0,0,0,.16)'; g.lineWidth = 50 - k * 18; g.stroke(edgePath); } g.globalCompositeOperation = 'source-over';
+    // the pool of light from the skylight
+    g.globalCompositeOperation = 'screen';
+    g.save(); g.translate(pool.x, pool.y); g.scale(1, pool.ry / pool.rx);
+    const pl = g.createRadialGradient(0, 0, 0, 0, 0, pool.rx * 1.25); pl.addColorStop(0, rgba(light, .5)); pl.addColorStop(.55, rgba(light, .2)); pl.addColorStop(1, rgba(light, 0)); g.fillStyle = pl; g.fillRect(-pool.rx * 1.3, -pool.rx * 1.3, pool.rx * 2.6, pool.rx * 2.6);
+    g.restore(); g.globalCompositeOperation = 'source-over';
+    g.restore();
+    g.strokeStyle = rgba(mix(shade(wallCol, .4), light, .25), .5); g.lineWidth = 2; g.stroke(edgePath);
+    for (const f of plan.fossils) if (!f.wall) fossil(g, f, floorCol);
+  });
+  // everything on the floor, back to front, with a little haze laid over the far parts as we come forward
+  const hazes = [y0 + (H - y0) * .12, y0 + (H - y0) * .32], fog = mix(shade(floorCol, -.2), light, .2);
+  let hz = 0;
+  for (const it of plan.items) {
+    if (it.wall) continue;
+    while (hz < hazes.length && it.y > hazes[hz]) { const t = hazes[hz++]; ops.push(() => { const hg = g.createLinearGradient(0, 0, 0, t + 80); hg.addColorStop(0, rgba(fog, .06)); hg.addColorStop(t / (t + 80), rgba(fog, .06)); hg.addColorStop(1, rgba(fog, 0)); g.fillStyle = hg; g.fillRect(0, 0, W, t + 80); }); }
+    if (it.kind === 'f') ops.push(() => { rnd = mulberry(it.seed); formation(g, it.x, it.y, it.ang, it.size, it.type, glows); });
+    else if (it.kind === 'boulder') ops.push(() => { rnd = mulberry(it.seed); boulder(g, it.x, it.y, it.size, shade(floorCol, R(-.1, .15))); });
+    else ops.push(() => { rnd = mulberry(it.seed); stalagmite(g, it.x, it.y, it.size, it.w, shade(floorCol, R(0, .2))); });
+  }
+  // shafts of light from the skylight down to the floor, then the crystals' glow and a soft vignette
+  ops.push(() => {
     rnd = mulberry(S.seed ^ 0x51ed27);
-    for (let i = 0; i < 150; i++) motes.push({ x: R(0, W), y: R(0, H), v: R(4, 12), a: R(.15, .4), r: R(.6, 1.6), c: pick(theme).glow, p: rnd() * 6.3 });
+    g.globalCompositeOperation = 'lighter';
+    for (const [x, y, r, c] of glows) { const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rgba(hex(c), .06)); gl.addColorStop(1, rgba(hex(c), 0)); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    g.globalCompositeOperation = 'screen';
+    const beams = [];
+    for (let i = 0, n = RI(5, 7); i < n; i++) {
+      const u = (i + .5) / n * 2 - 1 + R(-.1, .1), hx = hole.x + u * hole.rx * .75, hy = hole.y + hole.ry * .4, bx = pool.x + u * pool.rx * .85 + R(-20, 20), by = pool.y + R(-.2, .3) * pool.ry, w1 = R(14, 34), w2 = R(50, 110), a = R(.09, .17);
+      beams.push([hx, hy, bx, by, w1, w2]);
+      const bg = g.createLinearGradient(hx, hy, bx, by); bg.addColorStop(0, rgba(light, a)); bg.addColorStop(.75, rgba(light, a * .55)); bg.addColorStop(1, rgba(light, 0));
+      g.fillStyle = bg; g.beginPath(); g.moveTo(hx - w1 / 2, hy); g.lineTo(hx + w1 / 2, hy); g.lineTo(bx + w2 / 2, by); g.lineTo(bx - w2 / 2, by); g.closePath(); g.fill();
+    }
+    { const bg = g.createLinearGradient(hole.x, hole.y, pool.x, pool.y); bg.addColorStop(0, rgba(light, .1)); bg.addColorStop(1, rgba(light, 0));
+      g.fillStyle = bg; g.beginPath(); g.moveTo(hole.x - hole.rx, hole.y); g.lineTo(hole.x + hole.rx, hole.y); g.lineTo(pool.x + pool.rx * 1.1, pool.y); g.lineTo(pool.x - pool.rx * 1.1, pool.y); g.closePath(); g.fill(); }
+    g.globalCompositeOperation = 'source-over';
+    const vg = g.createRadialGradient(pool.x, pool.y - 100, Math.min(W, H) * .35, pool.x, pool.y - 100, Math.max(W, H) * .8);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    // dust drifting in the light, and a few motes glinting elsewhere
+    for (let i = 0; i < 170; i++) { const [hx, hy, bx, by] = pick(beams), t = R(.05, .95); motes.push({ x: lerp(hx, bx, t) + R(-30, 30), y: lerp(hy, by, t), ax: R(8, 22), ay: R(6, 16), a: R(.25, .6), r: R(.7, 1.8), c: rgba(light), p: rnd() * 6.3, f: R(.08, .2) }); }
+    for (let i = 0; i < 60; i++) motes.push({ x: R(0, W), y: R(0, H), ax: R(10, 30), ay: R(10, 30), a: R(.12, .3), r: R(.6, 1.4), c: pick(theme).glow, p: rnd() * 6.3, f: R(.05, .15) });
     if (sparks.length > 700) sparks = shuffle(sparks).slice(0, 700);
   });
   return new Promise(resolve => {
     let i = 0;
-    const step = () => { const t0 = performance.now(); while (i < ops.length && performance.now() - t0 < 12) { try { ops[i++](); } catch (e) { g.setTransform(BDPR, 0, 0, BDPR, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; } } if (i < ops.length) setTimeout(step, 0); else resolve(S2); };
+    const step = () => { const t0 = performance.now(); while (i < ops.length && performance.now() - t0 < 12) { try { ops[i++](); } catch (e) { g.restore && g.setTransform(BDPR, 0, 0, BDPR, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; } } if (i < ops.length) setTimeout(step, 0); else resolve(S2); };
     step();
   });
 }
@@ -887,7 +949,7 @@ function zoomAt(z, sx, sy, now) {
 }
 function lookAt(x, y, z) { const nz = clampZoom(z), c = clampCam(x - viewW / nz / 2, y - viewH / nz / 2, nz); targetZoom = nz; targetCamX = c.x; targetCamY = c.y; }
 // open zoomed right out, looking into the heart of the cave
-function centreCamera() { zoom = targetZoom = minZoom(); const c = clampCam(WORLD_W / 2 - viewW / zoom / 2, WORLD_H / 2 - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; }
+function centreCamera() { zoom = targetZoom = minZoom(); const v = cave ? cave.plan.view : { x: WORLD_W / 2, y: WORLD_H / 2 }, c = clampCam(v.x - viewW / zoom / 2, v.y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; }
 const fitApp = () => { const vv = window.visualViewport, h = Math.round(vv ? vv.height : innerHeight) || innerHeight; document.documentElement.style.setProperty('--app-h', h + 'px'); };
 function layout() {
   fitApp();
@@ -1002,9 +1064,9 @@ function frame(now) {
     ctx.drawImage(cave.pic, sx * BDPR, sy * BDPR, sw * BDPR, sh * BDPR, sx, sy, sw, sh); }
   ctx.globalCompositeOperation = 'lighter';
   for (const m of motes) {
-    if (!reduceMotion) { m.y -= m.v * dt; m.x += Math.sin(t * .6 + m.p) * .15; if (m.y < -5) { m.y = H + 5; m.x = Math.random() * W; } }
-    if (!seen(m.x, m.y)) continue;
-    ctx.globalAlpha = m.a * (.6 + .4 * Math.sin(t * 1.3 + m.p)); ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 6.3); ctx.fill();
+    const mx = m.x + (reduceMotion ? 0 : Math.sin(t * m.f + m.p) * m.ax), my = m.y + (reduceMotion ? 0 : Math.cos(t * m.f * .8 + m.p * 1.3) * m.ay);
+    if (!seen(mx, my)) continue;
+    ctx.globalAlpha = m.a * (.6 + .4 * Math.sin(t * 1.1 + m.p)); ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(mx, my, m.r, 0, 6.3); ctx.fill();
   }
   if (!reduceMotion) for (const s of sparks) { if (!seen(s.x, s.y)) continue; const v = Math.sin(t * s.f + s.p); if (v > .6) star(s.x, s.y, s.s * (v - .6) / .4 * .5, s.c, Math.min(1, (v - .6) * 2.4)); }
   ctx.globalAlpha = 1;
