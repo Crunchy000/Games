@@ -648,7 +648,7 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
         isTarget,
         animated,
         found: false,
-        stemHeight: isLupine ? rand(76, 128) : rand(66, 124),
+        stemHeight: isLupine ? 70 + rng() * 82 : 50 + 122 * Math.pow(rng(), 1.3),   // mostly middling, some short, a few tall
         stemCurve: rand(-18, 18),
         leafSide: rng() < 0.5 ? -1 : 1,
         headTilt: isLupine ? rand(-0.08, 0.08) : rand(-0.18, 0.18),
@@ -2303,7 +2303,6 @@ function newMeadow(fresh) {
   // flowers already picked in earlier hunts (when coming back to a meadow part way through)
   pickedFlowers = [];
   huntFlowers.forEach(fl => { if (fl.hunt < S.hunt - 1 || (fl.hunt === S.hunt - 1 && S.found.includes(fl.slot))) { fl.found = true; pickedFlowers.push(fl); } });
-  liveFlowers = movingFlowers.concat(huntFlowers).sort((a, b) => a.depth - b.depth);
   cachedStaticFlowers = staticFlowers;
 
   showHunt();   // the tray first, so the meadow is measured at its final size
@@ -2311,6 +2310,9 @@ function newMeadow(fresh) {
   sizeWorld();
   sizeMini();
   initCampPos();
+  luckyClovers.forEach(lc => { lc.worldX = lc.xNorm * worldW; lc.worldY = depthToWorldY(lc.depth, lc.xNorm); });
+  unhideHuntFlowers();
+  liveFlowers = movingFlowers.concat(huntFlowers).sort((a, b) => a.depth - b.depth);
   luckyClovers.forEach(lc => { lc.worldX = lc.xNorm * worldW; lc.worldY = depthToWorldY(lc.depth, lc.xNorm); });
   huntFlowers.forEach(fl => { const p = getLiveTargetWorldPos(fl); fl.worldHeadX = p.x; fl.worldHeadY = p.y; fl.hitRadius = p.r; });
   centreCamera();
@@ -2320,6 +2322,59 @@ function newMeadow(fresh) {
   initMeadowCritters();
   initFireflies();
   startHunt();
+}
+
+// a hunted flower may be tucked in a little, but at least half of it must show: not more than half behind a flower
+// drawn in front of it, a clover, or Bear and Bean's picnic. One that's too hidden is moved (the same way every time for this meadow); if no clear spot
+// turns up it's left out of the count, so a hunt never asks for a flower nobody can see
+function headShape(fl) {
+  const s = depthToScale(fl.depth), x = fl.xNorm * worldW + fl.stemCurve * s, y = depthToWorldY(fl.depth, fl.xNorm) - fl.stemHeight * s;
+  return fl.arch.key === 'lupine' ? { x, y: y - 26 * s, rx: 14 * s, ry: 32 * s } : { x, y, rx: fl.arch.len * s, ry: fl.arch.len * s };
+}
+const inShape = (h, px, py, pad = 1) => ((px - h.x) / (h.rx * pad)) ** 2 + ((py - h.y) / (h.ry * pad)) ** 2 <= 1;
+const HEAD_SPOTS = [[0, 0]];   // 25 points spread over a flower's head
+for (const [r, n] of [[0.4, 8], [0.8, 16]]) for (let k = 0; k < n; k++) HEAD_SPOTS.push([Math.cos(k / n * 6.2832) * r, Math.sin(k / n * 6.2832) * r]);
+const near = (a, b) => Math.abs(a.x - b.x) < a.rx * 1.1 + b.rx && Math.abs(a.y - b.y) < a.ry * 1.1 + b.ry;
+function hiddenShare(fl, live, keepOut) {
+  const h = headShape(fl), front = [];
+  for (const o of live) if (o !== fl && o.depth > fl.depth) { const oh = headShape(o); if (near(oh, h)) front.push(oh); }
+  const blocks = keepOut.filter(k => near(k, h));
+  let hid = 0;
+  for (const [u, v] of HEAD_SPOTS) {
+    const px = h.x + u * h.rx, py = h.y + v * h.ry;
+    if (front.some(o => inShape(o, px, py, 1.1)) || blocks.some(o => inShape(o, px, py))) hid++;
+  }
+  return hid / HEAD_SPOTS.length;
+}
+function unhideHuntFlowers() {
+  const { x, y, scale: cs } = campPos, pw = 240 * cs, ph = pw * (picnicReady() ? picnicImg.naturalHeight / picnicImg.naturalWidth : 0.75);
+  const keepOut = [{ x, y: y - ph * 0.28, rx: pw * 0.5, ry: ph * 0.5 }]
+    .concat(luckyClovers.map(lc => { const r = Math.max(3.6, 6.6 * depthToScale(lc.depth)) * 2.2; return { x: lc.worldX, y: lc.worldY, rx: r, ry: r }; }));
+  const live = movingFlowers.concat(huntFlowers), OK = 0.45;   // a little under half hidden at most, to allow for swaying
+  // moving this flower mustn't hide one of the others behind it
+  const fine = fl => { const h = headShape(fl); return huntFlowers.every(o => o === fl || o.depth >= fl.depth || !near(headShape(o), h) || hiddenShare(o, live, keepOut) <= OK); };
+  seeded((S.seed ^ 0x5bd1e995) >>> 0, () => {
+    for (let pass = 0; pass < 3; pass++) {
+      let still = 0;
+      for (const fl of huntFlowers) {
+        if (hiddenShare(fl, live, keepOut) <= OK) continue;
+        let placed = false;
+        for (let t = 0; t < 60 && !placed; t++) {
+          const was = [fl.xNorm, fl.depth];
+          fl.xNorm = rand(0.06, 0.94); fl.depth = rand(0.28, 0.92);
+          placed = hiddenShare(fl, live, keepOut) <= 0.3 && fine(fl);
+          if (!placed) [fl.xNorm, fl.depth] = was;
+        }
+        if (!placed) still++;
+      }
+      if (!still) break;
+    }
+  });
+  // anything still mostly out of sight isn't asked for (a hunt always keeps at least one flower)
+  for (const fl of huntFlowers.slice()) {
+    if (hiddenShare(fl, live, keepOut) <= OK) continue;
+    if (huntFlowers.filter(o => o.hunt === fl.hunt).length > 1) huntFlowers.splice(huntFlowers.indexOf(fl), 1);
+  }
 }
 
 // the tray: the flower to find now
@@ -2925,7 +2980,7 @@ Promise.race([Promise.all([picnicImg, ...faces].map(settle)), new Promise(res =>
 if (/[?&]debug\b/.test(location.search)) window.__ff = {
   get targets() { return targetFlowers; }, get clovers() { return luckyClovers; }, get S() { return S; },
   get cam() { return { camX, camY, zoom, viewW, viewH, worldW, worldH }; }, newMeadow, freshMeadow, get hunts() { return hunts; }, get live() { return liveFlowers; }, get picked() { return pickedFlowers; }, get MP() { return MP; }, get camp() { return campPos; }, wl: getLiveTargetWorldPos, live2: getLiveTargetWorldPos,
-  pickAt: evaluatePickAtWorld, lookAt(x, y, z = 1.2) { targetZoom = zoom = clampZoom(z); const c = clampCam(x - viewW / zoom / 2, y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; },
+  pickAt: evaluatePickAtWorld, drawFlowerTo, drawCloverPatch, drawBearAndBeanBasket, hiddenShare, get liveAll() { return liveFlowers; }, lookAt(x, y, z = 1.2) { targetZoom = zoom = clampZoom(z); const c = clampCam(x - viewW / zoom / 2, y - viewH / zoom / 2, zoom); camX = targetCamX = c.x; camY = targetCamY = c.y; },
 };
 })();
 </script>
