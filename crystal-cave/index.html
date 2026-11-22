@@ -351,6 +351,10 @@ const PALETTES = [
   { n: 'Fuchsia', c: '#d63aa0', glow: '#ff6ad0', alt: '#ffd0f0' },   { n: 'Morganite', c: '#f2a88a', glow: '#ffc8ae', alt: '#fff0e4' },
   { n: 'Garnet', c: '#8f1d3f', glow: '#e0466e', alt: '#ff9ab0' },    { n: 'Lavender', c: '#b89cf0', glow: '#d8c4ff', alt: '#f4eeff' },
   { n: 'Mint', c: '#74e0b4', glow: '#a6ffd8', alt: '#f0fff8' },      { n: 'Jet', c: '#2e2a38', glow: '#8c84b8', alt: '#bdb6e0' },
+  // minerals that grow in two colours: always zoned from the first colour into the second
+  { n: 'Watermelon Tourmaline', c: '#3a9a4c', glow: '#ff8fa6', alt: '#ff6a8e', zoned: true }, { n: 'Ametrine', c: '#8d4fd0', glow: '#ffcf6a', alt: '#f5b83a', zoned: true },
+  { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true },
+  { n: 'Chevron Amethyst', c: '#8f4ed0', glow: '#e6d4ff', alt: '#f6f0ff', zoned: true },
 ];
 const SHAPES = [
   { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' }, { k: 'fan', n: 'Spike Fan', t: 'a fan of long thin spikes' },
@@ -419,7 +423,7 @@ function inRock(sh, t, d) {
 
 /* ---------- crystals: every piece is drawn from its type's style (colour, second colour, marking) ---------- */
 // a style: base colour, its second colour (for two-tone), the marking, and where sparkles and glow go
-const styleOf = ty => ({ c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k });
+const styleOf = ty => ({ c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k, two: ty.trait.k === 'two' || !!ty.pal.zoned, zoned: !!ty.pal.zoned });
 function sparkAt(x, y, s, st) { sparks.push({ x, y, s: clamp(s, 2.5, 12), c: st.glow, p: rnd() * 6.3, f: R(.6, 1.6) }); }
 // a jagged crack filled with gold, from a to b
 function goldVein(g, a, b, w) {
@@ -450,8 +454,10 @@ function marks(g, P, len, w, st, tip) {
 }
 // colour along a piece: base to tip, ending in the second colour if two-tone
 function bodyGrad(g, x, y, x2, y2, col, st) {
-  const gr = g.createLinearGradient(x, y, x2, y2), end = st.trait === 'two' ? mix(st.alt, col, .15) : shade(col, .25);
-  gr.addColorStop(0, rgba(shade(col, -.45), .95)); gr.addColorStop(st.trait === 'two' ? .45 : .55, rgba(col, .92)); gr.addColorStop(1, rgba(end, .94)); return gr;
+  const gr = g.createLinearGradient(x, y, x2, y2), end = st.two ? mix(st.alt, col, .15) : shade(col, .25);
+  gr.addColorStop(0, rgba(shade(col, -.45), .95));
+  if (st.zoned) { const k = shade(st.alt, -.08 + (col[0] + col[1] + col[2] - st.c[0] - st.c[1] - st.c[2]) / 765); gr.addColorStop(.46, rgba(col, .93)); gr.addColorStop(.56, rgba(k, .94)); gr.addColorStop(1, rgba(shade(k, .12), .94)); return gr; }
+  gr.addColorStop(st.two ? .45 : .55, rgba(col, .92)); gr.addColorStop(1, rgba(end, .94)); return gr;
 }
 // a hexagonal prism with a pointed end, seen from the side
 function prism(g, x, y, ang, len, w, st, glows) {
@@ -460,7 +466,7 @@ function prism(g, x, y, ang, len, w, st, glows) {
   for (const [a, b, t] of [[-1, -.34, -.38], [-.34, .34, 0], [.34, 1, .22]]) {
     const col = shade(st.c, t);
     g.beginPath(); g.moveTo(...P(0, a)); g.lineTo(...P(sh, a)); g.lineTo(...P(sh, b)); g.lineTo(...P(0, b)); g.closePath(); g.fillStyle = bodyGrad(g, x, y, x + dx * len, y + dy * len, col, st); g.fill();
-    const tipCol = st.trait === 'two' ? shade(st.alt, t * .5) : shade(col, .15 + t * .5);
+    const tipCol = st.two ? shade(st.alt, t * .5) : shade(col, .15 + t * .5);
     g.beginPath(); g.moveTo(...P(sh, a)); g.lineTo(...P(len, 0)); g.lineTo(...P(sh, b)); g.closePath(); g.fillStyle = rgba(tipCol, .95); g.fill();
   }
   marks(g, P, len, w, st, sh);
@@ -474,7 +480,7 @@ function prism(g, x, y, ang, len, w, st, glows) {
 }
 // a pyramid point: two faces
 function pointPc(g, x, y, a, len, w, st) {
-  const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx, tx = x + dx * len, ty = y + dy * len, tipC = st.trait === 'two' ? st.alt : st.c;
+  const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx, tx = x + dx * len, ty = y + dy * len, tipC = st.two ? st.alt : st.c;
   g.beginPath(); g.moveTo(x + nx * w, y + ny * w); g.lineTo(tx, ty); g.lineTo(x + dx * len * .15, y + dy * len * .15); g.closePath(); g.fillStyle = rgba(shade(mix(st.c, tipC, .5), -.25), .95); g.fill();
   g.beginPath(); g.moveTo(x - nx * w, y - ny * w); g.lineTo(tx, ty); g.lineTo(x + dx * len * .15, y + dy * len * .15); g.closePath(); g.fillStyle = rgba(shade(mix(st.c, tipC, .5), .3), .95); g.fill();
   if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.moveTo(x + dx * len * .62 + nx * w * .38, y + dy * len * .62 + ny * w * .38); g.lineTo(tx, ty); g.lineTo(x + dx * len * .62 - nx * w * .38, y + dy * len * .62 - ny * w * .38); g.closePath(); g.fill(); }
@@ -497,7 +503,7 @@ function blade(g, x, y, ang, len, w, st, glows) {
 function cube(g, x, y, s, rot, st, glows) {
   const v = (a, r) => [x + Math.cos(a + rot) * r * s, y + Math.sin(a + rot) * r * s], C = [x, y];
   const pts = [0, 1, 2, 3, 4, 5].map(i => v(-Math.PI / 2 + i * Math.PI / 3, 1));
-  const top = st.trait === 'two' ? st.alt : shade(st.c, .3);
+  const top = st.two ? st.alt : shade(st.c, .3);
   for (const [f, col] of [[[5, 0, 1], top], [[1, 2, 3], shade(st.c, -.05)], [[3, 4, 5], shade(st.c, -.4)]]) {
     g.beginPath(); g.moveTo(...C); for (const i of f) g.lineTo(...pts[i]); g.closePath(); g.fillStyle = rgba(col, .95); g.fill();
   }
@@ -513,7 +519,7 @@ function cube(g, x, y, s, rot, st, glows) {
 function octa(g, x, y, s, rot, st, glows) {
   const v = (px, py) => [x + px * Math.cos(rot) - py * Math.sin(rot), y + px * Math.sin(rot) + py * Math.cos(rot)];
   const T = v(0, -1.45 * s), B = v(0, 1.45 * s), L = v(-s, 0), Rr = v(s, 0), M = v(s * .22, -s * .05);
-  const lower = st.trait === 'two' ? st.alt : st.c;
+  const lower = st.two ? st.alt : st.c;
   for (const [a, b, c, col] of [[T, L, M, shade(st.c, .05)], [T, M, Rr, shade(st.c, .32)], [B, L, M, shade(lower, -.35)], [B, M, Rr, shade(lower, -.1)]]) {
     g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.lineTo(...c); g.closePath(); g.fillStyle = rgba(col, .94); g.fill();
   }
@@ -596,9 +602,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 6, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 8, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 6) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 8) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -611,7 +617,7 @@ const inPoly = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 
 function planCave() {
   rnd = mulberry(S.seed); makeNoise();
   W = WORLD_W; H = WORLD_H; const scale = 1.15, MORE = 1.8, rock = pick(ROCKS).map(hex);
-  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => TRAITS.forEach(trait => combos.push({ shape, pal, trait })))); shuffle(combos);
+  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => TRAITS.forEach(trait => { if (!(pal.zoned && trait.k === 'two')) combos.push({ shape, pal, trait }); }))); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
   for (const c of combos) { if (hunts.length >= HUNTS) break; if (!hunts.some(h => h.pal === c.pal && h.shape === c.shape)) hunts.push(c); }
