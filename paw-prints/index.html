@@ -212,7 +212,7 @@ window.BB = (() => {
 </script>
 </head>
 <body>
-<!-- the map: a winding path through four areas -->
+<!-- the map: a winding path through the areas -->
 <section class="screen on" id="scMap">
   <header>
     <div class="grp">
@@ -292,7 +292,7 @@ window.BB = (() => {
 (() => {
 'use strict';
 const PAL = {"r": "#e2533f", "o": "#f08c2e", "y": "#f4c53f", "h": "#e8a317", "g": "#4f9a4a", "G": "#2f6d3a", "u": "#4aa6e0", "U": "#2a52d8", "v": "#8b5cc9", "p": "#ff7fb0", "P": "#d9558f", "b": "#6b3f1e", "B": "#9a6233", "n": "#c98a4b", "t": "#e6bf8a", "c": "#ecd3a6", "w": "#dfe7ee", "k": "#2b2118", "s": "#9aa0a6", "m": "#c8643b"};
-const AREAS = [["The garden gate", "Little warm-up puzzles"], ["The garden", "Things that grow"], ["The kitchen", "Time for tea"], ["The woods", "Who lives here?"], ["Arcade friends", "Familiar faces"]];
+const AREAS = [["The garden gate", "Little warm-up puzzles"], ["The garden", "Things that grow"], ["The kitchen", "Time for tea"], ["The woods", "Who lives here?"], ["Arcade friends", "Familiar faces"], ["The pond", "Bigger pictures: 12 by 12"], ["A rainy day", "Puddles and rainbows"], ["Bedtime", "The biggest: 15 by 15"]];
 const PUZ = [
 {"id": "5-a-heart", "a": 0, "name": "A heart", "rows": [".r.r.", "rrrrr", "rrrrr", ".rrr.", "..r.."]},
 {"id": "5-an-acorn", "a": 0, "name": "An acorn", "rows": [".bbb.", "bbbbb", ".nnn.", ".nnn.", "..n.."]},
@@ -319,7 +319,22 @@ const PUZ = [
 {"id": "10-pip-the-penguin", "a": 4, "name": "Pip the penguin", "rows": ["...kkkk...", "..kkkkkk..", ".kkwkkwkk.", ".kkkookkk.", "kkkwwwwkkk", "kkwwwwwwkk", "kkwwwwwwkk", ".kwwwwwwk.", "..kwwwwk..", "..oo..oo.."]},
 {"id": "10-a-greedy-hippo", "a": 4, "name": "A greedy hippo", "rows": ["..vv..vv..", ".vvvvvvvv.", ".vkvvvvkv.", ".vvvvvvvv.", "vvvvvvvvvv", "vvwvvvvwvv", "vvvvvvvvvv", "vpppppppv.", ".vvvvvvvv.", "..vv..vv.."]},
 {"id": "10-a-tube-of-sand", "a": 4, "name": "A tube of sand", "rows": ["..ssssss..", "...s..s...", "...s..s...", "...yyyy...", "...yyyy...", "...uuuu...", "...uuuu...", "...rrrr...", "...rrrr...", "....rr...."]},
-{"id": "10-a-busy-bee", "a": 4, "name": "A busy bee", "rows": ["..uu..uu..", ".uuuu.uuu.", "..uuuuuu..", "...yyyy...", "..kkkkkk..", "..yyyyyy..", "..kkkkkk..", "..yyyyyy..", "...kkkk...", "....kk...."]}
+{"id": "10-a-busy-bee", "a": 4, "name": "A busy bee", "rows": ["..uu..uu..", ".uuuu.uuu.", "..uuuuuu..", "...yyyy...", "..kkkkkk..", "..yyyyyy..", "..kkkkkk..", "..yyyyyy..", "...kkkk...", "....kk...."]},
+{"id": "12-a-frog", "a": 5, "name": "A frog", "rows": ["..ww....ww..", ".wkkw..wkkw.", ".wkkwggwkkw.", "..wwggggww..", ".gggggggggg.", "gggggggggggg", "ggrggggggrgg", "gggrrrrrrggg", ".gggggggggg.", "..gggggggg..", ".GGg.gg.gGG.", "GGG......GGG"]},
+{"id": "12-a-duck", "a": 5, "name": "A duck", "rows": ["............", "....yyy.....", "...yyyyy....", "...yykyy....", "...yyyyyoo..", "....yyyyoo..", ".....yy.....", "y...yyyy....", "yyyyyyyyyy..", ".yyyyyyyyy..", "..yyyyyyy...", "uuuuuuuuuuuu"]},
+{"id": "12-a-goldfish", "a": 5, "name": "A goldfish", "rows": ["........u...", ".........u..", "....ooooo...", "..ooooooo..o", ".ooooooooooo", "ookoooooooo.", "oooooooooo..", ".ooooooooooo", "..ooooooo..o", "....ooooo...", "......oo....", "............"]},
+{"id": "12-a-water-lily", "a": 5, "name": "A water lily", "rows": [".....pp.....", "....pPPp....", ".pp.pPPp.pp.", ".ppppyyypppp", "..ppPyyyPpp.", "...pppppp...", "....pppp....", ".gggggggggg.", "gggggggggggg", "ggggg..ggggg", ".gggg..gggg.", "............"]},
+{"id": "12-a-sailing-boat", "a": 5, "name": "A sailing boat", "rows": [".....r......", ".....rr.....", ".....b......", "....wb......", "...wwbw.....", "..wwwbww....", ".wwwwbwww...", "wwwwwbwwww..", ".....b......", "bbbbbbbbbbbb", ".bbbbbbbbbb.", "uu.uu.uu.uuu"]},
+{"id": "12-an-umbrella", "a": 6, "name": "An umbrella", "rows": [".....kk.....", "...rrrrrr...", "..rrwrrwrr..", ".rrrwrrwrrr.", "rrrrwrrwrrrr", "r.rr.rr.rr.r", ".....k......", ".....k......", ".....k......", ".....k......", "..kk.k......", "...kkk......"]},
+{"id": "12-a-rain-cloud", "a": 6, "name": "A rain cloud", "rows": ["............", "....www.....", "..wwwwww....", ".wwwwwwwww..", "wwwwwwwwwwww", "wwwwwwwwwwww", ".sssssssss..", "............", ".u...u...u..", ".u...u...u..", ".u.......u..", ".........u.."]},
+{"id": "12-a-welly-boot", "a": 6, "name": "A welly boot", "rows": ["..GGGGGG....", "..GggggG....", "..GggggG....", "..GggggG....", "..GggggG....", "..GggggG....", "..Gggggggg..", "..Ggggggggg.", "..gggggggggg", "..kkkkkkkkkk", "............", ".uuuuuuuuuu."]},
+{"id": "12-a-rainbow", "a": 6, "name": "A rainbow", "rows": ["............", "...rrrrrr...", "..roooooor..", ".rooyyyyoor.", ".royyggyyor.", "roygguuggyor", "roygu..ugyor", "roygu..ugyor", "roygu..ugyor", "wwwww..wwwww", ".www....www.", "............"]},
+{"id": "12-a-house", "a": 6, "name": "A house", "rows": ["........b...", "....rr..b...", "...rrrr.b...", "..rrrrrrr...", ".rrrrrrrrr..", "rrrrrrrrrrr.", ".cccccccccc.", ".cuuccccuuc.", ".cuuccccuuc.", ".ccccbbcccc.", ".ccccbbcccc.", "gggggggggggg"]},
+{"id": "15-a-crescent-moon", "a": 7, "name": "A crescent moon", "rows": ["...............", "....yyyy.......", "..yyyyy....h...", ".yyyyy....hhh..", ".yyyy......h...", "yyyy...........", "yyyy...........", "yyyy.......h...", "yyyy......hhh..", ".yyyy......h...", ".yyyyy.........", "..yyyyyy.......", "....yyyyy......", "......yy.......", "..............."]},
+{"id": "15-a-candle", "a": 7, "name": "A candle", "rows": [".......y.......", "......yoy......", "......yoy......", ".......o.......", ".......k.......", ".....wwwww.....", ".....wwwww.....", ".....wwwww.....", ".....wwwww.....", ".....wwwww.....", ".....wwwww.....", "....bbbbbbb....", "..bbbbbbbbbbb..", "...bbbbbbbbb...", "..............."]},
+{"id": "15-a-teddy-bear", "a": 7, "name": "A teddy bear", "rows": ["..BB.......BB..", ".BtBB.....BBtB.", ".BBBBBBBBBBBBB.", "..BBBBBBBBBBB..", "..BBkBBBBBkBB..", "..BBBBtttBBBB..", "..BBBttkttBBB..", "...BBBtttBBB...", ".....BBBBB.....", "...BBBBBBBBB...", "..BBBBtttBBBB..", "..BB.BtttB.BB..", ".....BBBBB.....", "....BBB.BBB....", "...tttt.tttt..."]},
+{"id": "15-a-lantern", "a": 7, "name": "A lantern", "rows": [".......k.......", "......k.k......", ".......k.......", ".....kkkkk.....", "....kkkkkkk....", "....kyyyyyk....", "....kyhhhyk....", "....kyhohyk....", "....kyhohyk....", "....kyhhhyk....", "....kyyyyyk....", "....kkkkkkk....", ".....kkkkk.....", "...............", "..............."]},
+{"id": "15-a-hot-air-balloon", "a": 7, "name": "A hot-air balloon", "rows": [".....rrrrr.....", "...rryyyyyrr...", "..rryyrrryyrr..", ".rryyrrrrryyrr.", ".ryyrrrrrrryyr.", ".ryyrrrrrrryyr.", ".rryyrrrrryyrr.", "..rryyrrryyrr..", "...rryyyyyrr...", ".....rrrrr.....", "......k.k......", ".....k...k.....", ".....bbbbb.....", ".....bbbbb.....", "......bbb......"]}
 ];
 const $ = id => document.getElementById(id);
 const PAW = '<svg viewBox="0 0 24 24" fill="#7a4e14"><ellipse cx="12" cy="16" rx="5.2" ry="4.4"/><circle cx="5.5" cy="10.5" r="2.3"/><circle cx="9.3" cy="6.4" r="2.3"/><circle cx="14.7" cy="6.4" r="2.3"/><circle cx="18.5" cy="10.5" r="2.3"/></svg>';
