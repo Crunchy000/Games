@@ -426,7 +426,8 @@ function inRock(sh, t, d) {
 /* ---------- crystals: every piece is drawn from its type's style (colour, second colour, marking) ---------- */
 // a style: base colour, its second colour (for two-tone), the marking, and where sparkles and glow go
 const styleOf = ty => ({ c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k, two: ty.trait.k === 'two' || !!ty.pal.zoned, zoned: !!ty.pal.zoned });
-function sparkAt(x, y, s, st) { sparks.push({ x, y, s: clamp(s, 2.5, 12), c: st.glow, p: rnd() * 6.3, f: R(.6, 1.6) }); }
+let curSlot = -1;   // the formation being drawn, so its sparkles and glow can go with it when it's collected
+function sparkAt(x, y, s, st) { sparks.push({ x, y, s: clamp(s, 2.5, 12), c: st.glow, p: rnd() * 6.3, f: R(.6, 1.6), k: curSlot }); }
 // a jagged crack filled with gold, from a to b
 function goldVein(g, a, b, w) {
   const pts = [a], n = 4, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
@@ -736,13 +737,18 @@ function fossil(g, f, rockCol) {
   g.restore();
 }
 
-// paint a planned cave into one picture, a few milliseconds at a time so the page stays responsive; resolves when done
-function paintCave(plan) {
-  const S2 = document.createElement('canvas'); S2.width = Math.round(W * BDPR); S2.height = Math.round(H * BDPR);
+// paint a planned cave into one picture, a few milliseconds at a time so the page stays responsive; resolves when done.
+// Collected formations (removed) are left out. With patch = { pic, x0, y0, x1, y1 } it instead repaints just that area of an
+// existing picture, at once: everything is drawn from its own seed, so the patch matches the rest exactly.
+function paintCave(plan, removed = new Set(), patch = null) {
+  const S2 = patch ? patch.pic : document.createElement('canvas');
+  if (!patch) { S2.width = Math.round(W * BDPR); S2.height = Math.round(H * BDPR); }
   const g = S2.getContext('2d'); if (!g) { S2.width = S2.height = 0; return Promise.reject(new Error('no canvas')); }
   g.setTransform(BDPR, 0, 0, BDPR, 0, 0);
-  const glows = [], ops = [], { layers, rock, theme, scale } = plan;
-  sparks = []; motes = [];
+  const glows = [], ops = [], { layers, rock, theme, scale } = plan, keepSparks = sparks;
+  const near = (x, y, r) => !patch || (x + r > patch.x0 && x - r < patch.x1 && y + r > patch.y0 && y - r < patch.y1);
+  if (patch) { g.save(); const k = BDPR, x0 = Math.floor(patch.x0 * k) / k, y0 = Math.floor(patch.y0 * k) / k; g.beginPath(); g.rect(x0, y0, Math.ceil(patch.x1 * k) / k - x0, Math.ceil(patch.y1 * k) / k - y0); g.clip(); sparks = []; }
+  else { sparks = []; motes = []; plan.tex = []; }
   ops.push(() => {
     rnd = mulberry(S.seed ^ 0x9e3779b9);
     const bg = g.createRadialGradient(W / 2, H * .5, 0, W / 2, H * .5, Math.max(W, H) * .7);
@@ -759,7 +765,8 @@ function paintCave(plan) {
     ops.push(() => {
       rnd = mulberry((S.seed + li * 7919) | 0);
       const path = rockPath(g, L.sh);
-      g.save(); g.fillStyle = rockTexture('#' + shade(col, li === 0 ? .08 : 0).map(v => Math.round(v).toString(16).padStart(2, '0')).join('')); g.fill(path, 'evenodd');
+      if (plan.tex[li]) for (let k = 0; k < 4; k++) rnd(); else plan.tex[li] = rockTexture('#' + shade(col, li === 0 ? .08 : 0).map(v => Math.round(v).toString(16).padStart(2, '0')).join(''));   // made once, then reused for patches
+      g.save(); g.fillStyle = plan.tex[li]; g.fill(path, 'evenodd');
       g.clip(path, 'evenodd'); g.lineJoin = 'round';
       // soft glow and shadow along the edge: stacked strokes, widest and faintest first (a blur filter over the whole cave is far too slow on a phone)
       const edge = openingPath(L.sh), soft = (col, a, w0, w1, op) => { g.globalCompositeOperation = op; for (let k = 0; k < 3; k++) { g.strokeStyle = rgba(col, a / 2.2); g.lineWidth = w1 - (w1 - w0) * k / 2; g.stroke(edge); } g.globalCompositeOperation = 'source-over'; };
@@ -773,18 +780,25 @@ function paintCave(plan) {
       for (const f of plan.fossils) if (f.li === li) fossil(g, f, col);
       for (const st of plan.stals) if (st.li === li) stalactite(g, st.x, st.y, st.len, st.w, shade(col, .12));
     });
-    for (const s of plan.slots) if (s.li === li) ops.push(() => { rnd = mulberry(s.seed); formation(g, s.x, s.y, s.ang, s.size, s.type, glows); });
+    for (const s of plan.slots) if (s.li === li && !removed.has(s.i) && (near(s.x, s.y, s.size * 1.1) || near(s.cx, s.cy, s.size * 1.1)))
+      ops.push(() => { rnd = mulberry(s.seed); curSlot = s.i; const n0 = glows.length; formation(g, s.x, s.y, s.ang, s.size, s.type, glows); for (let k = n0; k < glows.length; k++) glows[k][4] = s.i; curSlot = -1; });
   });
   ops.push(() => {
     g.globalCompositeOperation = 'lighter';
-    for (const [x, y, r, c] of glows) { const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rgba(hex(c), .07)); gl.addColorStop(1, rgba(hex(c), 0)); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    if (!patch) plan.glows = glows;
+    for (const [x, y, r, c, k] of plan.glows) { if (removed.has(k) || !near(x, y, r)) continue; const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rgba(hex(c), .07)); gl.addColorStop(1, rgba(hex(c), 0)); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
     g.globalCompositeOperation = 'source-over';
     const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.max(W, H) * .78);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    if (patch) return;
     rnd = mulberry(S.seed ^ 0x51ed27);
     for (let i = 0; i < 150; i++) motes.push({ x: R(0, W), y: R(0, H), v: R(4, 12), a: R(.15, .4), r: R(.6, 1.6), c: pick(theme).glow, p: rnd() * 6.3 });
     if (sparks.length > 700) sparks = shuffle(sparks).slice(0, 700);
   });
+  if (patch) {   // all at once: it's only a small area
+    for (const op of ops) { try { op(); } catch (e) { g.setTransform(BDPR, 0, 0, BDPR, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; } }
+    g.restore(); sparks = keepSparks; return Promise.resolve(S2);
+  }
   return new Promise(resolve => {
     let i = 0;
     const step = () => { const t0 = performance.now(); while (i < ops.length && performance.now() - t0 < 12) { try { ops[i++](); } catch (e) { g.setTransform(BDPR, 0, 0, BDPR, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; } } if (i < ops.length) setTimeout(step, 0); else resolve(S2); };
@@ -859,11 +873,11 @@ function tapAt(x, y) {
   // the crystal in front under the tap
   // a crystal still to find wins any tie, so a neighbour's glow never steals a fair tap
   let hit = cave.plan.slots.find(s => s.hunt === S.hunt - 1 && !S.found.includes(s.slot) && Math.hypot(s.cx - x, s.cy - y) < Math.max(s.r, 16 / zoom)) || null;
-  if (!hit) for (let i = cave.plan.slots.length - 1; i >= 0; i--) { const s = cave.plan.slots[i]; if (Math.hypot(s.cx - x, s.cy - y) < s.r) { hit = s; break; } }
+  if (!hit) for (let i = cave.plan.slots.length - 1; i >= 0; i--) { const s = cave.plan.slots[i]; if (!cave.removed.has(s.i) && Math.hypot(s.cx - x, s.cy - y) < s.r) { hit = s; break; } }
   if (!hit) return;
   if (hit.hunt === S.hunt - 1) {
     if (S.found.includes(hit.slot)) { note('Already in the bag'); return; }
-    S.found.push(hit.slot); S.score += 100; if (hit === hintSlot) hintSlot = null;
+    S.found.push(hit.slot); S.score += 100; if (hit === hintSlot) hintSlot = null; takeAway(hit);
     sFound(S.found.length - 1); buzz(12); burst(hit.cx, hit.cy, hit.type.pal.glow, 18);
     const all = targetsNow();
     if (S.found.length >= all.length) {
@@ -876,6 +890,12 @@ function tapAt(x, y) {
   if (hit.hunt !== undefined && hit.hunt < S.hunt - 1) { note('Already in the bag'); return; }
   S.misses++; S.score = Math.max(0, S.score - 10); save(); renderHud(); sMiss(); buzz(20);
   note(`That's ${/^[AEIOU]/.test(hit.type.pal.n) ? 'an' : 'a'} ${typeName(hit.type)}, ${hit.type.trait.t}`);
+}
+function takeAway(s) {
+  cave.removed.add(s.i);
+  const r = s.size * 1.25, x0 = Math.max(0, Math.min(s.x, s.cx) - r), y0 = Math.max(0, Math.min(s.y, s.cy) - r), x1 = Math.min(W, Math.max(s.x, s.cx) + r), y1 = Math.min(H, Math.max(s.y, s.cy) + r);
+  const keep = rnd; paintCave(cave.plan, cave.removed, { pic: cave.pic, x0, y0, x1, y1 }); rnd = keep;
+  paintMiniArt();
 }
 function nextHunt() { S.hunt++; S.found = []; hintSlot = null; save(); showTarget(); note('Now find: ' + typeName(target())); }
 function hint() {
@@ -901,13 +921,16 @@ function makeCave(fresh) {
   busyGen = true; loadingEl.classList.add('show'); const id = ++genId;
   let plan;
   try { plan = planCave(); } catch (e) { busyGen = false; loadingEl.classList.remove('show'); note('Sorry, that cave caved in. Tap ↻ for another'); return Promise.resolve(); }
-  const paint = () => paintCave(plan).catch(() => { if (BDPR > .8) { BDPR *= .75; return paint(); } return null; });
+  // crystals already collected in a saved game are left out of the picture
+  S.found = S.found.filter(i => i < plan.counts[S.hunt - 1]);
+  const removed = new Set(plan.slots.filter(s => s.hunt !== undefined && (s.hunt < S.hunt - 1 || (s.hunt === S.hunt - 1 && S.found.includes(s.slot)))).map(s => s.i));
+  const paint = () => paintCave(plan, removed).catch(() => { if (BDPR > .8) { BDPR *= .75; return paint(); } return null; });
   return paint().then(pic => {
     if (!pic) { if (id === genId) { busyGen = false; loadingEl.classList.remove('show'); note('Sorry, that cave caved in. Tap ↻ for another'); } return; }
     if (id !== genId) return;
     if (cave && cave.pic) { cave.pic.width = cave.pic.height = 0; }   // let the old picture go straight away
-    cave = { plan, pic }; busyGen = false; hintSlot = null;
-    S.found = S.found.filter(i => i < plan.counts[S.hunt - 1]); S.fossils = S.fossils.filter(i => i < plan.fossils.length);
+    cave = { plan, pic, removed }; busyGen = false; hintSlot = null;
+    S.fossils = S.fossils.filter(i => i < plan.fossils.length);
     paintMiniArt(); centreCamera();
     loadingEl.classList.remove('show'); showTarget();
   });
@@ -1056,20 +1079,10 @@ function frame(now) {
     if (!seen(m.x, m.y)) continue;
     ctx.globalAlpha = m.a * (.6 + .4 * Math.sin(t * 1.3 + m.p)); ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 6.3); ctx.fill();
   }
-  if (!reduceMotion) for (const s of sparks) { if (!seen(s.x, s.y)) continue; const v = Math.sin(t * s.f + s.p); if (v > .6) star(s.x, s.y, s.s * (v - .6) / .4 * .5, s.c, Math.min(1, (v - .6) * 2.4)); }
+  if (!reduceMotion) for (const s of sparks) { if (!seen(s.x, s.y) || cave.removed.has(s.k)) continue; const v = Math.sin(t * s.f + s.p); if (v > .6) star(s.x, s.y, s.s * (v - .6) / .4 * .5, s.c, Math.min(1, (v - .6) * 2.4)); }
   ctx.globalAlpha = 1;
-  // the current hunt's finds glow; every collected crystal wears a tick
-  for (const s of cave.plan.slots) {
-    if (s.hunt === undefined) continue;
-    const done = s.hunt < S.hunt - 1 || (s.hunt === S.hunt - 1 && S.found.includes(s.slot)); if (!done) continue;
-    if (s.hunt === S.hunt - 1 && seen(s.cx, s.cy)) { const gl = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r * 1.3); gl.addColorStop(0, rgba(hex(s.type.pal.glow), .35)); gl.addColorStop(1, rgba(hex(s.type.pal.glow), 0)); ctx.fillStyle = gl; ctx.fillRect(s.cx - s.r * 1.3, s.cy - s.r * 1.3, s.r * 2.6, s.r * 2.6); }
-  }
   ctx.globalCompositeOperation = 'source-over';
-  for (const s of cave.plan.slots) {
-    if (s.hunt === undefined) continue;
-    const done = s.hunt < S.hunt - 1 || (s.hunt === S.hunt - 1 && S.found.includes(s.slot));
-    if (done && seen(s.cx, s.cy)) tick(s.cx + s.r * .45, s.cy - s.r * .45, (s.hunt === S.hunt - 1 ? 9 : 6.5) / Math.max(.6, zoom));
-  }
+  // collected crystals are gone from the cave; collected fossils wear a tick
   cave.plan.fossils.forEach((f, i) => { if (S.fossils.includes(i)) tick(f.x + f.r, f.y - f.r, 6.5 / Math.max(.6, zoom)); });
   // the hint: a soft pulsing ring that narrows in
   if (hintSlot) {
