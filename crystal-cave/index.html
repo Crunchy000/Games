@@ -583,7 +583,7 @@ function stalactite(g, x, y, len, w, col) {
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
 let S = { v: 2, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 2) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp;   // caves from the first version don't carry over } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 2) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -689,7 +689,8 @@ function fossil(g, f, rockCol) {
 // paint a planned cave into one picture, a few milliseconds at a time so the page stays responsive; resolves when done
 function paintCave(plan) {
   const S2 = document.createElement('canvas'); S2.width = Math.round(W * BDPR); S2.height = Math.round(H * BDPR);
-  const g = S2.getContext('2d'); g.setTransform(BDPR, 0, 0, BDPR, 0, 0);
+  const g = S2.getContext('2d'); if (!g) { S2.width = S2.height = 0; return Promise.reject(new Error('no canvas')); }
+  g.setTransform(BDPR, 0, 0, BDPR, 0, 0);
   const glows = [], ops = [], { layers, rock, theme, scale } = plan;
   sparks = []; motes = [];
   ops.push(() => {
@@ -736,7 +737,7 @@ function paintCave(plan) {
   });
   return new Promise(resolve => {
     let i = 0;
-    const step = () => { const t0 = performance.now(); while (i < ops.length && performance.now() - t0 < 12) { ops[i++](); } if (i < ops.length) setTimeout(step, 0); else resolve(S2); };
+    const step = () => { const t0 = performance.now(); while (i < ops.length && performance.now() - t0 < 12) { try { ops[i++](); } catch (e) { g.setTransform(BDPR, 0, 0, BDPR, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; } } if (i < ops.length) setTimeout(step, 0); else resolve(S2); };
     step();
   });
 }
@@ -848,8 +849,11 @@ function makeCave(fresh) {
   if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.fossils = []; S.score = 0; S.misses = 0; S.hints = 0; save(); }
   BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(5.2e6 / (WORLD_W * WORLD_H)));   // the painted cave's resolution, capped to spare a phone's memory
   busyGen = true; loadingEl.classList.add('show'); const id = ++genId;
-  const plan = planCave();
-  return paintCave(plan).then(pic => {
+  let plan;
+  try { plan = planCave(); } catch (e) { busyGen = false; loadingEl.classList.remove('show'); note('Sorry, that cave caved in. Tap ↻ for another'); return Promise.resolve(); }
+  const paint = () => paintCave(plan).catch(() => { if (BDPR > .8) { BDPR *= .75; return paint(); } return null; });
+  return paint().then(pic => {
+    if (!pic) { if (id === genId) { busyGen = false; loadingEl.classList.remove('show'); note('Sorry, that cave caved in. Tap ↻ for another'); } return; }
     if (id !== genId) return;
     if (cave && cave.pic) { cave.pic.width = cave.pic.height = 0; }   // let the old picture go straight away
     cave = { plan, pic }; busyGen = false; hintSlot = null;
