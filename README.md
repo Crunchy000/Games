@@ -36,11 +36,11 @@ Play at https://www.bearandbean.uk/
 
 Sound on/off and light/dark mode are house settings: change them in any game and every other game follows.
 
-On the home page, tap the heart on any game to make it a favourite: favourites get their own row at the top of the page, kept on the device.
+On the home page, tap the heart on any game to make it a favourite: favourites get their own row at the top of the page, kept on the device. New games join it by themselves (once; take one out and it stays out).
 
 Ideas for future games are in [`TODO.md`](TODO.md).
 
-The root `index.html` is a landing page with a featured carousel and a scrolling row of games for each category (Word & number, Puzzle, Action & Arcade, Bear vs Bean). To add a game, add its folder, a `<template id="art-<folder>">` thumbnail and an entry in the `GAMES`/`CATS` lists in that file.
+The root `index.html` is a landing page with a "Your favourites" row at the top and a scrolling row of games for each category (Word & number, Puzzle, Action & Arcade, Bear vs Bean). To add a game, add its folder, a `<template id="art-<folder>">` thumbnail and an entry in the `GAMES`/`CATS` lists in that file; mark it `isNew` and it joins everyone's favourites once.
 
 
 ## Controls

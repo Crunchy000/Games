@@ -254,14 +254,6 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 </header>
 <main id="main">
   <div id="favRow"></div>
-  <section aria-label="Featured games">
-    <div class="rowwrap">
-      <button class="arrow l" aria-label="Previous featured game">‹</button>
-      <div class="scroller" id="featured"></div>
-      <button class="arrow r" aria-label="Next featured game">›</button>
-    </div>
-    <div class="dots" id="dots" role="tablist" aria-label="Featured game"></div>
-  </section>
   <div id="cats"></div>
   <noscript><ul>
 <li><a href="fishy-floes/">Fishy Floes</a> — Bear and Bean’s penguins race across melting ice floes for fish. Slide a penguin in a straight line and the floe it leaves sinks. Two players, or play the computer.</li>
@@ -509,43 +501,23 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 <script>
 (() => {
   const GAMES = [{"slug": "fishy-floes", "title": "Fishy Floes", "desc": "Bear and Bean’s penguins race across melting ice floes for fish. Slide a penguin in a straight line and the floe it leaves sinks. Two players, or play the computer.", "tag": "2 players", "isNew": false}, {"slug": "find-a-flower", "title": "Find a Flower", "desc": "A cosy hidden-flower hunt across a wide, living meadow. Find every bloom that matches the one Bear and Bean are after among a thousand lookalikes, spot lucky four-leaf clovers, and watch the day turn from morning to starlight.", "tag": "Hidden object", "isNew": true}, {"slug": "paw-prints", "title": "Paw Prints", "desc": "Picture-logic puzzles in easy mode: use the number clues to fill in squares and reveal pixel art of acorns, teacups, Bear, Bean and friends. Each finished line fills with colour.", "tag": "Logic", "isNew": false}, {"slug": "paw-pairs", "title": "Paw Pairs", "desc": "Match pairs of free ivory tiles to clear the stack, from a little pebble to a butterfly. Every deal can be cleared.", "tag": "Matching", "isNew": false}, {"slug": "hue-quilt", "title": "Hue Quilt", "desc": "Swap the patches of Bear's patchwork quilt until every colour blends smoothly into the next. Buttoned patches stay put.", "tag": "Colour", "isNew": false}, {"slug": "lace-loops", "title": "Lace Loops", "desc": "Tap to turn bits of sweet lace until every end joins up and nothing is left dangling. Endless levels in seven flavours.", "tag": "Puzzle", "isNew": false}, {"slug": "sand-sort", "title": "Sand Sort", "desc": "Pour coloured sand between glass test tubes until every tube holds one colour. Endless levels, with mystery sand to uncover.", "tag": "Puzzle", "isNew": false}, {"slug": "queen-bean", "title": "Queen Bean", "desc": "Crown one Queen Bean in every row, column and colour patch, with no two Beans touching. A daily puzzle plus endless boards.", "tag": "Logic", "isNew": false}, {"slug": "thin-ice", "title": "Thin Ice", "desc": "Take turns knocking ice blocks out of a frozen pond. Whoever drops Pip the penguin in the water loses.", "tag": "2 players", "isNew": false}, {"slug": "greedy-hippos", "title": "Greedy Hippos", "desc": "Two hungry hippos, one bowl of jelly beans. Lay the phone flat, tap your half to chomp, and grab the most beans.", "tag": "2 players", "isNew": false}, {"slug": "bean-2048", "title": "Bean 2048", "desc": "Swipe to slide every jelly bean. Two the same bump together and merge into a bigger bean. Can you grow the golden 2048 bean?", "tag": "Puzzle", "isNew": false}, {"slug": "stack-drop", "title": "Stack Drop", "desc": "Hold to send Bean bouncing down through a sweet papercraft tower. Let go before the liquorice, or build a sugar rush and break through anything.", "tag": "Arcade", "isNew": false}, {"slug": "guess-five", "title": "Guess Five", "desc": "Find the hidden five-letter word in six guesses. Coloured tiles show how close you are. Play the daily word or go endless.", "tag": "Word", "isNew": false}, {"slug": "word-hive", "title": "Word Hive", "desc": "Make as many words as you can from seven letters in a honeycomb. Every word must use the gold centre letter.", "tag": "Word", "isNew": false}, {"slug": "sudoku", "title": "Sudoku", "desc": "Fill every row, column and box with 1 to 9. Notes, hints and four difficulty levels, with a fresh puzzle every game.", "tag": "Number", "isNew": false}, {"slug": "tangle-tails", "title": "Tangle Tails", "desc": "Untangle a pit of cartoon snakes. Tap one to send it slithering out, but only if nothing is in its way.", "tag": "Puzzle", "isNew": false}, {"slug": "slither-slide", "title": "Slither Slide", "desc": "Swipe a cartoon snake through a maze. It slides until it bumps a wall, so plan your route to paint every tile.", "tag": "Puzzle", "isNew": false}, {"slug": "bumble-dash", "title": "Bumble Dash", "desc": "Tap to buzz a little bee through the gaps between honeycomb towers.", "tag": "Arcade", "isNew": false}, {"slug": "hedge-hop", "title": "Hedge Hop", "desc": "Hop a hedgehog across busy roads, rivers of logs and railway lines.", "tag": "Arcade", "isNew": false}, {"slug": "ink-bounce", "title": "Ink Bounce", "desc": "A brick breaker on a blueprint with no paddle: draw your own, one line at a time, and catch ink drops.", "tag": "Arcade", "isNew": false}, {"slug": "dot-loop", "title": "Dot Loop", "desc": "Drag lines through dots of one colour to clear them, or close a loop to clear the lot.", "tag": "Puzzle", "isNew": false}, {"slug": "tile-burst", "title": "Tile Burst", "desc": "Drag blocks onto the board, fill rows and columns to burst them, and chain combos for big scores.", "tag": "Block puzzle", "isNew": false}, {"slug": "gummy-pop", "title": "Gummy Pop", "desc": "Match gummies, drop honey pots to Bear, break liquorice locks and stop the chocolate spreading. Boosters included.", "tag": "Match-3", "isNew": false}, {"slug": "pyramid-hop", "title": "Pyramid Hop", "desc": "Hop a hedgehog round a jungle pyramid to light every cube, while snakes slither up from the bottom.", "tag": "Arcade", "isNew": false}, {"slug": "dots-and-boxes", "title": "Dots & Boxes", "desc": "Dots and Boxes for two: Bear and Bean take turns joining dots. Close a box to stamp it with a paw print or a bean, and go again.", "tag": "2 players", "isNew": false}];
-  const FEATURED = ["fishy-floes", "find-a-flower", "paw-prints", "paw-pairs", "hue-quilt", "lace-loops", "sand-sort"];
   const CATS = [["Word & number", "Daily brain teasers", ["guess-five", "word-hive", "sudoku"]], ["Puzzle", "Think, match and clear", ["find-a-flower", "paw-prints", "paw-pairs", "hue-quilt", "lace-loops", "sand-sort", "queen-bean", "bean-2048", "tangle-tails", "slither-slide", "tile-burst", "dot-loop", "gummy-pop"]], ["Action & Arcade", "Fast fingers, quick reflexes", ["stack-drop", "hedge-hop", "bumble-dash", "ink-bounce", "pyramid-hop"]], ["Bear vs Bean", "Two players, one phone", ["fishy-floes", "thin-ice", "greedy-hippos", "dots-and-boxes"]]];
   const bySlug = Object.fromEntries(GAMES.map(g => [g.slug, g]));
   const art = slug => document.getElementById('art-' + slug).innerHTML;
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  // featured carousel
-  const feat = document.getElementById('featured'), dots = document.getElementById('dots');
-  feat.innerHTML = FEATURED.map(s => { const g = bySlug[s]; return `
-    <a class="hero" href="${g.slug}/" aria-label="Play ${esc(g.title)}">
-      <span class="art">${art(s).replace('<svg ', '<svg preserveAspectRatio="xMidYMid slice" ')}<span class="shade"></span></span>
-      ${g.isNew ? '<span class="badge">NEW</span>' : ''}
-      <span class="info"><h3>${esc(g.title)}</h3><p>${esc(g.desc)}</p><span class="play pk-btn pk-small">Play</span></span>
-    </a>`; }).join('');
-  dots.innerHTML = FEATURED.map((s, i) => `<button role="tab" aria-label="${esc(bySlug[s].title)}" data-i="${i}"></button>`).join('');
-  const heroes = [...feat.children], dotBtns = [...dots.children];
-  const goTo = i => feat.scrollTo({ left: heroes[i].offsetLeft - feat.firstElementChild.offsetLeft, behavior: 'smooth' });
-  dotBtns.forEach(b => b.addEventListener('click', () => { stopAuto(); goTo(+b.dataset.i); }));
-  let cur = 0;
-  const syncDots = () => {
-    const x = feat.scrollLeft, maxX = feat.scrollWidth - feat.clientWidth;
-    let i = heroes.reduce((b, h, k) => Math.abs(h.offsetLeft - heroes[0].offsetLeft - x) < Math.abs(heroes[b].offsetLeft - heroes[0].offsetLeft - x) ? k : b, 0);
-    if (x >= maxX - 4 && auto === null) i = heroes.length - 1;
-    cur = i; dotBtns.forEach((d, k) => { d.classList.toggle('on', k === i); d.setAttribute('aria-selected', k === i); });
-  };
-  feat.addEventListener('scroll', syncDots, { passive: true });
-  let auto = matchMedia('(prefers-reduced-motion: reduce)').matches ? null : setInterval(() => {
-    const atEnd = feat.scrollLeft >= feat.scrollWidth - feat.clientWidth - 4;
-    goTo(atEnd ? 0 : (cur + 1) % heroes.length);
-  }, 5000);
-  syncDots();
-  const stopAuto = () => { if (auto) { clearInterval(auto); auto = null; } };
-  ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(ev => feat.addEventListener(ev, stopAuto, { passive: true }));
 
   // favourites, kept on this device: they come first in every row they're in
   const FAV_KEY = 'bearbean-favourites';
   let favs = []; try { favs = JSON.parse(localStorage.getItem(FAV_KEY) || '[]').filter(s => bySlug[s]); } catch (e) {}
+  // new games are added to the favourites by themselves, once each: take one out and it stays out
+  const SEEN_KEY = 'bearbean-new-seen';
+  let seen = []; try { seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch (e) {}
+  const fresh = GAMES.filter(g => g.isNew && !seen.includes(g.slug)).map(g => g.slug);
+  if (fresh.length) {
+    favs = fresh.filter(s => !favs.includes(s)).concat(favs);
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); localStorage.setItem(SEEN_KEY, JSON.stringify(seen.concat(fresh))); } catch (e) {}
+  }
   const isFav = s => favs.includes(s);
   const heart = on => `<svg viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>`;
 
@@ -585,11 +557,10 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
     const sc = w.querySelector('.scroller'), L = w.querySelector('.arrow.l'), R = w.querySelector('.arrow.r');
     const upd = () => { L.disabled = sc.scrollLeft < 8; R.disabled = sc.scrollLeft + sc.clientWidth > sc.scrollWidth - 8; };
     const step = () => Math.max(160, sc.clientWidth * .8);
-    L.addEventListener('click', () => { stopAuto(); sc.scrollBy({ left: -step(), behavior: 'smooth' }); });
-    R.addEventListener('click', () => { stopAuto(); sc.scrollBy({ left: step(), behavior: 'smooth' }); });
+    L.addEventListener('click', () => { sc.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    R.addEventListener('click', () => { sc.scrollBy({ left: step(), behavior: 'smooth' }); });
     sc.addEventListener('scroll', upd, { passive: true }); addEventListener('resize', upd); upd();
   }
-  document.querySelectorAll('.rowwrap').forEach(bindArrows);
   renderCats();
 })();
 </script>
