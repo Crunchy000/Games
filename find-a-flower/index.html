@@ -540,9 +540,9 @@ function layout() {
   sizeMini();
 }
 
-// open looking at Bear and Bean's picnic
+// open zoomed right out, centred on Bear and Bean's picnic
 function centreCamera() {
-  zoom = targetZoom = clampZoom(1.0);
+  zoom = targetZoom = getMinZoom();
   const c = clampCam(campPos.x - viewW / zoom * 0.5, campPos.y - viewH / zoom * 0.58, zoom);
   camX = targetCamX = prevCamX = c.x;
   camY = targetCamY = prevCamY = c.y;
