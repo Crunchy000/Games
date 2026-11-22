@@ -638,9 +638,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 26, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 27, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 26) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 27) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -798,8 +798,8 @@ function drapery(g, x, y, w, len, col) {
 }
 function planFloor(T) {
   const { hunts, decoys, fillers, theme, rock } = T;
-  // the floor is a rounded slab running the full width of the cave: straight back and front edges with rounded corners
-  const y0 = H * R(.31, .34), yF = H * .9, hwBack = W * .5 - 14, hwFront = W * .5 - 14, cr = R(120, 160), crF = R(130, 170);   // full width, rounded at the corners
+  // the floor runs right out to the sides and the bottom of the cave, meeting the wall along a straight back edge
+  const y0 = H * R(.31, .34), yF = H + 20, hwBack = W * .5 + 20, hwFront = W * .5 + 20, cr = 0, crF = 0;   // edge to edge, square
   let inPondLater = () => false;   // set once the pond is planned
   const halfAt = y => lerp(hwBack, hwFront, clamp((y - y0) / (yF - y0), 0, 1));
   const baseY = x => {   // the top edge of the floor at x (below the world if x is beyond the floor)
@@ -834,7 +834,7 @@ function planFloor(T) {
   const inPond = inPondLater = (x, y, m = 0) => ((x - pond.x) / (pond.rx + m)) ** 2 + ((y - pond.y) / (pond.ry + m * .4)) ** 2 < 1;
   // a skylight in the roof, and the pool of light it throws on the floor
   const hole = { x: hx, y: R(30, 42), rx: R(90, 120), ry: R(26, 34), off: R(0, 100) };
-  const pool = { x: clamp(hole.x + R(-80, 80), W * .25, W * .75), y: y0 + (yF - y0) * R(.45, .55), rx: R(300, 380), ry: R(130, 170) };
+  const pool = { x: clamp(hole.x + R(-80, 80), W * .25, W * .75), y: y0 + (H - y0) * R(.42, .5), rx: R(300, 380), ry: R(130, 170) };
   const seedOf = () => (rnd() * 2147483647) | 0, floorI = [];
   const mk = (kind, x, y, ang, size, extra) => Object.assign({ kind, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 }, extra);
   const crowds = (list, it) => underControls(it.cx, it.cy, it.r) || underControls(it.x, it.y, 4) || list.some(o => Math.abs(o.cy - it.cy) < o.r + it.r && overlap(o.r, it.r, Math.hypot(o.cx - it.cx, o.cy - it.cy)) > .25 * Math.PI * Math.min(o.r, it.r) ** 2);
