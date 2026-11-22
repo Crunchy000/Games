@@ -83,6 +83,10 @@
   #loading.show { opacity:1; pointer-events:auto; transition:none; }
   #loading > div { display:flex; flex-direction:column; align-items:center; gap:10px; background:rgba(255,250,243,.94); color:#3b2e22; font-weight:800; font-size:.95rem; padding:16px 22px 14px; border-radius:18px; box-shadow:0 6px 18px rgba(0,0,0,.2); }
   #loading svg { width:46px; height:46px; }
+  #loading .tips-list { display:none; margin:2px 0 0; padding-left:18px; max-width:290px; text-align:left; font-weight:600; font-size:.86rem; line-height:1.4; color:#6e6152; }
+  #loading .tips-list li { margin:4px 0; } #loading .tips-list b { color:#3b2e22; }
+  #loading.tips .tips-list { display:block; }
+  #loading.tips > div { max-height:calc(100% - 20px); overflow:auto; margin:0 10px; }
   #loading .spin { transform-origin:0 0; animation:spin 2.4s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { #loading .spin { animation:none; } }
@@ -203,8 +207,15 @@ window.BB = (() => {
     <canvas id="game"></canvas>
     <canvas id="mini" aria-label="Map of the whole meadow: tap or drag to look there"></canvas>
     <div class="note" id="note" role="status" aria-live="polite"></div>
-    <div id="loading" class="show" role="status"><div><svg viewBox="-20 -20 40 40" aria-hidden="true"><g class="spin">
-      <ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ffd13b"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ff6b8b" transform="rotate(72)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#6eb5ff" transform="rotate(144)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#c59cff" transform="rotate(216)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ff5c38" transform="rotate(288)"/></g><circle r="4.5" fill="#4a230b"/></svg><span>Planting the meadow…</span></div></div>
+    <div id="loading" class="show tips" role="status"><div><svg viewBox="-20 -20 40 40" aria-hidden="true"><g class="spin">
+      <ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ffd13b"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ff6b8b" transform="rotate(72)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#6eb5ff" transform="rotate(144)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#c59cff" transform="rotate(216)"/><ellipse cx="0" cy="-10" rx="4.6" ry="8" fill="#ff5c38" transform="rotate(288)"/></g><circle r="4.5" fill="#4a230b"/></svg><span>Finding a picnic spot…</span>
+      <ul class="tips-list">
+        <li>Find every flower that matches the one shown: same <b>shape, colour and markings</b>.</li>
+        <li><b>Drag</b> to look around, <b>pinch</b> or <b>＋</b> to zoom. Tap the little map to jump.</li>
+        <li><b>Tap</b> a match to pick it for Bear and Bean's basket. A wrong tap costs 10.</li>
+        <li>🍀 Four-leaf clovers are a bonus. Stuck? 🔍 for a hint.</li>
+        <li>20 hunts a meadow; the day moves on every five.</li>
+      </ul></div></div>
     <div class="zoom"><button class="tool pk-chip" id="bIn" aria-label="Zoom in">＋</button><button class="tool pk-chip" id="bOut" aria-label="Zoom out">－</button></div>
   </div>
   <div id="tray">
@@ -215,7 +226,7 @@ window.BB = (() => {
   </div>
 </div>
 
-<div class="ov show" id="ovHelp"><div class="card pk-card">
+<div class="ov" id="ovHelp"><div class="card pk-card">
   <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>Find a Flower</h2>
@@ -228,7 +239,7 @@ window.BB = (() => {
     <li>Stuck? A <b>hint</b> (25 points) takes you to one.</li>
   </ul>
   <p>Each meadow has <b>20 flowers to hunt</b>, one after another, with more to find as you go. The day moves on every five hunts, from morning to starlight; tap the time to change it whenever you like. Tap ↻ for a whole new meadow.</p>
-  <div class="row2"><button class="btn pk-btn" id="bGo" data-close disabled>Planting the meadow…</button></div>
+  <div class="row2"><button class="btn pk-btn" data-close>Let's look</button></div>
 </div></div>
 
 <div class="ov" id="ovWin"><div class="card pk-card">
@@ -2866,12 +2877,13 @@ if (window.visualViewport) visualViewport.addEventListener('resize', layout);
 const loadingEl = $('loading');
 let loadingSince = performance.now();
 function showLoading() { loadingEl.classList.add('show'); loadingSince = performance.now(); }
-function hideLoading() {   // stays up at least half a second so it never just flickers
-  const wait = Math.max(0, 500 - (performance.now() - loadingSince));
+function hideLoading(atLeast = 500) {   // stays up a moment so it never just flickers
+  const wait = Math.max(0, atLeast - (performance.now() - loadingSince));
   setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => loadingEl.classList.remove('show'))), wait);
 }
 function freshMeadow() {
   S.meadow++;
+  loadingEl.classList.remove('tips');
   showLoading();
   requestAnimationFrame(() => setTimeout(() => { newMeadow(true); layout(); hideLoading(); }, 30));
 }
@@ -2884,8 +2896,7 @@ const settle = im => im.complete ? Promise.resolve() : new Promise(res => { im.a
 Promise.race([Promise.all([picnicImg, ...faces].map(settle)), new Promise(res => setTimeout(res, 3500))]).then(() => {
   newMeadow(!S.seed);
   layout();
-  hideLoading();
-  $('bGo').disabled = false; $('bGo').textContent = 'Let\'s look';
+  hideLoading(2600);   // long enough to read the tips, even when the meadow is ready at once
 });
 if (/[?&]debug\b/.test(location.search)) window.__ff = {
   get targets() { return targetFlowers; }, get clovers() { return luckyClovers; }, get S() { return S; },
