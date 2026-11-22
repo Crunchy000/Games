@@ -29,7 +29,7 @@
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#123a70; font-family:"Segoe Print","Bradley Hand","Comic Sans MS","Chalkboard SE",system-ui,sans-serif; color:#eaf3ff; }
-  #app { position:relative; height:100dvh; width:100vw; display:flex; align-items:center; justify-content:center; touch-action:none; }
+  #app { position:relative; height:100vh; height:var(--app-h, 100dvh); width:100vw; display:flex; align-items:center; justify-content:center; touch-action:none; }
   canvas { display:block; touch-action:none; box-shadow:0 0 30px rgba(0,10,30,.45); }
   .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(14,46,92,.72); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); z-index:5; }
   .ov.show { display:flex; animation:fade .3s ease; }
@@ -242,7 +242,7 @@ window.BB = (() => {
 <script>
 (() => {
 'use strict';
-const W = 360, COLS = 8, BW = 40, BH = 17, GAP = 3, BX = (W - COLS * BW - (COLS - 1) * GAP) / 2;
+const W = 360, COLS = 8, BW = 39, BH = 17, GAP = 3, BX = (W - COLS * BW - (COLS - 1) * GAP) / 2;
 let BY = 78;   // the top of the brick field: moves down on taller screens so the board stays balanced
 const INK_MAX = 600, INK_REGEN = 22, R = 6.5;
 const INK_PER_HIT = 18;   // every hit on a brick tops the ink up a little
@@ -256,12 +256,16 @@ if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // s
 const persist = () => { try { localStorage.setItem('inkbounce', JSON.stringify(save)); } catch (e) {} };
 
 function resize() {
-  H = Math.round(clamp(W * innerHeight / innerWidth, 600, 860));
+  // size the board to the height that is actually visible, and make #app that same height, so the
+  // centred canvas can't slide under the browser's bars or the phone's navigation bar
+  const vv = window.visualViewport, vw = Math.round(vv ? vv.width : innerWidth) || innerWidth, vh = Math.round(vv ? vv.height : innerHeight) || innerHeight;
+  document.documentElement.style.setProperty('--app-h', vh + 'px');
+  H = Math.round(clamp(W * vh / vw, 600, 860));
   // share any height beyond the shortest board between the top (bricks come down a little) and the drawing area
   const by = Math.round(78 + (H - 600) * .3);
   if (by !== BY) { for (const b of bricks) b.y += by - BY; BY = by; }
   ZONE = Math.round(BY + 10 * (BH + GAP) + 26);
-  const s = Math.min(innerWidth / W, innerHeight / H), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const s = Math.min(vw / W, vh / H), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px'; cv.width = Math.round(W * s * dpr); cv.height = Math.round(H * s * dpr); SC = cv.width / W;
   paper = null;
 }
@@ -544,7 +548,7 @@ function draw() {
   ctx.setTransform(SC, 0, 0, SC, 0, 0); ctx.drawImage(paperBg(), 0, 0, W, H);
   ctx.save(); if (shake > .3) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
   // draw zone
-  ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(30, ZONE); ctx.lineTo(W - 4, ZONE); ctx.stroke(); ctx.setLineDash([]);
+  ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(14, ZONE); ctx.lineTo(W - 14, ZONE); ctx.stroke(); ctx.setLineDash([]);
   txt('draw below here', W - 14, ZONE + 10, 11, 'rgba(255,255,255,.5)', 'right', 400);
   for (const b of bricks) drawBrick(b);
   for (const s of strokes) drawStroke(s);
@@ -642,7 +646,7 @@ $('bAgain').onclick = () => { audio(); $('ovOver').classList.remove('show'); sta
 if (save.level > 1) { $('bCont').hidden = false; $('bCont').textContent = 'Continue level ' + save.level; }
 if (save.best) $('tBest').textContent = 'Best score ' + save.best;
 document.addEventListener('visibilitychange', () => { if (document.hidden) scratchStop(); if (ac) document.hidden ? ac.suspend() : ac.resume(); });
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize); resize();
 bricks = buildLevel(1);
 if (/[?&]debug\b/.test(location.search)) window.__ib = { get state() { return state; }, get balls() { return balls; }, get bricks() { return bricks; }, get ink() { return ink; }, set ink(v) { ink = v; }, get score() { return score; }, get level() { return level; }, get lives() { return lives; }, get ZONE() { return ZONE; }, get drops() { return drops; }, get strokes() { return strokes; }, get H() { return H; }, serve };
 requestAnimationFrame(frame);
