@@ -168,6 +168,26 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 /* header buttons: a soft tinted square in whatever colour the game's header uses */
 .pk-home { background:color-mix(in srgb, currentColor 11%, transparent) !important; border:0 !important; border-radius:13px !important; box-shadow:none !important; }
 .pk-home:active { background:color-mix(in srgb, currentColor 20%, transparent) !important; }
+/* help as a short carousel: .pk-steps holds .pk-step slides; the script adds dots, Back/Skip and Next, and moves the
+   card's own last button ("Let's play") onto the final step */
+.pk-steps { display:grid; margin:2px 0 0; touch-action:pan-y; }
+.pk-step { grid-area:1 / 1; opacity:0; visibility:hidden; transform:translateX(26px); transition:opacity .25s, transform .25s, visibility 0s .25s; text-align:center; }
+.pk-step.before { transform:translateX(-26px); }
+.pk-step.on { opacity:1; visibility:visible; transform:none; transition:opacity .25s, transform .25s; }
+.pk-step-art { font-size:2.5rem; line-height:1.1; margin:2px 0 8px; }
+.pk-step-art svg { max-width:100%; }
+.pk-step h3 { margin:2px 0 6px; font:800 1.1rem/1.2 var(--pk-slab); }
+.pk-step p { margin:5px auto; line-height:1.45; max-width:300px; }
+.pk-step ul { display:inline-block; text-align:left; margin:4px auto; padding-left:20px; line-height:1.45; }
+.pk-steps-nav { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-top:14px; }
+.pk-steps-back { justify-self:start; background:none; border:0; padding:8px 4px; cursor:pointer; font:700 .92rem/1 var(--pk-slab); color:var(--pk-ink-3); }
+.pk-steps-back[hidden] { display:block; visibility:hidden; }
+.pk-dots { display:flex; gap:6px; }
+.pk-dots button { position:relative; width:8px; height:8px; padding:0; border:0; border-radius:4px; cursor:pointer; background:rgba(90,60,30,.22); transition:width .2s, background .2s; }
+.pk-dots button::after { content:''; position:absolute; inset:-9px -4px; }
+.pk-dots button[aria-current="step"] { width:20px; background:var(--pk-clay); }
+.pk-steps-go { justify-self:end; display:flex; }
+@media (prefers-reduced-motion: reduce) { .pk-step, .pk-step.on { transition:none; transform:none; } }
 </style>
 <script id="pub-kit-settings">
 window.BB = (() => {
@@ -204,14 +224,11 @@ window.BB = (() => {
     <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <button class="ib x" data-close>✕</button>
   <h2>How to play</h2>
-  <p>Find the hidden five-letter word in six tries. Type any real word and press Enter. The tiles change colour to show how close you were.</p>
-  <div class="ex"><div class="tile hit">c</div><div class="tile">h</div><div class="tile">a</div><div class="tile">i</div><div class="tile">r</div></div>
-  <p><b>C</b> is in the word and in the right spot.</p>
-  <div class="ex"><div class="tile">s</div><div class="tile">t</div><div class="tile near">o</div><div class="tile">n</div><div class="tile">e</div></div>
-  <p><b>O</b> is in the word but in a different spot.</p>
-  <div class="ex"><div class="tile">p</div><div class="tile">l</div><div class="tile">a</div><div class="tile miss">n</div><div class="tile">t</div></div>
-  <p><b>N</b> isn't in the word at all.</p>
-  <p><b>Daily</b> is one word a day, the same for everyone. <b>Endless</b> gives you a fresh word whenever you like.</p>
+  <div class="pk-steps">
+    <section class="pk-step"><div class=pk-step-art>🔤</div><h3>Guess the word</h3><p>Find the hidden five-letter word in six tries. Type any real word and press Enter.</p></section>
+    <section class="pk-step"><h3>Read the colours</h3><div class="ex"><div class="tile hit">c</div><div class="tile">h</div><div class="tile">a</div><div class="tile">i</div><div class="tile">r</div></div><p><b>C</b> is in the word, in the right spot.</p><div class="ex"><div class="tile">s</div><div class="tile">t</div><div class="tile near">o</div><div class="tile">n</div><div class="tile">e</div></div><p><b>O</b> is in the word, in a different spot.</p><div class="ex"><div class="tile">p</div><div class="tile">l</div><div class="tile">a</div><div class="tile miss">n</div><div class="tile">t</div></div><p><b>N</b> isn't in the word at all.</p></section>
+    <section class="pk-step"><div class=pk-step-art>📅</div><h3>Daily or endless</h3><p><b>Daily</b> is one word a day, the same for everyone. <b>Endless</b> gives you a fresh word whenever you like.</p></section>
+  </div>
   <div class="row2"><button class="btn pk-btn" data-close>Let's play</button></div>
 </div></div>
 <div class="ov" id="ovStats"><div class="card pk-card">
@@ -425,6 +442,37 @@ if (!S.seenHelp) { S.seenHelp = true; save(); open('ovHelp'); }
 else if (game().done) setTimeout(showStats, 400);
 if (/[?&]debug\b/.test(location.search)) window.__g5 = { get game() { return game(); }, press, score, setMode, ANSWERS, VALID };
 })();
+</script>
+<script id="pub-kit-steps">
+(() => { const go = () => document.querySelectorAll('.pk-steps').forEach(el => {
+  if (el.dataset.ready) return; el.dataset.ready = '1';
+  const steps = [...el.children].filter(c => c.classList.contains('pk-step')), n = steps.length; if (n < 2) { steps.forEach(s => s.classList.add('on')); return; }
+  const row = el.nextElementSibling, finish = row && row.querySelector('button');
+  const mk = (tag, cls, txt) => { const b = document.createElement(tag); if (tag === 'button') b.type = 'button'; b.className = cls; if (txt) b.textContent = txt; return b; };
+  const nav = mk('div', 'pk-steps-nav'), back = mk('button', 'pk-steps-back'), dots = mk('div', 'pk-dots'), right = mk('div', 'pk-steps-go'), next = mk('button', 'pk-btn pk-small', 'Next');
+  steps.forEach((s, i) => { const d = mk('button', ''); d.setAttribute('aria-label', `Step ${i + 1} of ${n}`); d.onclick = () => show(i); dots.appendChild(d); });
+  right.appendChild(next);
+  if (finish) { finish.classList.add('pk-small'); right.appendChild(finish); if (!row.querySelector('button, a, input')) row.remove(); }
+  nav.append(back, dots, right); el.after(nav);
+  let at = 0;
+  function show(i) {
+    at = Math.max(0, Math.min(n - 1, i));
+    steps.forEach((s, k) => { s.classList.toggle('on', k === at); s.classList.toggle('before', k < at); s.setAttribute('aria-hidden', k !== at); s.inert = k !== at; });
+    [...dots.children].forEach((d, k) => d.setAttribute('aria-current', k === at ? 'step' : 'false'));
+    back.textContent = at ? 'Back' : 'Skip'; back.hidden = !at && !finish;
+    next.hidden = at === n - 1; if (finish) finish.hidden = at !== n - 1;
+  }
+  back.onclick = () => at ? show(at - 1) : finish && finish.click();
+  next.onclick = () => show(at + 1);
+  let x0 = null;
+  el.addEventListener('pointerdown', e => { x0 = e.clientX; });
+  el.addEventListener('pointerup', e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) show(at + (dx < 0 ? 1 : -1)); });
+  addEventListener('keydown', e => { if (!el.offsetParent) return; if (e.key === 'ArrowRight') { show(at + 1); e.preventDefault(); } else if (e.key === 'ArrowLeft') { show(at - 1); e.preventDefault(); } });
+  const box = el.closest('.ov') || el.parentElement; let open = false;
+  new MutationObserver(() => { const o = !!el.offsetParent; if (o && !open) show(0); open = o; }).observe(box, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  open = !!el.offsetParent; show(0);
+});
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
 </script>
 <script id="pub-kit-says">
 (() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
