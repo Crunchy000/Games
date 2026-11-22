@@ -348,6 +348,9 @@ const PALETTES = [
   { n: 'Smoky', c: '#8d7b6e', glow: '#c9b29c', alt: '#f1e2cf' },    { n: 'Peridot', c: '#a6d43a', glow: '#d4ff63', alt: '#fff27a' },
   { n: 'Tangerine', c: '#ff7a2e', glow: '#ffa15c', alt: '#ffe08a' }, { n: 'Tourmaline', c: '#1fa39a', glow: '#45e0d4', alt: '#ff8fb8' },
   { n: 'Obsidian', c: '#625a86', glow: '#9d93cc', alt: '#d6cfff' },  { n: 'Golden', c: '#d9b13b', glow: '#ffe07a', alt: '#fff7d6' },
+  { n: 'Fuchsia', c: '#d63aa0', glow: '#ff6ad0', alt: '#ffd0f0' },   { n: 'Morganite', c: '#f2a88a', glow: '#ffc8ae', alt: '#fff0e4' },
+  { n: 'Garnet', c: '#8f1d3f', glow: '#e0466e', alt: '#ff9ab0' },    { n: 'Lavender', c: '#b89cf0', glow: '#d8c4ff', alt: '#f4eeff' },
+  { n: 'Mint', c: '#74e0b4', glow: '#a6ffd8', alt: '#f0fff8' },      { n: 'Jet', c: '#2e2a38', glow: '#8c84b8', alt: '#bdb6e0' },
 ];
 const SHAPES = [
   { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' }, { k: 'fan', n: 'Spike Fan', t: 'a fan of long thin spikes' },
@@ -581,9 +584,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 4, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 6, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 4) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 6) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -1043,7 +1046,13 @@ if (firstHelp) $('ovHelp').classList.add('show');
 requestAnimationFrame(() => { layout(); makeCave(!S.seed); });
 requestAnimationFrame(frame);
 if (/[?&]debug\b/.test(location.search)) window.__cc = {
-  get S() { return S; }, get cave() { return cave; }, get targets() { return targetsNow(); }, tapAt, makeCave, nextHunt, hint, get busy() { return busyGen; }, lookAt, get cam() { return { x: camX, y: camY, z: zoom, tz: targetZoom }; },
+  get S() { return S; }, get cave() { return cave; }, get targets() { return targetsNow(); }, tapAt, makeCave, nextHunt, hint, get busy() { return busyGen; },
+  sheet() {
+    const c = document.createElement('canvas'), cw = 80, chh = 82; c.width = cw * SHAPES.length * 2; c.height = chh * PALETTES.length * 2; c.style.cssText = 'position:fixed;left:0;top:0;z-index:99;background:#1a1424;width:' + c.width / 2 + 'px';
+    const g = c.getContext('2d'); g.scale(2, 2); const keep = rnd, ks = sparks; rnd = mulberry(7); sparks = [];
+    PALETTES.forEach((pal, r) => SHAPES.forEach((shape, k) => formation(g, k * cw + cw / 2, r * chh + chh - 10, -Math.PI / 2, 60, { shape, pal, trait: TRAITS[(k + r) % TRAITS.length] }, null)));
+    rnd = keep; sparks = ks; document.body.appendChild(c); return [c.width / 2, c.height / 2];
+  }, lookAt, get cam() { return { x: camX, y: camY, z: zoom, tz: targetZoom }; },
   toScreen: (x, y) => [(x - camX) * zoom, (y - camY) * zoom], settle() { zoom = targetZoom; camX = targetCamX; camY = targetCamY; },
 };
 
