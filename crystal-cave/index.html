@@ -357,10 +357,8 @@ const SHAPES = [
   { k: 'tower', n: 'Tower', t: 'one tall column' },               { k: 'druse', n: 'Druse', t: 'a dome of tiny points' },
   { k: 'cubes', n: 'Cube Stack', t: 'stacked cubes' },           { k: 'octa', n: 'Octahedra', t: 'double-pointed diamonds' },
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },          { k: 'urchin', n: 'Urchin', t: 'a burst of needles' },
-  { k: 'botryoid', n: 'Botryoid', t: 'a heap of glossy bubbles' }, { k: 'dendrite', n: 'Dendrite', t: 'fern-like branches' },
-  { k: 'hopper', n: 'Hopper', t: 'stepped hollow squares' },
 ];
-const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'phantom', t: 'a ghost crystal inside' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
+const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'speck', t: 'speckled' }, { k: 'two', t: 'two-tone' }];
 const typeName = ty => `${ty.pal.n} ${ty.shape.n}`, typeTraits = ty => `${ty.shape.t} · ${ty.trait.t}`;
 const ROCKS = [   // cave rock: far, mid, near tones
   ['#2a2a3d', '#1c1b2b', '#121119'], ['#33281f', '#231b16', '#15100d'], ['#2c2236', '#1d1626', '#120d18'], ['#22303a', '#172229', '#0e1519'], ['#2f2d2a', '#1f1e1c', '#131211'],
@@ -423,35 +421,19 @@ function inRock(sh, t, d) {
 // a style: base colour, its second colour (for two-tone), the marking, and where sparkles and glow go
 const styleOf = ty => ({ c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k });
 function sparkAt(x, y, s, st) { sparks.push({ x, y, s: clamp(s, 2.5, 12), c: st.glow, p: rnd() * 6.3, f: R(.6, 1.6) }); }
-// a jagged crack filled with gold, from a to b
-function goldVein(g, a, b, w) {
-  const pts = [a], n = 4, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
-  for (let i = 1; i < n; i++) { const t = i / n + R(-.06, .06), j = R(-1, 1) * L * .12; pts.push([a[0] + dx * t + nx * j, a[1] + dy * t + ny * j]); }
-  pts.push(b);
-  const line = () => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); };
-  g.lineCap = 'round'; g.lineJoin = 'round';
-  line(); g.strokeStyle = 'rgba(70,40,0,.55)'; g.lineWidth = w * 1.9; g.stroke();
-  line(); g.strokeStyle = '#e8b330'; g.lineWidth = w; g.stroke();
-  line(); g.strokeStyle = 'rgba(255,246,190,.9)'; g.lineWidth = w * .4; g.stroke();
-  if (rnd() < .5) { const k = RI(1, n - 1), [px, py] = pts[k]; g.beginPath(); g.moveTo(px, py); g.lineTo(px + nx * L * R(.15, .3) + dx * .08, py + ny * L * R(.15, .3) + dy * .08); g.strokeStyle = '#e8b330'; g.lineWidth = w * .7; g.stroke(); }
-}
-// a pale outline of a smaller crystal ghosted inside (pts in order round the ghost)
-function phantomIn(g, pts, w) {
-  g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.closePath();
-  g.fillStyle = 'rgba(255,255,255,.16)'; g.fill(); g.strokeStyle = 'rgba(255,255,255,.62)'; g.lineWidth = Math.max(.6, w); g.lineJoin = 'round'; g.stroke();
-}
 // markings drawn over a piece, in the piece's own frame: P(along, across) gives points; len along, w across
 function marks(g, P, len, w, st, tip) {
-  if (st.trait === 'phantom') {
-    const e = tip * .78; phantomIn(g, [P(tip * .22, -.5), P(e, -.5), P(e + (len - tip) * .75, 0), P(e, .5), P(tip * .22, .5)], w * .07);
+  if (st.trait === 'frost') {
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.moveTo(...P(tip * .8, -1)); g.lineTo(...P(len, 0)); g.lineTo(...P(tip * .8, 1)); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.moveTo(...P(tip * .6, -1)); g.lineTo(...P(tip * .8, -1)); g.lineTo(...P(tip * .8, 1)); g.lineTo(...P(tip * .6, 1)); g.closePath(); g.fill();
   } else if (st.trait === 'band') {
     for (const [f, dark] of [[.22, 1], [.38, 0], [.54, 1]]) {
       g.fillStyle = dark ? rgba(shade(st.c, -.5), .5) : 'rgba(255,255,255,.35)';
       g.beginPath(); g.moveTo(...P(tip * f, -1)); g.lineTo(...P(tip * (f + .07), -1)); g.lineTo(...P(tip * (f + .07), 1)); g.lineTo(...P(tip * f, 1)); g.closePath(); g.fill();
     }
-  } else if (st.trait === 'gold') {
-    goldVein(g, P(tip * R(.2, .4), -.95), P(tip * R(.5, .8), .95), Math.max(.8, w * .14));
-    if (len > 30 && rnd() < .6) goldVein(g, P(tip * R(.55, .75), .95), P(tip * R(.75, .95), -.6), Math.max(.7, w * .1));
+  } else if (st.trait === 'speck') {
+    g.fillStyle = rgba(shade(st.c, -.65), .85);
+    for (let i = 0; i < 7; i++) { const [x, y] = P(tip * R(.15, .85), R(-.7, .7)); g.beginPath(); g.arc(x, y, Math.max(.8, w * R(.08, .16)), 0, 6.3); g.fill(); }
   }
 }
 // colour along a piece: base to tip, ending in the second colour if two-tone
@@ -483,8 +465,8 @@ function pointPc(g, x, y, a, len, w, st) {
   const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx, tx = x + dx * len, ty = y + dy * len, tipC = st.trait === 'two' ? st.alt : st.c;
   g.beginPath(); g.moveTo(x + nx * w, y + ny * w); g.lineTo(tx, ty); g.lineTo(x + dx * len * .15, y + dy * len * .15); g.closePath(); g.fillStyle = rgba(shade(mix(st.c, tipC, .5), -.25), .95); g.fill();
   g.beginPath(); g.moveTo(x - nx * w, y - ny * w); g.lineTo(tx, ty); g.lineTo(x + dx * len * .15, y + dy * len * .15); g.closePath(); g.fillStyle = rgba(shade(mix(st.c, tipC, .5), .3), .95); g.fill();
-  if (st.trait === 'phantom') phantomIn(g, [[x + dx * len * .2 + nx * w * .45, y + dy * len * .2 + ny * w * .45], [x + dx * len * .72, y + dy * len * .72], [x + dx * len * .2 - nx * w * .45, y + dy * len * .2 - ny * w * .45]], w * .12);
-  if (st.trait === 'gold' && rnd() < .55) goldVein(g, [x + dx * len * .25 + nx * w * .7, y + dy * len * .25 + ny * w * .7], [x + dx * len * .55 - nx * w * .4, y + dy * len * .55 - ny * w * .4], Math.max(.7, w * .22));
+  if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.moveTo(x + dx * len * .62 + nx * w * .38, y + dy * len * .62 + ny * w * .38); g.lineTo(tx, ty); g.lineTo(x + dx * len * .62 - nx * w * .38, y + dy * len * .62 - ny * w * .38); g.closePath(); g.fill(); }
+  if (st.trait === 'speck' && rnd() < .5) { g.fillStyle = rgba(shade(st.c, -.65)); g.beginPath(); g.arc(x + dx * len * .4, y + dy * len * .4, Math.max(.7, w * .2), 0, 6.3); g.fill(); }
   if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.5), .55); g.lineWidth = Math.max(.7, w * .22); g.beginPath(); g.moveTo(x + dx * len * .4 + nx * w * .62, y + dy * len * .4 + ny * w * .62); g.lineTo(x + dx * len * .4 - nx * w * .62, y + dy * len * .4 - ny * w * .62); g.stroke(); }
   if (rnd() < .1) sparkAt(tx, ty, w * 1.2, st);
 }
@@ -509,9 +491,9 @@ function cube(g, x, y, s, rot, st, glows) {
   }
   g.strokeStyle = rgba(shade(st.c, -.6), .6); g.lineWidth = Math.max(.6, s * .05); g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.closePath(); g.stroke();
   g.strokeStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.moveTo(...C); g.lineTo(...pts[1]); g.moveTo(...C); g.lineTo(...pts[5]); g.stroke();
-  if (st.trait === 'phantom') phantomIn(g, [0, 1, 2, 3, 4, 5].map(i => v(-Math.PI / 2 + i * Math.PI / 3, .55)), s * .05);
+  if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.moveTo(...C); for (const i of [5, 0, 1]) g.lineTo(...pts[i]); g.closePath(); g.fill(); }
   if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.55), .55); g.lineWidth = Math.max(.8, s * .14); g.beginPath(); g.moveTo(...v(Math.PI / 6 + .02, .55)); g.lineTo(...v(Math.PI * .5, .3)); g.lineTo(...v(Math.PI * 5 / 6 - .02, .55)); g.stroke(); }
-  if (st.trait === 'gold') goldVein(g, v(-Math.PI / 2 - .5, .95), v(Math.PI / 2 + R(-.4, .4), .9), Math.max(.8, s * .09));
+  if (st.trait === 'speck') { g.fillStyle = rgba(shade(st.c, -.65)); for (let i = 0; i < 5; i++) { const [px, py] = v(R(0, 6.3), R(.2, .8)); g.beginPath(); g.arc(px, py, Math.max(.7, s * .07), 0, 6.3); g.fill(); } }
   if (rnd() < .4) sparkAt(...pts[0], s * .5, st);
   if (glows && rnd() < .3) glows.push([x, y, s * 2.4, st.glow]);
 }
@@ -525,48 +507,11 @@ function octa(g, x, y, s, rot, st, glows) {
   }
   g.strokeStyle = rgba(shade(st.c, -.6), .55); g.lineWidth = Math.max(.6, s * .05); g.beginPath(); g.moveTo(...T); g.lineTo(...L); g.lineTo(...B); g.lineTo(...Rr); g.closePath(); g.stroke();
   g.strokeStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.moveTo(...T); g.lineTo(...M); g.lineTo(...B); g.stroke();
-  if (st.trait === 'phantom') phantomIn(g, [v(0, -.8 * s), v(-s * .55, 0), v(0, .8 * s), v(s * .55, 0)], s * .05);
+  if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.55)'; const a = v(-s * .4, -s * .87), b = v(s * .4, -s * .87); g.beginPath(); g.moveTo(...T); g.lineTo(...a); g.lineTo(...b); g.closePath(); g.fill(); }
   if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.55), .6); g.lineWidth = Math.max(.8, s * .16); g.beginPath(); g.moveTo(...v(-s * .78, -s * .3)); g.lineTo(...v(s * .78, -s * .3)); g.moveTo(...v(-s * .78, s * .3)); g.lineTo(...v(s * .78, s * .3)); g.stroke(); }
-  if (st.trait === 'gold') goldVein(g, v(-s * .85, -s * .2), v(s * .7, s * .45), Math.max(.8, s * .09));
+  if (st.trait === 'speck') { g.fillStyle = rgba(shade(st.c, -.65)); for (let i = 0; i < 5; i++) { const [px, py] = v(R(-.5, .5) * s, R(-.9, .9) * s); g.beginPath(); g.arc(px, py, Math.max(.7, s * .07), 0, 6.3); g.fill(); } }
   if (rnd() < .5) sparkAt(...T, s * .5, st);
   if (glows && rnd() < .3) glows.push([x, y, s * 2.6, st.glow]);
-}
-// one glossy bubble of a botryoidal heap
-function bubble(g, x, y, r, col, st) {
-  const gr = g.createRadialGradient(x - r * .35, y - r * .4, r * .08, x, y, r); gr.addColorStop(0, rgba(shade(col, .55), .97)); gr.addColorStop(.4, rgba(col, .96)); gr.addColorStop(1, rgba(shade(col, -.55), .97));
-  g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fill();
-  g.strokeStyle = rgba(shade(col, -.65), .5); g.lineWidth = Math.max(.5, r * .06); g.stroke();
-  if (st.trait === 'band') { g.strokeStyle = rgba(shade(col, -.5), .45); g.lineWidth = Math.max(.6, r * .1); for (const k of [.66, .36]) { g.beginPath(); g.arc(x + r * .05, y + r * .05, r * k, 0, 6.3); g.stroke(); } }
-  if (st.trait === 'phantom') { g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = Math.max(.6, r * .06); g.beginPath(); g.arc(x + r * .08, y + r * .08, r * .5, 0, 6.3); g.stroke(); g.fillStyle = 'rgba(255,255,255,.14)'; g.fill(); }
-  if (st.trait === 'gold' && rnd() < .5) goldVein(g, [x - r * .8, y - r * .1], [x + r * .7, y + r * .45], Math.max(.7, r * .1));
-  g.fillStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.ellipse(x - r * .38, y - r * .42, r * .17, r * .11, -.6, 0, 6.3); g.fill();
-}
-// a branch of a dendrite, with side branches of its own
-function branch(g, x, y, a, len, w, depth, st) {
-  pointPc(g, x, y, a, len, w, st);
-  if (!depth) return;
-  const n = Math.max(3, Math.round(len / (w * 4.2)));
-  for (let i = 0; i < n; i++) {
-    const t = .18 + .7 * i / n + R(-.04, .04), side = i % 2 ? 1 : -1, bx = x + Math.cos(a) * len * t, by = y + Math.sin(a) * len * t;
-    branch(g, bx, by, a + side * R(.6, .9), len * R(.36, .52) * (1 - t * .4), w * .62, depth - 1, st);
-  }
-}
-// a hopper crystal: square steps going down into a hollow, like bismuth
-function hopper(g, x, y, s, st, glows) {
-  const h = s * .62, side = (pts, col) => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.closePath(); g.fillStyle = rgba(col, .96); g.fill(); g.strokeStyle = rgba(shade(st.c, -.65), .5); g.lineWidth = Math.max(.5, s * .03); g.stroke(); };
-  side([[x - s, y], [x, y + s * .55], [x, y + s * .55 + h], [x - s, y + h]], shade(st.c, -.38));
-  side([[x + s, y], [x, y + s * .55], [x, y + s * .55 + h], [x + s, y + h]], shade(st.c, -.12));
-  for (let k = 0; k < 5; k++) {
-    const a = s * (1 - k * .19), cy = y + k * s * .1, col = st.trait === 'two' ? (k % 2 ? st.alt : st.c) : st.c;
-    side([[x, cy - a * .55], [x + a, cy], [x, cy + a * .55], [x - a, cy]], shade(col, k % 2 ? -.28 : .3));
-    if (st.trait === 'band' && k % 2) { g.strokeStyle = rgba(shade(st.c, -.55), .5); g.lineWidth = Math.max(.6, s * .05); g.stroke(); }
-    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = Math.max(.5, s * .025); g.beginPath(); g.moveTo(x - a, cy); g.lineTo(x, cy - a * .55); g.lineTo(x + a, cy); g.stroke();
-  }
-  const a = s * .2, cy = y + 5 * s * .1; side([[x, cy - a * .55], [x + a, cy], [x, cy + a * .55], [x - a, cy]], shade(st.c, -.7));
-  if (st.trait === 'phantom') phantomIn(g, [[x, y - s * .38], [x + s * .68, y], [x, y + s * .38], [x - s * .68, y]], s * .03);
-  if (st.trait === 'gold') goldVein(g, [x - s * .9, y + s * .05], [x + s * .2, y + s * .5], Math.max(.8, s * .05));
-  if (rnd() < .5) sparkAt(x + s * .5, y - s * .2, s * .3, st);
-  if (glows && rnd() < .4) glows.push([x, y, s * 2.2, st.glow]);
 }
 // a shadowy bed in the rock that a formation grows from
 function bed(g, x, y, r, ang) { const b = g.createRadialGradient(x, y, 0, x, y, r); b.addColorStop(0, 'rgba(0,0,0,.5)'); b.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = b; g.beginPath(); g.ellipse(x, y, r, r * .55, ang + Math.PI / 2, 0, 6.3); g.fill(); }
@@ -620,29 +565,6 @@ function formation(g, x, y, ang, size, ty, glows) {
       for (const p of list) blade(g, x, y, p.a, p.len, p.w, st, glows);
       break;
     }
-    case 'botryoid': {
-      bed(g, x, y, size * .5, ang); const nx = -dy, ny = dx;
-      const balls = Array.from({ length: RI(9, 15) }, () => { const al = R(.05, .62), ac = R(-1, 1) * (.42 - al * .3); return { al, x: x + dx * al * size + nx * ac * size, y: y + dy * al * size + ny * ac * size, r: size * R(.11, .19) * (1 - al * .45) }; }).sort((p, q) => q.al - p.al);
-      for (const b of balls) { bubble(g, b.x, b.y, b.r, st.trait === 'two' ? mix(st.c, st.alt, Math.min(1, b.al * 1.6)) : st.c, st); if (rnd() < .15) sparkAt(b.x - b.r * .35, b.y - b.r * .4, b.r * .5, st); }
-      if (glows) glows.push([x + dx * size * .35, y + dy * size * .35, size * .9, st.glow]);
-      break;
-    }
-    case 'dendrite': {
-      bed(g, x, y, size * .3, ang);
-      const side = R(-1, 1) < 0 ? -1 : 1;
-      branch(g, x, y, ang - side * R(.4, .6), size * .5, size * .06, 1, st);
-      branch(g, x, y, ang + side * R(.35, .55), size * .7, size * .07, 2, st);
-      branch(g, x, y, ang + R(-.1, .1), size * 1.05, size * .095, 2, st);
-      if (glows) glows.push([x + dx * size * .45, y + dy * size * .45, size * .8, st.glow]);
-      if (rnd() < .6) sparkAt(x + dx * size, y + dy * size, size * .1, st);
-      break;
-    }
-    case 'hopper': {
-      bed(g, x, y, size * .5, ang); const nx = -dy, ny = dx;
-      for (let i = RI(0, 2); i > 0; i--) { const o = (i % 2 ? 1 : -1) * size * R(.36, .48), s2 = size * R(.17, .24); hopper(g, x + nx * o + dx * size * .2, y + ny * o + dy * size * .2, s2, st, glows); }
-      hopper(g, x + dx * size * .32, y + dy * size * .32 - size * .1, size * .4, st, glows);
-      break;
-    }
     case 'urchin': {
       const cx = x + dx * size * .18, cy = y + dy * size * .18; bed(g, x, y, size * .3, ang);
       for (let i = 0; i < RI(16, 26); i++) { const a = ang + R(-1.6, 1.6), len = size * R(.35, .75); prism(g, cx, cy, a, len, len * R(.035, .055), st, glows); }
@@ -662,9 +584,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 7, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 6, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 7) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 6) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -878,7 +800,7 @@ function showTarget() {
   const bg = wctx.createRadialGradient(sz / 2, sz * .55, 0, sz / 2, sz * .55, sz * .7); bg.addColorStop(0, rgba(mix(hex(ty.pal.glow), [20, 16, 30], .7))); bg.addColorStop(1, '#100c18');
   wctx.fillStyle = bg; wctx.fillRect(0, 0, sz, sz);
   const keepR = rnd, keepS = sparks; rnd = mulberry(4242); sparks = [];
-  const big = ty.shape.k === 'druse' || ty.shape.k === 'hopper' ? .95 : ty.shape.k === 'urchin' || ty.shape.k === 'botryoid' ? .9 : .78;
+  const big = ty.shape.k === 'druse' ? .95 : ty.shape.k === 'urchin' ? .9 : .78;
   formation(wctx, sz / 2, sz * .9, -Math.PI / 2, sz * big, ty, null);
   rnd = keepR; sparks = keepS;
   $('tray').classList.remove('fresh'); void $('tray').offsetWidth; $('tray').classList.add('fresh');
