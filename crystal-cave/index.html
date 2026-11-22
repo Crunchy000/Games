@@ -359,7 +359,7 @@ const PALETTES = [
 const SHAPES = [
   { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' }, { k: 'fan', n: 'Spike Fan', t: 'a fan of long thin spikes' },
   { k: 'tower', n: 'Tower', t: 'one tall column' },               
-  { k: 'cubes', n: 'Cube Stack', t: 'stacked cubes' },           { k: 'octa', n: 'Octahedra', t: 'double-pointed diamonds' },
+  { k: 'cubes', n: 'Cube Stack', t: 'nested metallic cubes' },           { k: 'octa', n: 'Octahedra', t: 'double-pointed diamonds' },
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },          { k: 'urchin', n: 'Urchin', t: 'a burst of needles' },
 ];
 const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
@@ -489,20 +489,34 @@ function blade(g, x, y, ang, len, w, st, glows) {
   if (rnd() < .5) sparkAt(...P(len, .2), w, st);
   if (glows && rnd() < .3) glows.push([...P(len * .5, 0), len * .8, st.glow]);
 }
-// a cube, seen corner-on: light top, mid and dark sides
+// a metallic cube, seen corner-on, like bismuth: an oxide sheen shifting through gold, pink and teal (tinted by its colour), and a top that steps down into a hollow
+const SHEEN = [[236, 196, 98], [214, 92, 164], [78, 178, 216], [118, 210, 150]];
 function cube(g, x, y, s, rot, st, glows) {
   const v = (a, r) => [x + Math.cos(a + rot) * r * s, y + Math.sin(a + rot) * r * s], C = [x, y];
-  const pts = [0, 1, 2, 3, 4, 5].map(i => v(-Math.PI / 2 + i * Math.PI / 3, 1));
-  const top = st.two ? st.alt : shade(st.c, .3);
-  for (const [f, col] of [[[5, 0, 1], top], [[1, 2, 3], shade(st.c, -.05)], [[3, 4, 5], shade(st.c, -.4)]]) {
-    g.beginPath(); g.moveTo(...C); for (const i of f) g.lineTo(...pts[i]); g.closePath(); g.fillStyle = rgba(col, .95); g.fill();
+  const pts = [0, 1, 2, 3, 4, 5].map(i => v(-Math.PI / 2 + i * Math.PI / 3, 1)), o = RI(0, 3);
+  const tint = (k, t, base) => shade(mix(base || st.c, SHEEN[(o + k) % 4], .42), t);
+  const face = (poly, k, t, base) => {
+    const [a, , c] = [poly[0], poly[1], poly[2]], gr = g.createLinearGradient(poly[1][0], poly[1][1], poly[3][0], poly[3][1]);
+    gr.addColorStop(0, rgba(tint(k, t + .12, base), .97)); gr.addColorStop(.5, rgba(shade(base || st.c, t), .97)); gr.addColorStop(1, rgba(tint(k + 1, t, base), .97));
+    g.beginPath(); poly.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.closePath(); g.fillStyle = gr; g.fill();
+    g.strokeStyle = rgba(shade(st.c, -.7), .6); g.lineWidth = Math.max(.5, s * .035); g.stroke();
+  };
+  const right = [C, pts[1], pts[2], pts[3]], left = [C, pts[3], pts[4], pts[5]], top = [C, pts[5], pts[0], pts[1]];
+  face(left, 2, -.38); face(right, 1, -.06); face(top, 0, .22, st.two ? st.alt : st.c);
+  // the hopper steps: each a smaller copy of the top, stepping down towards the hollow in the middle
+  const T = top.reduce((m, p) => [m[0] + p[0] / 4, m[1] + p[1] / 4], [0, 0]);
+  for (let k = 1; k <= 3; k++) {
+    const f = 1 - k * .24, drop = (1 - f) * .22, inner = top.map(p => [T[0] + (p[0] - T[0]) * f + (C[0] - T[0]) * drop, T[1] + (p[1] - T[1]) * f + (C[1] - T[1]) * drop]);
+    face(inner, k, k === 3 ? -.6 : k % 2 ? -.18 : .2, st.two ? st.alt : st.c);
   }
-  g.strokeStyle = rgba(shade(st.c, -.6), .6); g.lineWidth = Math.max(.6, s * .05); g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.closePath(); g.stroke();
-  g.strokeStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.moveTo(...C); g.lineTo(...pts[1]); g.moveTo(...C); g.lineTo(...pts[5]); g.stroke();
-  if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.moveTo(...C); for (const i of [5, 0, 1]) g.lineTo(...pts[i]); g.closePath(); g.fill(); }
-  if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.55), .55); g.lineWidth = Math.max(.8, s * .14); g.beginPath(); g.moveTo(...v(Math.PI / 6 + .02, .55)); g.lineTo(...v(Math.PI * .5, .3)); g.lineTo(...v(Math.PI * 5 / 6 - .02, .55)); g.stroke(); }
-  if (st.trait === 'gold') goldVein(g, v(-Math.PI / 2 - .5, .95), v(Math.PI / 2 + R(-.4, .4), .9), Math.max(.8, s * .09));
-  if (rnd() < .4) sparkAt(...pts[0], s * .5, st);
+  // a little stepped ledge round the sides too, and a metal shine
+  g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = Math.max(.5, s * .03);
+  for (const fc of [left, right]) { const M = fc.reduce((m, p) => [m[0] + p[0] / 4, m[1] + p[1] / 4], [0, 0]); g.beginPath(); fc.forEach((p, i) => { const q = [M[0] + (p[0] - M[0]) * .7, M[1] + (p[1] - M[1]) * .7]; i ? g.lineTo(...q) : g.moveTo(...q); }); g.closePath(); g.stroke(); }
+  g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = Math.max(.6, s * .045); g.beginPath(); g.moveTo(...pts[5]); g.lineTo(...pts[0]); g.lineTo(...pts[1]); g.stroke();
+  if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.moveTo(...C); for (const i of [5, 0, 1]) g.lineTo(...pts[i]); g.closePath(); g.fill(); }
+  if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.6), .6); g.lineWidth = Math.max(.8, s * .12); g.beginPath(); g.moveTo(...v(Math.PI / 6 + .02, .55)); g.lineTo(...v(Math.PI * .5, .3)); g.lineTo(...v(Math.PI * 5 / 6 - .02, .55)); g.stroke(); }
+  if (st.trait === 'gold') goldVein(g, v(Math.PI * 5 / 6, .9), v(Math.PI / 6 + R(-.2, .2), .85), Math.max(.8, s * .08));
+  if (rnd() < .5) sparkAt(...pts[0], s * .5, st);
   if (glows && rnd() < .3) glows.push([x, y, s * 2.4, st.glow]);
 }
 // an octahedron: a double-pointed diamond
@@ -546,9 +560,13 @@ function formation(g, x, y, ang, size, ty, glows) {
       break;
     }
     case 'cubes': {
-      bed(g, x, y, size * .45, ang);
-      const n = RI(3, 6), rot = R(-.3, .3);
-      for (let i = 0; i < n; i++) { const d = size * (i / n) * .7, o = R(-1, 1) * size * .22, s = size * R(.14, .26) * (1 - i / n * .4); cube(g, x + dx * d - dy * o, y + dy * d + dx * o, s, rot + R(-.15, .15), st, glows); }
+      bed(g, x, y, size * .5, ang);
+      const s0 = size * .3, rot = R(-.22, .22), nx = -dy, ny = dx, at = (o, d, s) => cube(g, x + nx * o + dx * d, y + ny * o + dy * d, s, rot + R(-.12, .12), st, glows);
+      const side = rnd() < .5 ? 1 : -1, sides = RI(1, 2);
+      for (let i = 0; i < sides; i++) { const sz = s0 * R(.5, .78), sg = i ? -side : side; at(sg * s0 * R(.55, .85), sz * R(.95, 1.25), sz); }   // behind, growing into the big one
+      at(0, s0 * 1.02, s0);
+      if (rnd() < .6) { const sz = s0 * R(.38, .52); at(R(-.35, .35) * s0, s0 * 1.55 + sz * .6, sz); }   // a small one perched on top
+      if (rnd() < .5) { const sz = s0 * R(.32, .45); at(-side * s0 * R(.45, .7), sz * .85, sz); }      // and one tucked in front
       break;
     }
     case 'octa': {
@@ -582,9 +600,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 9, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 10, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 9) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 10) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -600,7 +618,7 @@ function planCave() {
   const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => TRAITS.forEach(trait => { if (!(pal.zoned && trait.k === 'two')) combos.push({ shape, pal, trait }); }))); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
-  for (const c of combos) { if (hunts.length >= HUNTS) break; if (!hunts.some(h => h.pal === c.pal && h.shape === c.shape)) hunts.push(c); }
+  for (const c of combos) { if (hunts.length >= HUNTS) break; if (c.shape.k === 'cubes' && rnd() < .5) continue; if (!hunts.some(h => h.pal === c.pal && h.shape === c.shape)) hunts.push(c); }
   const isHunt = c => hunts.some(h => sameType(h, c));
   // lookalikes for every hunt: the same crystal with another marking, the same shape in another colour, the same colour in another shape
   const decoys = [], add = c => { if (c && !isHunt(c) && !decoys.some(d => sameType(d, c))) decoys.push(c); };
@@ -675,7 +693,8 @@ function planCave() {
     }
     counts.push(got.length);
   });
-  for (const s of slots) if (!s.type) s.type = s.centre ? (decoys[0] || fillers[0]) : rnd() < .72 && decoys.length ? pick(decoys) : pick(fillers);
+  const pickOne = list => { const t = pick(list); return t.shape.k === 'cubes' && rnd() < .5 ? pick(list) : t; };   // cube stacks turn up about half as often
+  for (const s of slots) if (!s.type) s.type = s.centre ? (decoys[0] || fillers[0]) : rnd() < .72 && decoys.length ? pickOne(decoys) : pickOne(fillers);
   // three fossils pressed into the rock, just behind the rim of the middle rings
   const fossils = [];
   for (let tries = 0; fossils.length < 3 && tries < 2000; tries++) {
