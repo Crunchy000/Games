@@ -110,6 +110,15 @@
   .hint { text-align:center; color:var(--mute); font-size:.8rem; margin:12px 0 0; line-height:1.45; }
   #confetti { position:fixed; inset:0; pointer-events:none; width:100vw; height:100vh; z-index:5; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+  /* how to play: a card over the game with the shared step-by-step carousel */
+  .ov { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(20,14,8,.55); }
+  .ov.show { display:flex; animation:ovfade .25s ease; }
+  @keyframes ovfade { from { opacity:0; } }
+  .ov .card { position:relative; width:min(360px, 100%); max-height:92dvh; overflow:auto; padding:20px 20px 18px; text-align:center; }
+  .ov .card h2 { margin:2px 0 8px; font-size:1.45rem; font-weight:900; }
+  .ov .x { position:absolute; right:8px; top:8px; width:36px; height:36px; border:0; background:none; font-size:1.1rem; cursor:pointer; }
+  .ov .row2 { display:flex; justify-content:center; margin-top:12px; }
+  .ov .btn { border:0; border-radius:14px; padding:12px 22px; font:inherit; font-weight:900; font-size:1rem; cursor:pointer; }
 </style>
 <style id="pub-kit">
 /* The Bear & Bean house style: soft clay. Muted terracotta and sage, soft cream cards, rounded shapes.
@@ -218,6 +227,7 @@ window.BB = (() => {
     <h1><span class="a">Dots</span> <small class="vs">&amp;</small> <span class="b">Boxes</span><small class="sub">Bear vs Bean</small></h1>
     <div class="head-btns">
       <a class="icon-btn pk-home" href="../" aria-label="All games" title="All games" style="text-decoration:none;display:grid;place-items:center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg></a>
+      <button class="icon-btn pk-home" id="bHelp" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.3a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
       <button class="icon-btn pk-home" id="undo" aria-label="Undo last line" title="Undo">↶</button>
       <button class="icon-btn pk-home" id="sound" aria-label="Sound on" title="Sound">🔊</button>
     </div>
@@ -242,7 +252,7 @@ window.BB = (() => {
     <button class="btn primary pk-btn" id="newGame">New game</button>
     <button class="btn ghost-btn pk-btn pk-alt" id="resetWins">Reset wins</button>
   </div>
-  <p class="hint">Bear and Bean take turns joining two dots. Close a box to claim it and go again.<br>Tap a name to rename · Who starts swaps every game</p>
+  <p class="hint">Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -463,6 +473,61 @@ window.BB = (() => {
 
   setSoundIcon(); setSize(n);
 })();
+</script>
+<div class="ov" id="ovHelp"><div class="card pk-card">
+  <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
+  <button class="x" data-close aria-label="Close">✕</button>
+  <h2>Dots &amp; Boxes</h2>
+  <div class="pk-steps">
+    <section class="pk-step"><div class=pk-step-art>✏️</div><h3>Join two dots</h3><p>Bear and Bean take turns joining two dots next to each other.</p></section>
+    <section class="pk-step"><div class=pk-step-art>📦</div><h3>Close a box</h3><p>Draw the fourth side of a box to claim it with your paw print or bean, and <b>go again</b>.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🏆</div><h3>Most boxes wins</h3><p>When every line is drawn, whoever has claimed the most boxes wins. Try not to draw the third side of a box!</p></section>
+  </div>
+  <div class="row2"><button class="btn pk-btn" data-close>Let's play</button></div>
+</div></div>
+<script>
+(() => {   // how to play: shown on a first visit, and from the ? button
+  const ov = document.getElementById('ovHelp'), KEY = 'dots-and-boxes-help-seen';
+  const close = () => { ov.classList.remove('show'); try { localStorage.setItem(KEY, '1'); } catch (e) {} };
+  document.getElementById('bHelp').onclick = () => ov.classList.add('show');
+  ov.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
+  ov.addEventListener('pointerdown', e => { if (e.target === ov) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && ov.classList.contains('show')) close(); });
+  let seen = false; try { seen = !!localStorage.getItem(KEY); } catch (e) {}
+  if (!seen) ov.classList.add('show');
+})();
+</script>
+<script id="pub-kit-steps">
+(() => { const go = () => document.querySelectorAll('.pk-steps').forEach(el => {
+  if (el.dataset.ready) return; el.dataset.ready = '1';
+  const steps = [...el.children].filter(c => c.classList.contains('pk-step')), n = steps.length; if (n < 2) { steps.forEach(s => s.classList.add('on')); return; }
+  const row = el.nextElementSibling, finish = row && row.querySelector('button');
+  const mk = (tag, cls, txt) => { const b = document.createElement(tag); if (tag === 'button') b.type = 'button'; b.className = cls; if (txt) b.textContent = txt; return b; };
+  const nav = mk('div', 'pk-steps-nav'), back = mk('button', 'pk-steps-back'), dots = mk('div', 'pk-dots'), right = mk('div', 'pk-steps-go'), next = mk('button', 'pk-btn pk-small', 'Next');
+  if (!finish) next.classList.add('pk-alt');   // a title screen keeps its own Start button below
+  steps.forEach((s, i) => { const d = mk('button', ''); d.setAttribute('aria-label', `Step ${i + 1} of ${n}`); d.onclick = () => show(i); dots.appendChild(d); });
+  right.appendChild(next);
+  if (finish) { finish.classList.add('pk-small'); right.appendChild(finish); if (!row.querySelector('button, a, input')) row.remove(); }
+  nav.append(back, dots, right); el.after(nav);
+  let at = 0;
+  function show(i) {
+    at = Math.max(0, Math.min(n - 1, i));
+    steps.forEach((s, k) => { s.classList.toggle('on', k === at); s.classList.toggle('before', k < at); s.setAttribute('aria-hidden', k !== at); s.inert = k !== at; });
+    [...dots.children].forEach((d, k) => d.setAttribute('aria-current', k === at ? 'step' : 'false'));
+    back.textContent = at ? 'Back' : 'Skip'; back.hidden = !at && !finish;
+    next.hidden = at === n - 1; if (finish) finish.hidden = at !== n - 1;
+  }
+  back.onclick = () => at ? show(at - 1) : finish && finish.click();
+  next.onclick = () => show(at + 1);
+  let x0 = null;
+  el.addEventListener('pointerdown', e => { x0 = e.clientX; });
+  el.addEventListener('pointerup', e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) show(at + (dx < 0 ? 1 : -1)); });
+  addEventListener('keydown', e => { if (!el.offsetParent) return; if (e.key === 'ArrowRight') { show(at + 1); e.preventDefault(); } else if (e.key === 'ArrowLeft') { show(at - 1); e.preventDefault(); } });
+  const box = el.closest('.ov') || el.parentElement; let open = false;
+  new MutationObserver(() => { const o = !!el.offsetParent; if (o && !open) show(0); open = o; }).observe(box, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  open = !!el.offsetParent; show(0);
+});
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
 </script>
 <script id="pub-kit-says">
 (() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
