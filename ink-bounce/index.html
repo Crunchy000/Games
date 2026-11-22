@@ -227,7 +227,7 @@ window.BB = (() => {
     <ul>
       <li>Draw a line under the ball with your finger. It bounces off, then the line is used up. Only <b>one line at a time</b>: a new one wipes the old.</li>
       <li>Ink is limited, so <b>short, neat lines</b> go further, score a precision bonus and refund a little ink.</li>
-      <li>Cyan bricks refill ink, red ones blast, yellow ones split the ball. Catch falling <b>ink drops</b> with your line or the ball; a gold pot fills you up.</li>
+      <li>Every brick you hit gives you a little ink back. Bricks with a drop refill lots, bombs blast, and the two-circle bricks split the ball. Catch falling <b>ink drops</b> with your line or the ball; a gold pot fills you up.</li>
     </ul>
     <button class="btn pk-btn" id="bStart">Start</button><button class="btn alt pk-btn" id="bCont" hidden>Continue</button><br><a class="pk-btn pk-alt pk-small" href="../" style="margin-top:12px">All games</a>
     <p id="tBest" style="font-size:.9rem;opacity:.75"></p>
@@ -245,6 +245,8 @@ window.BB = (() => {
 'use strict';
 const W = 360, COLS = 8, BW = 40, BH = 17, GAP = 3, BX = (W - COLS * BW - (COLS - 1) * GAP) / 2, BY = 78;
 const INK_MAX = 600, INK_REGEN = 22, R = 6.5;
+const INK_PER_HIT = 18;   // every hit on a brick tops the ink up a little
+const BRICK_COLS = ['#ff6b6b', '#ff922b', '#ffd43b', '#94d82d', '#38d9a9', '#4dabf7', '#748ffc', '#da77f2', '#f783ac'];
 let H = 680, ZONE = 330, SC = 1;
 const cv = document.getElementById('c'), ctx = cv.getContext('2d'), $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v, rnd = (a, b) => a + Math.random() * (b - a), ri = n => Math.floor(Math.random() * n);
@@ -323,7 +325,7 @@ function buildLevel(n) {
     if (roll < .13) type = 'ink'; else if (roll < .18 && n >= 2) type = 'bomb'; else if (roll < .21 && n >= 3) type = 'split';
     else if (rng() < tough) hp = rng() < .35 && n >= 4 ? 3 : 2;
     if (n >= 5 && type === 'n' && hp === 1 && rng() < .05) type = 'steel';
-    bricks.push({ x, y, r, c, type, hp, max: hp, col: ['#f2a13a', '#e8c547', '#7cc36a', '#5fb7c9', '#b48be0', '#ef7f94'][(r + (n % 3)) % 6], wob: Array.from({ length: 8 }, () => rnd(-1.1, 1.1)), hit: 0 });
+    bricks.push({ x, y, r, c, type, hp, max: hp, col: BRICK_COLS[(r + c + n) % BRICK_COLS.length], wob: Array.from({ length: 8 }, () => rnd(-1.1, 1.1)), hit: 0 });
   }
   return bricks;
 }
@@ -410,6 +412,7 @@ function hitStroke(b, s) {
   return false;
 }
 function damage(br, by, chain = 0) {
+  inkHit(br);
   if (br.type === 'steel') { br.hit = .15; sThud(); return; }
   br.hp--; br.hit = .15;
   if (br.hp > 0) { score += 5; sThud(); return; }
@@ -424,6 +427,11 @@ function damage(br, by, chain = 0) {
     sBoom(); shake = 7; buzz(30); parts.push({ x: br.x + BW / 2, y: br.y + BH / 2, ring: true, life: .4, max: .4, s: 60 });
     for (const o of bricks.slice()) if (Math.abs(o.c - br.c) <= 1 && Math.abs(o.r - br.r) <= 1 && o !== br && bricks.includes(o)) { o.hp = 1; damage(o, null, chain + 1); }
   }
+}
+function inkHit(br) {
+  if (ink >= INK_MAX) return;
+  ink = Math.min(INK_MAX, ink + INK_PER_HIT);
+  for (let i = 0; i < 3; i++) parts.push({ x: br.x + BW / 2 + rnd(-8, 8), y: br.y + BH, vx: rnd(-20, 20), vy: rnd(40, 110), life: .5, max: .5, s: rnd(1.6, 2.6), c: '#7fe0ff', blot: true });
 }
 function stepBall(b, dt) {
   b.x += b.vx * dt; b.y += b.vy * dt;
@@ -482,15 +490,20 @@ function txt(t, x, y, size, col, align = 'center', w = 700) { ctx.font = `${w} $
 function drawBrick(b) {
   const k = 1 + b.hit * 1.2, x = b.x + BW / 2, y = b.y + BH / 2;
   ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.translate(-x, -y);
-  let fill = 'rgba(255,255,255,.1)', line = '#ffffff';
-  if (b.type === 'steel') { fill = 'rgba(200,215,235,.35)'; line = '#c8d7eb'; } else if (b.type === 'ink') { fill = 'rgba(127,224,255,.38)'; line = '#7fe0ff'; } else if (b.type === 'bomb') { fill = 'rgba(255,138,122,.38)'; line = '#ff8a7a'; } else if (b.type === 'split') { fill = 'rgba(255,224,102,.38)'; line = '#ffe066'; }
+  let fill = b.col, line = '#ffffff', mark = '#ffffff';
+  if (b.type === 'steel') { fill = 'rgba(200,215,235,.55)'; line = '#e3ebf5'; mark = '#e3ebf5'; }
+  else if (b.type === 'ink') { fill = '#eefaff'; line = '#7fe0ff'; mark = '#1c7ed6'; }
+  else if (b.type === 'bomb') { fill = '#fff0ee'; line = '#ff8a7a'; mark = '#e03131'; }
+  else if (b.type === 'split') { fill = '#fffbe6'; line = '#ffe066'; mark = '#e8a317'; }
+  wobRect(b.x + 1.5, b.y + 2, BW, BH, b.wob.map(v => v * .35), 'rgba(0,20,50,.28)', null);   // a little shadow on the blueprint
   wobRect(b.x, b.y, BW, BH, b.wob.map(v => v * .35), fill, line, 1.4);
-  ctx.save(); ctx.beginPath(); ctx.rect(b.x, b.y, BW, BH); ctx.clip(); ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1;
+  if (b.type === 'n') { ctx.save(); ctx.globalAlpha = .28; ctx.fillStyle = '#fff'; ctx.fillRect(b.x + 3, b.y + 2, BW - 6, BH * .28); ctx.restore(); }
+  ctx.save(); ctx.beginPath(); ctx.rect(b.x, b.y, BW, BH); ctx.clip(); ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.3;
   if (b.hp >= 2) for (let i = -BH; i < BW; i += 6) { ctx.beginPath(); ctx.moveTo(b.x + i, b.y + BH); ctx.lineTo(b.x + i + BH, b.y); ctx.stroke(); }
   if (b.hp >= 3) for (let i = 0; i < BW + BH; i += 6) { ctx.beginPath(); ctx.moveTo(b.x + i, b.y + BH); ctx.lineTo(b.x + i - BH, b.y); ctx.stroke(); }
   ctx.restore();
-  ctx.fillStyle = line; ctx.strokeStyle = line; ctx.lineWidth = 1.4;
-  if (b.type === 'n' && b.hp === 1) { ctx.globalAlpha = .35; ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + 4, y); ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4); ctx.stroke(); ctx.globalAlpha = 1; }
+  ctx.fillStyle = mark; ctx.strokeStyle = mark; ctx.lineWidth = 1.6;
+  if (b.type === 'n' && b.hp === 1) { ctx.globalAlpha = .45; ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + 4, y); ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4); ctx.stroke(); ctx.globalAlpha = 1; }
   if (b.type === 'ink') { ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.quadraticCurveTo(x + 5, y + 1, x, y + 5); ctx.quadraticCurveTo(x - 5, y + 1, x, y - 6); ctx.fill(); }
   else if (b.type === 'bomb') { ctx.beginPath(); ctx.arc(x, y + 1, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 3, y - 3); ctx.quadraticCurveTo(x + 6, y - 8, x + 9, y - 6); ctx.stroke(); }
   else if (b.type === 'split') { for (const d of [-1, 1]) { ctx.beginPath(); ctx.arc(x + d * 5, y, 3, 0, Math.PI * 2); ctx.stroke(); } }
@@ -627,7 +640,7 @@ if (save.best) $('tBest').textContent = 'Best score ' + save.best;
 document.addEventListener('visibilitychange', () => { if (document.hidden) scratchStop(); if (ac) document.hidden ? ac.suspend() : ac.resume(); });
 addEventListener('resize', resize); resize();
 bricks = buildLevel(1);
-if (/[?&]debug\b/.test(location.search)) window.__ib = { get state() { return state; }, get balls() { return balls; }, get bricks() { return bricks; }, get ink() { return ink; }, get score() { return score; }, get level() { return level; }, get lives() { return lives; }, get ZONE() { return ZONE; }, get drops() { return drops; }, get strokes() { return strokes; }, get H() { return H; }, serve };
+if (/[?&]debug\b/.test(location.search)) window.__ib = { get state() { return state; }, get balls() { return balls; }, get bricks() { return bricks; }, get ink() { return ink; }, set ink(v) { ink = v; }, get score() { return score; }, get level() { return level; }, get lives() { return lives; }, get ZONE() { return ZONE; }, get drops() { return drops; }, get strokes() { return strokes; }, get H() { return H; }, serve };
 requestAnimationFrame(frame);
 })();
 </script>
