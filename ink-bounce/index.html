@@ -331,7 +331,7 @@ function buildLevel(n) {
 
 /* ---------- state ---------- */
 let drops = [], state = 'title', level = 1, score = 0, lives = 3, ink = INK_MAX, bricks = [], balls = [], strokes = [], cur = null, parts = [], pops = [], callout = null, shake = 0, time = 0, combo = 0, served = false, overT = 0, clearT = 0;
-const speedFor = n => Math.min(470, 290 + n * 14);
+const speedFor = n => Math.min(400, 245 + n * 12);   // a little gentler: about 15% slower than before
 function newBall(x, y, ang, sp) { return { x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, sp, trail: [] }; }
 function startLevel(n, fresh) {
   level = n; bricks = buildLevel(n); strokes = []; drops = []; cur = null; balls = []; parts = []; pops = []; served = false; ink = INK_MAX; combo = 0;
