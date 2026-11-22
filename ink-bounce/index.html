@@ -31,7 +31,7 @@
   html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#123a70; font-family:"Segoe Print","Bradley Hand","Comic Sans MS","Chalkboard SE",system-ui,sans-serif; color:#eaf3ff; }
   #app { position:relative; height:100vh; height:var(--app-h, 100dvh); width:100vw; display:flex; align-items:center; justify-content:center; touch-action:none; }
   canvas { display:block; touch-action:none; box-shadow:0 0 30px rgba(0,10,30,.45); }
-  .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(14,46,92,.72); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); z-index:5; }
+  .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(14,46,92,.84); z-index:5; }
   .ov.show { display:flex; animation:fade .3s ease; }
   @keyframes fade { from { opacity:0; } }
   .card { width:min(88vw,340px); color:#eaf3ff; background-color:#1c4f93; background-image:linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px); background-size:12px 12px; border:2px solid #eaf3ff; border-radius:18px 22px 16px 24px; padding:22px 20px 18px; text-align:center;
@@ -255,17 +255,21 @@ try { save = Object.assign(save, JSON.parse(localStorage.getItem('inkbounce') ||
 if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // sound is shared by every game
 const persist = () => { try { localStorage.setItem('inkbounce', JSON.stringify(save)); } catch (e) {} };
 
+let sizeKey = '';
 function resize() {
   // size the board to the height that is actually visible, and make #app that same height, so the
   // centred canvas can't slide under the browser's bars or the phone's navigation bar
   const vv = window.visualViewport, vw = Math.round(vv ? vv.width : innerWidth) || innerWidth, vh = Math.round(vv ? vv.height : innerHeight) || innerHeight;
+  // phones fire resize all the time (the address bar sliding, the keyboard): only rebuild the canvases when the size really changed,
+  // because every rebuild throws away two screen-sized canvases and allocates new ones
+  const key = vw + 'x' + vh + '@' + (window.devicePixelRatio || 1); if (key === sizeKey) return; sizeKey = key;
   document.documentElement.style.setProperty('--app-h', vh + 'px');
   H = Math.round(clamp(W * vh / vw, 600, 860));
   // share any height beyond the shortest board between the top (bricks come down a little) and the drawing area
   const by = Math.round(78 + (H - 600) * .3);
   if (by !== BY) { for (const b of bricks) b.y += by - BY; BY = by; }
   ZONE = Math.round(BY + 10 * (BH + GAP) + 26);
-  const s = Math.min(vw / W, vh / H), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const s = Math.min(vw / W, vh / H), dpr = Math.min(window.devicePixelRatio || 1, 2);
   cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px'; cv.width = Math.round(W * s * dpr); cv.height = Math.round(H * s * dpr); SC = cv.width / W;
   paper = null;
 }
@@ -647,6 +651,8 @@ if (save.level > 1) { $('bCont').hidden = false; $('bCont').textContent = 'Conti
 if (save.best) $('tBest').textContent = 'Best score ' + save.best;
 document.addEventListener('visibilitychange', () => { if (document.hidden) scratchStop(); if (ac) document.hidden ? ac.suspend() : ac.resume(); });
 addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize); resize();
+// if the phone runs short of graphics memory it can take the canvas away; when it gives it back, draw everything afresh
+cv.addEventListener('contextrestored', () => { paper = null; });
 bricks = buildLevel(1);
 if (/[?&]debug\b/.test(location.search)) window.__ib = { get state() { return state; }, get balls() { return balls; }, get bricks() { return bricks; }, get ink() { return ink; }, set ink(v) { ink = v; }, get score() { return score; }, get level() { return level; }, get lives() { return lives; }, get ZONE() { return ZONE; }, get drops() { return drops; }, get strokes() { return strokes; }, get H() { return H; }, serve };
 requestAnimationFrame(frame);
