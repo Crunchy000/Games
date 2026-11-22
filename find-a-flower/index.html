@@ -215,7 +215,7 @@ window.BB = (() => {
   </div>
 </div>
 
-<div class="ov" id="ovHelp"><div class="card pk-card">
+<div class="ov show" id="ovHelp"><div class="card pk-card">
   <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>Find a Flower</h2>
@@ -228,7 +228,7 @@ window.BB = (() => {
     <li>Stuck? A <b>hint</b> (25 points) takes you to one.</li>
   </ul>
   <p>Each meadow has <b>20 flowers to hunt</b>, one after another, with more to find as you go. The day moves on every five hunts, from morning to starlight; tap the time to change it whenever you like. Tap ↻ for a whole new meadow.</p>
-  <div class="row2"><button class="btn pk-btn" data-close>Let's look</button></div>
+  <div class="row2"><button class="btn pk-btn" id="bGo" data-close disabled>Planting the meadow…</button></div>
 </div></div>
 
 <div class="ov" id="ovWin"><div class="card pk-card">
@@ -2885,7 +2885,7 @@ Promise.race([Promise.all([picnicImg, ...faces].map(settle)), new Promise(res =>
   newMeadow(!S.seed);
   layout();
   hideLoading();
-  if (!S.seenHelp) $('ovHelp').classList.add('show');
+  $('bGo').disabled = false; $('bGo').textContent = 'Let\'s look';
 });
 if (/[?&]debug\b/.test(location.search)) window.__ff = {
   get targets() { return targetFlowers; }, get clovers() { return luckyClovers; }, get S() { return S; },

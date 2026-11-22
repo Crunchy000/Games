@@ -51,8 +51,6 @@
   button { font:inherit; }
   button:focus-visible, [contenteditable]:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
   .opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  #segMode { grid-column:1 / -1; }
-  @media (min-width:470px) { .opts { grid-template-columns:1fr 1fr 1.2fr; } #segMode { grid-column:auto; } }
   .seg { display:flex; padding:3px; border-radius:13px; background:var(--card); border:1px solid var(--card-b); }
   .seg button { flex:1; border:0; background:none; color:var(--mute); padding:7px 2px; font-weight:800; font-size:.82rem; cursor:pointer; border-radius:10px; transition:background .2s, color .2s; white-space:nowrap; }
   .seg button[aria-pressed="true"] { background:var(--ink); color:var(--bg2); }
@@ -177,7 +175,6 @@ window.BB = (() => {
 
   <div class="opts">
     <div class="seg" id="segSize" role="group" aria-label="Board size"><button data-v="small">Small</button><button data-v="big">Big</button></div>
-    <div class="seg" id="segPens" role="group" aria-label="Penguins each"><button data-v="team">4 each</button><button data-v="one">1 each</button></div>
     <div class="seg" id="segMode" role="group" aria-label="Opponent"><button data-v="2p">2 players</button><button data-v="cpu">vs CPU</button></div>
   </div>
 
@@ -195,7 +192,7 @@ window.BB = (() => {
     <button class="pk-btn" id="newGame">New game</button>
     <button class="pk-btn pk-alt" id="resetWins">Reset wins</button>
   </div>
-  <p class="hint">The penguins hop onto fair, random floes to start. On your turn, slide a penguin in a straight line as far as you like by tapping a glowing floe (with more than one penguin, one is picked for you: tap another of yours to switch). It can't jump gaps or other penguins. The floe it leaves sinks, and you keep its fish. A penguin with nowhere to go takes its floe and climbs out, and one with an island all to itself scoops up the most fish it could get there. Most fish wins!<br>Tap a name to rename · Who starts swaps every game</p>
+  <p class="hint">One penguin each on the small board, three on the big one. They hop onto fair, random floes to start. On your turn, slide a penguin in a straight line as far as you like by tapping a glowing floe (on the big board one is picked for you: tap another of yours to switch). It can't jump gaps or other penguins. The floe it leaves sinks, and you keep its fish. A penguin with nowhere to go takes its floe and climbs out, and one with an island all to itself scoops up the most fish it could get there. Most fish wins!<br>Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -205,14 +202,14 @@ window.BB = (() => {
   const DEBUG = /[?&]debug\b/.test(location.search);
   const DEFAULT_NAMES = ['Bear', 'Bean'];
   const TEAM = [{ scarf: '#e8994a', hat: '#a86a3c', hatLine: 'rgba(80,40,10,.45)' }, { scarf: '#ff5fa2', hat: '#ff5fa2', hatLine: 'rgba(160,30,90,.45)' }];
-  const SIZES = { small: { rows: [5, 6, 5, 6, 5, 6], pens: 3 }, big: { rows: [7, 8, 7, 8, 7, 8, 7, 8], pens: 4 } };
+  const SIZES = { small: { rows: [5, 6, 5, 6, 5, 6], pens: 1 }, big: { rows: [7, 8, 7, 8, 7, 8, 7, 8], pens: 3 } };   // penguins each
   const DIRS = [[2, 0], [-2, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]];   // the six ways across a hex grid, in doubled columns
 
-  let names = DEFAULT_NAMES.slice(), wins = [0, 0], size = 'big', mode = '2p', pens = 'one', muted = false, starter = 0, saved = null;
+  let names = DEFAULT_NAMES.slice(), wins = [0, 0], size = 'big', mode = '2p', muted = false, starter = 0, saved = null;
   try {
     const s = JSON.parse(localStorage.getItem('fishyfloes') || '{}');
     if (s.names) names = s.names; if (s.wins) wins = s.wins; if (SIZES[s.size]) size = s.size;
-    if (s.mode === 'cpu') mode = 'cpu'; if (s.penMode === 'team') pens = 'team'; muted = !!s.muted; if (s.starter) starter = 1; if (s.game) saved = s.game;
+    if (s.mode === 'cpu') mode = 'cpu'; muted = !!s.muted; if (s.starter) starter = 1; if (s.game) saved = s.game;
   } catch (e) {}
   if (BB.muted === null) BB.muted = muted; else muted = BB.muted;   // sound is shared by every game
 
@@ -253,7 +250,7 @@ window.BB = (() => {
   const tileAt = (x, r) => { const i = index[key(x, r)]; return i === undefined || st.tiles[i].gone ? -1 : i; };
   const penOn = i => st.pens.findIndex(q => q.t === i);
   const isCpu = q => mode === 'cpu' && q === 1;
-  const perPlayer = () => pens === 'one' ? 1 : SIZES[size].pens;
+  const perPlayer = () => SIZES[size].pens;
 
   function newBoard() {
     const rows = SIZES[size].rows, tiles = [];
@@ -679,12 +676,12 @@ window.BB = (() => {
     if (st.phase === 'over') { const w = winner(); $('status').innerHTML = w < 0 ? 'A draw! Fish for everyone 🐟' : `${nm(w)} wins! 🎉`; }
     else if (isCpu(st.turn)) $('status').innerHTML = `${nm(1)} is thinking…`;
     else if (st.phase === 'place') $('status').innerHTML = `${nm(st.turn)}: place a penguin on a one-fish floe`;
-    else $('status').innerHTML = sel >= 0 ? `${nm(st.turn)}: tap a glowing floe` + (st.pens.filter(pn => pn.p === st.turn && pn.t >= 0 && movesFrom(pn.t).length).length > 1 ? ' · or tap another penguin' : '') : `${nm(st.turn)}'s turn · pick a penguin`;
+    else $('status').innerHTML = sel >= 0 ? `${nm(st.turn)}: tap a glowing floe` : `${nm(st.turn)}'s turn · pick a penguin`;
     const left = st.tiles.filter(t => !t.gone).length;
     $('left').textContent = st.phase === 'over' ? `${st.fish[0]} fish to ${st.fish[1]}` + (st.fish[0] === st.fish[1] ? ` · floes ${st.floes[0]} to ${st.floes[1]}` : '') + ' · Tap New game for a rematch'
       : lastMsg ? `${lastMsg} · ${left} floes left` : `${left} floes left`;
   }
-  function persist() { try { localStorage.setItem('fishyfloes', JSON.stringify({ names, wins, size, mode, penMode: pens, muted, starter, game: st && st.phase !== 'over' ? { st, size, pens } : null })); } catch (e) {} }
+  function persist() { try { localStorage.setItem('fishyfloes', JSON.stringify({ names, wins, size, mode, muted, starter, game: st && st.phase !== 'over' ? { st, size } : null })); } catch (e) {} }
 
   /* ---------- confetti ---------- */
   const ccv = $('confetti'), cx = ccv.getContext('2d'); let bits = [], raf = 0;
@@ -705,15 +702,12 @@ window.BB = (() => {
   function segs() {
     document.querySelectorAll('#segSize button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === size));
     document.querySelectorAll('#segMode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === mode));
-    document.querySelectorAll('#segPens button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === pens));
-    document.querySelector('#segPens [data-v=team]').textContent = `${SIZES[size].pens} each`;
   }
   let confirmT = 0;
   const midGame = () => st.phase !== 'over' && hist.length > 0;
   function guarded(fn, label) { if (midGame() && Date.now() - confirmT > 2500) { confirmT = Date.now(); lastMsg = `Tap ${label} again to start over`; render(); return; } confirmT = 0; fn(); }
   document.querySelectorAll('#segSize button').forEach(b => b.onclick = () => { if (b.dataset.v === size) return; guarded(() => { size = b.dataset.v; segs(); newGame(true); }, b.textContent); });
   document.querySelectorAll('#segMode button').forEach(b => b.onclick = () => { if (b.dataset.v === mode) return; guarded(() => { mode = b.dataset.v; segs(); newGame(true); }, b.textContent); });
-  document.querySelectorAll('#segPens button').forEach(b => b.onclick = () => { if (b.dataset.v === pens) return; guarded(() => { pens = b.dataset.v; segs(); newGame(true); }, b.textContent); });
   $('newGame').onclick = () => guarded(() => newGame(false), 'New game');
   $('resetWins').onclick = () => { wins = [0, 0]; persist(); render(); };
   $('undo').onclick = undo;
@@ -726,7 +720,7 @@ window.BB = (() => {
   addEventListener('resize', () => { layout(); draw(); });
 
   segs(); $('sound').textContent = muted ? '🔇' : '🔊';
-  if (saved && saved.st && saved.size === size && (saved.pens || 'team') === pens) { st = saved.st; rebuildIndex(); autoSelect(); layout(); render(); maybeCpu(); }
+  if (saved && saved.st && saved.size === size && saved.st.pens.length === 2 * perPlayer()) { st = saved.st; rebuildIndex(); autoSelect(); layout(); render(); maybeCpu(); }
   else newGame(true);
   requestAnimationFrame(frame);
   if (DEBUG) window.__ff = { get st() { return st; }, place, move, movesFrom, penMoves, canMove, get busy() { return busy; }, get sel() { return sel; }, pos, cpuMove, cpuPlace, newGame, undo, autoSelect, islandsOf, bestHaul, retireIslands, fairStart, get hist() { return hist.length; } };
