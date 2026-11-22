@@ -358,7 +358,7 @@ const PALETTES = [
 ];
 const SHAPES = [
   { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' }, { k: 'fan', n: 'Spike Fan', t: 'a fan of long thin spikes' },
-  { k: 'tower', n: 'Tower', t: 'one tall column' },               { k: 'druse', n: 'Druse', t: 'a dome of tiny points' },
+  { k: 'tower', n: 'Tower', t: 'one tall column' },               
   { k: 'cubes', n: 'Cube Stack', t: 'stacked cubes' },           { k: 'octa', n: 'Octahedra', t: 'double-pointed diamonds' },
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },          { k: 'urchin', n: 'Urchin', t: 'a burst of needles' },
 ];
@@ -478,16 +478,6 @@ function prism(g, x, y, ang, len, w, st, glows) {
   if (rnd() < .5) sparkAt(x + dx * len, y + dy * len, w * .9, st);
   if (glows && rnd() < .35) glows.push([x + dx * len * .5, y + dy * len * .5, len * .9, st.glow]);
 }
-// a pyramid point: two faces
-function pointPc(g, x, y, a, len, w, st) {
-  const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx, tx = x + dx * len, ty = y + dy * len, tipC = st.two ? st.alt : st.c;
-  g.beginPath(); g.moveTo(x + nx * w, y + ny * w); g.lineTo(tx, ty); g.lineTo(x + dx * len * .15, y + dy * len * .15); g.closePath(); g.fillStyle = rgba(shade(mix(st.c, tipC, .5), -.25), .95); g.fill();
-  g.beginPath(); g.moveTo(x - nx * w, y - ny * w); g.lineTo(tx, ty); g.lineTo(x + dx * len * .15, y + dy * len * .15); g.closePath(); g.fillStyle = rgba(shade(mix(st.c, tipC, .5), .3), .95); g.fill();
-  if (st.trait === 'frost') { g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.moveTo(x + dx * len * .62 + nx * w * .38, y + dy * len * .62 + ny * w * .38); g.lineTo(tx, ty); g.lineTo(x + dx * len * .62 - nx * w * .38, y + dy * len * .62 - ny * w * .38); g.closePath(); g.fill(); }
-  if (st.trait === 'gold' && rnd() < .55) goldVein(g, [x + dx * len * .25 + nx * w * .7, y + dy * len * .25 + ny * w * .7], [x + dx * len * .55 - nx * w * .4, y + dy * len * .55 - ny * w * .4], Math.max(.7, w * .22));
-  if (st.trait === 'band') { g.strokeStyle = rgba(shade(st.c, -.5), .55); g.lineWidth = Math.max(.7, w * .22); g.beginPath(); g.moveTo(x + dx * len * .4 + nx * w * .62, y + dy * len * .4 + ny * w * .62); g.lineTo(x + dx * len * .4 - nx * w * .62, y + dy * len * .4 - ny * w * .62); g.stroke(); }
-  if (rnd() < .1) sparkAt(tx, ty, w * 1.2, st);
-}
 // a flat blade with a slanted end
 function blade(g, x, y, ang, len, w, st, glows) {
   const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx, P = (a, c) => [x + dx * a + nx * c * w, y + dy * a + ny * c * w];
@@ -555,23 +545,6 @@ function formation(g, x, y, ang, size, ty, glows) {
       prism(g, x, y, ang + R(-.08, .08), size * 1.15, size * .2, st, glows);
       break;
     }
-    case 'druse': {
-      const r = size * .45; bed(g, x, y, r * 1.2, ang);
-      // the lump of rock the points grow on: a lit, bumpy mound in stone colours, not a dark hole
-      const nx = -dy, ny = dx, stone = mix([92, 86, 104], st.c, .12), mound = [];
-      for (let i = 0; i <= 14; i++) { const t = Math.PI * i / 14, k = r * (.9 + R(-.08, .08)); mound.push([x + nx * Math.cos(t) * k + dx * Math.sin(t) * k * .7, y + ny * Math.cos(t) * k + dy * Math.sin(t) * k * .7]); }
-      const mg = g.createLinearGradient(x, y, x + dx * r * .7, y + dy * r * .7); mg.addColorStop(0, rgba(shade(stone, -.45))); mg.addColorStop(1, rgba(shade(stone, .18)));
-      g.fillStyle = mg; g.beginPath(); mound.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.closePath(); g.fill();
-      g.strokeStyle = rgba(shade(stone, .3), .5); g.lineWidth = Math.max(.6, size * .015); g.beginPath(); mound.slice(2, 13).forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.stroke();
-      // points fringing the edge of the mound, then filling its top
-      for (let i = 1; i < 14; i += R(.8, 1.4)) { const t = Math.PI * i / 14, [px, py] = mound[Math.floor(i)]; pointPc(g, px, py, Math.atan2(py - y, px - x) + R(-.3, .3), size * R(.09, .15), size * R(.035, .05), st); }
-      for (let i = 0; i < RI(26, 40); i++) {
-        const a = ang + R(-1.35, 1.35), d = R(.2, .95), px = x + Math.cos(a) * r * d * .5 + dx * r * d * .5, py = y + Math.sin(a) * r * d * .5 + dy * r * d * .5;
-        pointPc(g, px, py, a + R(-.25, .25), size * R(.1, .2), size * R(.04, .06), st);
-      }
-      if (glows) glows.push([x + dx * r * .4, y + dy * r * .4, size, st.glow]);
-      break;
-    }
     case 'cubes': {
       bed(g, x, y, size * .45, ang);
       const n = RI(3, 6), rot = R(-.3, .3);
@@ -609,9 +582,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 8, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 9, seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 8) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 9) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -645,17 +618,26 @@ function planCave() {
   const slots = [], seedOf = () => (rnd() * 2147483647) | 0;
   const put = (li, x, y, ang, size) => slots.push({ li, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 });
   const stals = [], SIZES = [[15, 30], [19, 40], [26, 54], [36, 76]], GAP = [1.25, 1.1, 1, .95];
+  // place up to max formations on layer li's visible rock face, clear of the ones already there; they go in before index first
+  const scatter = (li, first, max, sizeOf) => {
+    const L = layers[li], mine = slots.slice(first), band = [];
+    for (let tries = 0; band.length < max && tries < max * 40; tries++) {
+      const t = R(0, Math.PI * 2), [x, y] = inRock(L.sh, t, R(18, 420) * scale), size = sizeOf(), r = size * .55;
+      if (x < r || x > W - r || y < r || y > H - r) continue;
+      const ang = Math.atan2(L.sh.cy - y, L.sh.cx - x) + R(-.6, .6), cx = x + Math.cos(ang) * size * .4, cy = y + Math.sin(ang) * size * .4;
+      if (!layers.every((M, j) => j <= li || [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => inPoly(M.sh.pts, cx + a * r * .8, cy + b * r * .8)))) continue;
+      if (mine.concat(band).some(o => Math.hypot(o.cx - cx, o.cy - cy) < (o.r + r) * .82)) continue;
+      band.push({ li, x, y, ang, size, seed: seedOf(), cx, cy, r });
+    }
+    slots.splice(first, 0, ...band);
+  };
   layers.forEach((L, li) => {
     for (let i = 0; i < RI(7, 12) * (1 + li * .7); i++) { const x = R(L.sh.x0 + 20, L.sh.x1 - 20), y = L.sh.ceil(x); if (y > 0) stals.push({ li, x, y, len: R(14, 40) * (1 + li * .3) * scale, w: R(4, 9) * (1 + li * .25) * scale }); }
     if (li === NEAR) return;
     // as many as fit around the ring, spaced for their size
     const sz = SIZES[li], perim = Math.PI * Math.sqrt(2 * (L.sh.rx ** 2 + L.sh.ry ** 2)) * 1.08;
     const n = Math.round(perim / ((sz[0] + sz[1]) / 2 * scale * GAP[li]) * R(.92, 1.08)), start = R(0, Math.PI * 2);
-    // a back row set a little deeper in the rock, in the gaps of the front row, so the rim is packed solid
-    for (let i = 0; i < n; i++) {
-      const t = start + (i + .5) / n * Math.PI * 2 + R(-.04, .04), [x, y] = inRock(L.sh, t, R(6, 16) * scale), inward = Math.atan2(L.sh.cy - y, L.sh.cx - x);
-      if (x > 6 && x < W - 6 && y > 6 && y < H - 6) put(li, x, y, inward + R(-.45, .45), R(sz[0], sz[1]) * scale * .85);
-    }
+    const first = slots.length;
     for (let i = 0; i < n; i++) {
       const t = start + i / n * Math.PI * 2 + R(-.06, .06), [x, y] = inRock(L.sh, t, R(-6, 2)), inward = Math.atan2(L.sh.cy - y, L.sh.cx - x);
       if (x > 6 && x < W - 6 && y > 6 && y < H - 6) put(li, x, y, inward + R(-.35, .35), R(sz[0], sz[1]) * scale);
@@ -666,12 +648,15 @@ function planCave() {
       if (y < H - 6) put(li, x, y, -Math.PI / 2 + R(-.5, .5), R(sz[0] * .85, sz[1] * .8) * scale);
     }
     if (li === NEAR - 1) { const x = L.sh.cx + R(-1, 1) * L.sh.rx * .3; put(li, x, L.sh.floor(x) + 5, -Math.PI / 2 + R(-.15, .15), 190); slots[slots.length - 1].centre = true; }
+    // crystals scattered across the rock face between this ring and the next, drawn first so the rim's crystals sit over them
+    scatter(li, first, Math.round(n * .95), () => R(sz[0], sz[1]) * scale * R(.8, 1));
   });
-  { const sh = layers[NEAR].sh, perim = Math.PI * Math.sqrt(2 * (sh.rx ** 2 + sh.ry ** 2)), n = Math.round(perim / (92 * scale * .9)), start = R(0, Math.PI * 2);
+  { const sh = layers[NEAR].sh, perim = Math.PI * Math.sqrt(2 * (sh.rx ** 2 + sh.ry ** 2)), n = Math.round(perim / (92 * scale * .9)), start = R(0, Math.PI * 2), first = slots.length;
     for (let i = 0; i < n; i++) {
       const t = start + i / n * Math.PI * 2 + R(-.1, .1), [x, y] = inRock(sh, t, R(-4, 10)), inward = Math.atan2(sh.cy - y, sh.cx - x);
       if (x > -20 && x < W + 20 && y > -20 && y < H + 20) put(NEAR, x, y, inward + R(-.4, .4), R(66, 120) * scale);
-    } }
+    }
+    scatter(NEAR, first, 16, () => R(50, 96) * scale); }
   // which formations can be hunted: big enough to tap, on screen, and not mostly behind nearer rock or crystals
   slots.forEach((s, i) => {
     s.i = i;
@@ -825,7 +810,7 @@ function showTarget() {
   const bg = wctx.createRadialGradient(sz / 2, sz * .55, 0, sz / 2, sz * .55, sz * .7); bg.addColorStop(0, rgba(mix(hex(ty.pal.glow), [20, 16, 30], .7))); bg.addColorStop(1, '#100c18');
   wctx.fillStyle = bg; wctx.fillRect(0, 0, sz, sz);
   const keepR = rnd, keepS = sparks; rnd = mulberry(4242); sparks = [];
-  const big = ty.shape.k === 'druse' ? .95 : ty.shape.k === 'urchin' ? .9 : .78;
+  const big = ty.shape.k === 'urchin' ? .9 : .78;
   formation(wctx, sz / 2, sz * .9, -Math.PI / 2, sz * big, ty, null);
   rnd = keepR; sparks = keepS;
   $('tray').classList.remove('fresh'); void $('tray').offsetWidth; $('tray').classList.add('fresh');
