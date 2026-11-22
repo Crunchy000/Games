@@ -223,12 +223,11 @@ window.BB = (() => {
   <div class="ov show" id="ovTitle"><div class="card pk-card">
     <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
     <h1>Ink <span>Bounce</span></h1>
-    <p>There's no paddle. You draw it.</p>
-    <ul>
-      <li>Draw a line under the ball with your finger. It bounces off, then the line is used up. Only <b>one line at a time</b>: a new one wipes the old.</li>
-      <li>Ink is limited, so <b>short, neat lines</b> go further, score a precision bonus and refund a little ink.</li>
-      <li>Every brick you hit gives you a little ink back. Bricks with a drop refill lots, bombs blast, and the two-circle bricks split the ball. Catch falling <b>ink drops</b> with your line or the ball; a gold pot fills you up.</li>
-    </ul>
+    <div class="pk-steps">
+      <section class="pk-step"><div class=pk-step-art>✏️</div><h3>Draw your paddle</h3><p>There’s no paddle: you draw it. Draw a line under the ball and it bounces off, then the line is used up. <b>One line at a time</b>.</p></section>
+      <section class="pk-step"><div class=pk-step-art>🖋️</div><h3>Save your ink</h3><p>Ink is limited, so <b>short, neat lines</b> go further, score a bonus and refund a little ink. Every brick you hit gives some ink back too.</p></section>
+      <section class="pk-step"><div class=pk-step-art>💧</div><h3>Special bricks</h3><p>Bricks with a <b>drop</b> refill lots, <b>bombs</b> blast, and two-circle bricks <b>split</b> the ball. Catch falling ink drops; a gold pot fills you up.</p></section>
+    </div>
     <button class="btn pk-btn" id="bStart">Start</button><button class="btn alt pk-btn" id="bCont" hidden>Continue</button><br><a class="pk-btn pk-alt pk-small" href="../" style="margin-top:12px">All games</a>
     <p id="tBest" style="font-size:.9rem;opacity:.75"></p>
   </div></div>
@@ -643,6 +642,38 @@ bricks = buildLevel(1);
 if (/[?&]debug\b/.test(location.search)) window.__ib = { get state() { return state; }, get balls() { return balls; }, get bricks() { return bricks; }, get ink() { return ink; }, set ink(v) { ink = v; }, get score() { return score; }, get level() { return level; }, get lives() { return lives; }, get ZONE() { return ZONE; }, get drops() { return drops; }, get strokes() { return strokes; }, get H() { return H; }, serve };
 requestAnimationFrame(frame);
 })();
+</script>
+<script id="pub-kit-steps">
+(() => { const go = () => document.querySelectorAll('.pk-steps').forEach(el => {
+  if (el.dataset.ready) return; el.dataset.ready = '1';
+  const steps = [...el.children].filter(c => c.classList.contains('pk-step')), n = steps.length; if (n < 2) { steps.forEach(s => s.classList.add('on')); return; }
+  const row = el.nextElementSibling, finish = row && row.querySelector('button');
+  const mk = (tag, cls, txt) => { const b = document.createElement(tag); if (tag === 'button') b.type = 'button'; b.className = cls; if (txt) b.textContent = txt; return b; };
+  const nav = mk('div', 'pk-steps-nav'), back = mk('button', 'pk-steps-back'), dots = mk('div', 'pk-dots'), right = mk('div', 'pk-steps-go'), next = mk('button', 'pk-btn pk-small', 'Next');
+  if (!finish) next.classList.add('pk-alt');   // a title screen keeps its own Start button below
+  steps.forEach((s, i) => { const d = mk('button', ''); d.setAttribute('aria-label', `Step ${i + 1} of ${n}`); d.onclick = () => show(i); dots.appendChild(d); });
+  right.appendChild(next);
+  if (finish) { finish.classList.add('pk-small'); right.appendChild(finish); if (!row.querySelector('button, a, input')) row.remove(); }
+  nav.append(back, dots, right); el.after(nav);
+  let at = 0;
+  function show(i) {
+    at = Math.max(0, Math.min(n - 1, i));
+    steps.forEach((s, k) => { s.classList.toggle('on', k === at); s.classList.toggle('before', k < at); s.setAttribute('aria-hidden', k !== at); s.inert = k !== at; });
+    [...dots.children].forEach((d, k) => d.setAttribute('aria-current', k === at ? 'step' : 'false'));
+    back.textContent = at ? 'Back' : 'Skip'; back.hidden = !at && !finish;
+    next.hidden = at === n - 1; if (finish) finish.hidden = at !== n - 1;
+  }
+  back.onclick = () => at ? show(at - 1) : finish && finish.click();
+  next.onclick = () => show(at + 1);
+  let x0 = null;
+  el.addEventListener('pointerdown', e => { x0 = e.clientX; });
+  el.addEventListener('pointerup', e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) show(at + (dx < 0 ? 1 : -1)); });
+  addEventListener('keydown', e => { if (!el.offsetParent) return; if (e.key === 'ArrowRight') { show(at + 1); e.preventDefault(); } else if (e.key === 'ArrowLeft') { show(at - 1); e.preventDefault(); } });
+  const box = el.closest('.ov') || el.parentElement; let open = false;
+  new MutationObserver(() => { const o = !!el.offsetParent; if (o && !open) show(0); open = o; }).observe(box, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  open = !!el.offsetParent; show(0);
+});
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
 </script>
 <script id="pub-kit-says">
 (() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };

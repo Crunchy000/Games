@@ -1139,6 +1139,7 @@ requestAnimationFrame(loop);
   const row = el.nextElementSibling, finish = row && row.querySelector('button');
   const mk = (tag, cls, txt) => { const b = document.createElement(tag); if (tag === 'button') b.type = 'button'; b.className = cls; if (txt) b.textContent = txt; return b; };
   const nav = mk('div', 'pk-steps-nav'), back = mk('button', 'pk-steps-back'), dots = mk('div', 'pk-dots'), right = mk('div', 'pk-steps-go'), next = mk('button', 'pk-btn pk-small', 'Next');
+  if (!finish) next.classList.add('pk-alt');   // a title screen keeps its own Start button below
   steps.forEach((s, i) => { const d = mk('button', ''); d.setAttribute('aria-label', `Step ${i + 1} of ${n}`); d.onclick = () => show(i); dots.appendChild(d); });
   right.appendChild(next);
   if (finish) { finish.classList.add('pk-small'); right.appendChild(finish); if (!row.querySelector('button, a, input')) row.remove(); }

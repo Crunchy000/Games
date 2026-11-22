@@ -225,12 +225,11 @@ window.BB = (() => {
   <div class="ov" id="ovStart"><div class="panel pk-card">
     <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
     <h1>Tile<br>Burst</h1>
-    <ul class="rules">
-      <li>Drag the blocks from the tray onto the board.</li>
-      <li>Fill a whole <b>row or column</b> to burst it.</li>
-      <li>Clear lines on back-to-back turns for a <b>combo</b>.</li>
-      <li>The game ends when none of your blocks fit.</li>
-    </ul>
+    <div class="pk-steps">
+      <section class="pk-step"><div class=pk-step-art>🧩</div><h3>Place blocks</h3><p>Drag the blocks from the tray onto the board.</p></section>
+      <section class="pk-step"><div class=pk-step-art>💥</div><h3>Burst lines</h3><p>Fill a whole <b>row or column</b> to burst it. Clear lines on back-to-back turns for a <b>combo</b>.</p></section>
+      <section class="pk-step"><div class=pk-step-art>🏁</div><h3>Keep room</h3><p>The game ends when none of your blocks fit, so leave space for the big ones.</p></section>
+    </div>
     <button class="btn pk-btn" id="btnStart">Play</button><br><a class="pk-btn pk-alt pk-small" href="../" style="margin-top:12px">All games</a>
   </div></div>
   <div class="ov" id="ovOver"><div class="panel pk-card">
@@ -523,6 +522,38 @@ else { board = empty(); tray = [null, null, null]; $('ovStart').classList.add('s
 if (/[?&]debug\b/.test(location.search)) window.__tb = { get state() { return state; }, get score() { return score; }, get board() { return board; }, get tray() { return tray; }, fits, place, BX, CS, get BY() { return BY; }, get TY() { return TY; } };
 requestAnimationFrame(loop);
 })();
+</script>
+<script id="pub-kit-steps">
+(() => { const go = () => document.querySelectorAll('.pk-steps').forEach(el => {
+  if (el.dataset.ready) return; el.dataset.ready = '1';
+  const steps = [...el.children].filter(c => c.classList.contains('pk-step')), n = steps.length; if (n < 2) { steps.forEach(s => s.classList.add('on')); return; }
+  const row = el.nextElementSibling, finish = row && row.querySelector('button');
+  const mk = (tag, cls, txt) => { const b = document.createElement(tag); if (tag === 'button') b.type = 'button'; b.className = cls; if (txt) b.textContent = txt; return b; };
+  const nav = mk('div', 'pk-steps-nav'), back = mk('button', 'pk-steps-back'), dots = mk('div', 'pk-dots'), right = mk('div', 'pk-steps-go'), next = mk('button', 'pk-btn pk-small', 'Next');
+  if (!finish) next.classList.add('pk-alt');   // a title screen keeps its own Start button below
+  steps.forEach((s, i) => { const d = mk('button', ''); d.setAttribute('aria-label', `Step ${i + 1} of ${n}`); d.onclick = () => show(i); dots.appendChild(d); });
+  right.appendChild(next);
+  if (finish) { finish.classList.add('pk-small'); right.appendChild(finish); if (!row.querySelector('button, a, input')) row.remove(); }
+  nav.append(back, dots, right); el.after(nav);
+  let at = 0;
+  function show(i) {
+    at = Math.max(0, Math.min(n - 1, i));
+    steps.forEach((s, k) => { s.classList.toggle('on', k === at); s.classList.toggle('before', k < at); s.setAttribute('aria-hidden', k !== at); s.inert = k !== at; });
+    [...dots.children].forEach((d, k) => d.setAttribute('aria-current', k === at ? 'step' : 'false'));
+    back.textContent = at ? 'Back' : 'Skip'; back.hidden = !at && !finish;
+    next.hidden = at === n - 1; if (finish) finish.hidden = at !== n - 1;
+  }
+  back.onclick = () => at ? show(at - 1) : finish && finish.click();
+  next.onclick = () => show(at + 1);
+  let x0 = null;
+  el.addEventListener('pointerdown', e => { x0 = e.clientX; });
+  el.addEventListener('pointerup', e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) show(at + (dx < 0 ? 1 : -1)); });
+  addEventListener('keydown', e => { if (!el.offsetParent) return; if (e.key === 'ArrowRight') { show(at + 1); e.preventDefault(); } else if (e.key === 'ArrowLeft') { show(at - 1); e.preventDefault(); } });
+  const box = el.closest('.ov') || el.parentElement; let open = false;
+  new MutationObserver(() => { const o = !!el.offsetParent; if (o && !open) show(0); open = o; }).observe(box, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  open = !!el.offsetParent; show(0);
+});
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
 </script>
 <script id="pub-kit-says">
 (() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
