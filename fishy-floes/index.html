@@ -51,6 +51,8 @@
   button { font:inherit; }
   button:focus-visible, [contenteditable]:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
   .opts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #segMode { grid-column:1 / -1; }
+  @media (min-width:470px) { .opts { grid-template-columns:1fr 1fr 1.2fr; } #segMode { grid-column:auto; } }
   .seg { display:flex; padding:3px; border-radius:13px; background:var(--card); border:1px solid var(--card-b); }
   .seg button { flex:1; border:0; background:none; color:var(--mute); padding:7px 2px; font-weight:800; font-size:.82rem; cursor:pointer; border-radius:10px; transition:background .2s, color .2s; white-space:nowrap; }
   .seg button[aria-pressed="true"] { background:var(--ink); color:var(--bg2); }
@@ -175,6 +177,7 @@ window.BB = (() => {
 
   <div class="opts">
     <div class="seg" id="segSize" role="group" aria-label="Board size"><button data-v="small">Small</button><button data-v="big">Big</button></div>
+    <div class="seg" id="segPens" role="group" aria-label="Penguins each"><button data-v="team">4 each</button><button data-v="one">1 each</button></div>
     <div class="seg" id="segMode" role="group" aria-label="Opponent"><button data-v="2p">2 players</button><button data-v="cpu">vs CPU</button></div>
   </div>
 
@@ -192,7 +195,7 @@ window.BB = (() => {
     <button class="pk-btn" id="newGame">New game</button>
     <button class="pk-btn pk-alt" id="resetWins">Reset wins</button>
   </div>
-  <p class="hint">First, take turns putting your penguins on floes with one fish. Then on your turn, slide a penguin in a straight line as far as you like. It can't jump gaps or other penguins. The floe it leaves sinks, and you keep its fish. A penguin with nowhere to go takes its floe and climbs out. Most fish wins!<br>Tap a name to rename · Who starts swaps every game</p>
+  <p class="hint">First, take turns putting your penguins on floes with one fish. Then on your turn, slide a penguin in a straight line as far as you like. It can't jump gaps or other penguins. The floe it leaves sinks, and you keep its fish. A penguin with nowhere to go takes its floe and climbs out, and one with an island all to itself scoops up the most fish it could get there. Most fish wins!<br>In <b>1 each</b>, both penguins hop onto random floes, picked to be fair.<br>Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -205,11 +208,11 @@ window.BB = (() => {
   const SIZES = { small: { rows: [5, 6, 5, 6, 5, 6], pens: 3 }, big: { rows: [7, 8, 7, 8, 7, 8, 7, 8], pens: 4 } };
   const DIRS = [[2, 0], [-2, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]];   // the six ways across a hex grid, in doubled columns
 
-  let names = DEFAULT_NAMES.slice(), wins = [0, 0], size = 'big', mode = '2p', muted = false, starter = 0, saved = null;
+  let names = DEFAULT_NAMES.slice(), wins = [0, 0], size = 'big', mode = '2p', pens = 'team', muted = false, starter = 0, saved = null;
   try {
     const s = JSON.parse(localStorage.getItem('fishyfloes') || '{}');
     if (s.names) names = s.names; if (s.wins) wins = s.wins; if (SIZES[s.size]) size = s.size;
-    if (s.mode === 'cpu') mode = 'cpu'; muted = !!s.muted; if (s.starter) starter = 1; if (s.game) saved = s.game;
+    if (s.mode === 'cpu') mode = 'cpu'; if (s.pens === 'one') pens = 'one'; muted = !!s.muted; if (s.starter) starter = 1; if (s.game) saved = s.game;
   } catch (e) {}
   if (BB.muted === null) BB.muted = muted; else muted = BB.muted;   // sound is shared by every game
 
@@ -250,6 +253,7 @@ window.BB = (() => {
   const tileAt = (x, r) => { const i = index[key(x, r)]; return i === undefined || st.tiles[i].gone ? -1 : i; };
   const penOn = i => st.pens.findIndex(q => q.t === i);
   const isCpu = q => mode === 'cpu' && q === 1;
+  const perPlayer = () => pens === 'one' ? 1 : SIZES[size].pens;
 
   function newBoard() {
     const rows = SIZES[size].rows, tiles = [];
@@ -260,9 +264,43 @@ window.BB = (() => {
     rows.forEach((len, r) => { const start = wide - len; for (let c = 0; c < len; c++) tiles.push({ x: start + c * 2, r, fish: bag[k++], gone: false }); });
     return tiles;
   }
+  // 1 each: two one-fish floes that mirror each other across the board, not side by side, with about the same
+  // number of fish around them (within two hops, plus half of what each can slide to). Null if this board has no such pair.
+  function fairStart(s) {
+    const wide = Math.max(...SIZES[size].rows), mx = 2 * wide - 2, idx = {};
+    s.tiles.forEach((t, i) => idx[key(t.x, t.r)] = i);
+    const around = i => {
+      const seen = new Set([i]); let ring = [i], v = 0;
+      for (let d = 0; d < 2; d++) {
+        const next = [];
+        ring.forEach(j => { const u = s.tiles[j]; DIRS.forEach(([dx, dr]) => { const k = idx[key(u.x + dx, u.r + dr)]; if (k !== undefined && !seen.has(k)) { seen.add(k); next.push(k); v += s.tiles[k].fish; } }); });
+        ring = next;
+      }
+      return v + .5 * movesFrom(i, s, idx).reduce((a, j) => a + s.tiles[j].fish, 0);
+    };
+    const pairs = [];
+    s.tiles.forEach((t, i) => {
+      if (t.fish !== 1 || t.x * 2 >= mx) return;
+      const j = idx[key(mx - t.x, t.r)];
+      if (j === undefined || s.tiles[j].fish !== 1 || mx - 2 * t.x < 6) return;
+      const a = around(i), b = around(j);
+      pairs.push({ i, j, diff: Math.abs(a - b), room: Math.min(a, b) });
+    });
+    if (!pairs.length) return null;
+    // the fairest pairs, and of those the roomier half (out in the open rather than tucked against the edge)
+    const least = Math.min(...pairs.map(q => q.diff)), fair = pairs.filter(q => q.diff <= least + 1).sort((x, y) => y.room - x.room);
+    const open = fair.slice(0, Math.max(1, Math.ceil(fair.length / 2))), pick = open[Math.floor(Math.random() * open.length)];
+    return Math.random() < .5 ? [pick.i, pick.j] : [pick.j, pick.i];
+  }
   function newGame(keepStarter) {
     if (!keepStarter) starter = 1 - starter;
     st = { tiles: newBoard(), pens: [], fish: [0, 0], floes: [0, 0], phase: 'place', turn: starter, out: [false, false] };
+    if (pens === 'one') {
+      let at = fairStart(st);
+      for (let k = 0; !at && k < 60; k++) { st.tiles = newBoard(); at = fairStart(st); }
+      st.pens = [{ p: 0, t: at[0] }, { p: 1, t: at[1] }]; st.phase = 'move';
+      lastMsg = 'The penguins hop on'; setTimeout(sPlace, 60);
+    }
     rebuildIndex(); hist = []; sel = -1; anims = []; lastMsg = ''; busy = false; persist(); layout(); render(); draw(); maybeCpu();
   }
 
@@ -283,16 +321,60 @@ window.BB = (() => {
   const placeable = i => !st.tiles[i].gone && st.tiles[i].fish === 1 && penOn(i) < 0;
   const placedBy = q => st.pens.filter(pn => pn.p === q).length;
 
-  // a penguin with no floe next to it at all can never move again: it climbs out with its floe
-  function retireIsolated(s, quiet) {
-    const gone = [];
-    s.pens.forEach(pn => {
-      if (pn.t < 0) return; const t = s.tiles[pn.t];
-      const near = DIRS.some(([dx, dr]) => { const j = index[key(t.x + dx, t.r + dr)]; return j !== undefined && !s.tiles[j].gone; });
-      if (!near) gone.push(pn);
+  // islands: groups of floes joined edge to edge
+  function islandsOf(s, idx = index) {
+    const comp = new Array(s.tiles.length).fill(-1), list = [];
+    s.tiles.forEach((t, i) => {
+      if (t.gone || comp[i] >= 0) return;
+      const id = list.length, isl = [i]; comp[i] = id;
+      for (let n = 0; n < isl.length; n++) { const u = s.tiles[isl[n]]; for (const [dx, dr] of DIRS) { const j = idx[key(u.x + dx, u.r + dr)]; if (j !== undefined && !s.tiles[j].gone && comp[j] < 0) { comp[j] = id; isl.push(j); } } }
+      list.push(isl);
     });
-    gone.forEach(pn => { const t = s.tiles[pn.t]; s.fish[pn.p] += t.fish; s.floes[pn.p]++; t.gone = true; if (!quiet) { lastMsg = `${names[pn.p]}'s penguin climbs out with ${t.fish} fish`; plus(pn.p, t.fish); } pn.t = -1; });
-    return gone.length;
+    return { comp, list };
+  }
+  // the most fish one penguin could collect on its own island, sliding as usual (each floe it leaves sinks, and it keeps
+  // the one it ends on). A depth-first search with a bound; on a big island it settles for the best found within budget.
+  function bestHaul(s, start, idx = index) {
+    const n = s.tiles.length, gone = new Uint8Array(n), seen = new Int32Array(n); let stamp = 0;
+    s.tiles.forEach((t, i) => { if (t.gone) gone[i] = 1; });
+    const fishLeft = from => {   // every fish still joined to 'from', including its own floe
+      stamp++; const q = [from]; seen[from] = stamp; let v = 0;
+      for (let h = 0; h < q.length; h++) { const u = s.tiles[q[h]]; v += u.fish; for (const [dx, dr] of DIRS) { const j = idx[key(u.x + dx, u.r + dr)]; if (j !== undefined && !gone[j] && seen[j] !== stamp) { seen[j] = stamp; q.push(j); } } }
+      return v;
+    };
+    let best = -1, bestPath = [], budget = 150000; const path = [];
+    (function go(at, got) {
+      if (--budget < 0) return;
+      const total = got + s.tiles[at].fish;
+      if (total > best) { best = total; bestPath = path.slice(); }
+      if (got + fishLeft(at) <= best) return;
+      gone[at] = 1;
+      const t = s.tiles[at], moves = [];
+      for (const [dx, dr] of DIRS) { let x = t.x + dx, r = t.r + dr; for (;;) { const j = idx[key(x, r)]; if (j === undefined || gone[j]) break; moves.push(j); x += dx; r += dr; } }
+      moves.sort((a, b) => s.tiles[b].fish - s.tiles[a].fish);
+      for (const j of moves) { path.push(j); go(j, total); path.pop(); if (budget < 0) break; }
+      gone[at] = 0;
+    })(start, 0);
+    return { fish: best, path: bestPath };
+  }
+  function retireIslands(s, quiet) {
+    const { comp, list } = islandsOf(s), msgs = [];
+    let done = 0;
+    list.forEach((isl, id) => {
+      const here = s.pens.filter(pn => pn.t >= 0 && comp[pn.t] === id);
+      if (here.length !== 1) return;
+      const pn = here[0], h = isl.length === 1 ? { fish: s.tiles[pn.t].fish, path: [] } : bestHaul(s, pn.t);
+      s.fish[pn.p] += h.fish; s.floes[pn.p] += h.path.length + 1;
+      if (!quiet) {
+        const now = performance.now(), order = [pn.t].concat(h.path, isl.filter(i => i !== pn.t && !h.path.includes(i)));
+        order.forEach((i, k) => anims.push({ type: 'sink', i, t0: now + k * 70, dur: 650 }));
+        sSink(); sFish(Math.min(6, h.fish), .15); plus(pn.p, h.fish);
+        msgs.push(isl.length === 1 ? `${names[pn.p]}'s penguin climbs out with ${h.fish} fish` : `${names[pn.p]}'s penguin has an island to itself: ${h.fish} fish`);
+      }
+      isl.forEach(i => s.tiles[i].gone = true); pn.t = -1; done++;
+    });
+    if (msgs.length) lastMsg = msgs.join(' · ');
+    return done;
   }
   // when a player can't move any more, all their penguins climb out with their floes
   function retireStuck(q, s) {
@@ -301,7 +383,7 @@ window.BB = (() => {
   }
   function nextTurn() {
     if (st.phase === 'place') {
-      const per = SIZES[size].pens;
+      const per = perPlayer();
       if (placedBy(0) >= per && placedBy(1) >= per) { st.phase = 'move'; st.turn = starter; }
       else { st.turn = 1 - st.turn; if (placedBy(st.turn) >= per) st.turn = 1 - st.turn; return; }
     } else st.turn = 1 - st.turn;
@@ -338,7 +420,7 @@ window.BB = (() => {
     sSlide(dur / 1000); sSink(dur / 1000 * .35); sFish(t.fish, dur / 1000 * .5); buzz(10);
     plus(q, t.fish); lastMsg = `${names[q]} caught ${t.fish} fish`;
     sel = -1; busy = true;
-    setTimeout(() => { busy = false; retireIsolated(st); nextTurn(); afterTurn(); }, dur + 250);
+    setTimeout(() => { busy = false; retireIslands(st); nextTurn(); afterTurn(); }, dur + 250);
     render();
   }
   function afterTurn() { persist(); render(); draw(); maybeCpu(); }
@@ -355,7 +437,15 @@ window.BB = (() => {
     s.pens.forEach(pn => { if (pn.p !== q || pn.t < 0) return; const m = movesFrom(pn.t, s); mob += m.length; m.forEach(j => { if (!seen.has(j)) { seen.add(j); v += s.tiles[j].fish; } }); });
     return v + mob * .15;
   }
-  const evalFor = (q, s) => (s.fish[q] - s.fish[1 - q]) + .35 * (reachValue(q, s) - reachValue(1 - q, s));
+  function territory(s) {
+    const { comp, list } = islandsOf(s), v = [0, 0];
+    list.forEach((isl, id) => {
+      const who = new Set(s.pens.filter(pn => pn.t >= 0 && comp[pn.t] === id).map(pn => pn.p));
+      if (who.size === 1) { const q = who.values().next().value; v[q] += .9 * isl.reduce((a, i) => a + s.tiles[i].fish, 0); }
+    });
+    return v;
+  }
+  const evalFor = (q, s) => { const tv = territory(s); return (s.fish[q] - s.fish[1 - q]) + (tv[q] - tv[1 - q]) + .35 * (reachValue(q, s) - reachValue(1 - q, s)); };
   function apply(s, k, to) { const c = JSON.parse(JSON.stringify(s)), pn = c.pens[k], t = c.tiles[pn.t]; t.gone = true; c.fish[pn.p] += t.fish; c.floes[pn.p]++; pn.t = to; return c; }
   function cpuMove() {
     const q = st.turn; let best = null;
@@ -545,7 +635,7 @@ window.BB = (() => {
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function plus(q, n) { const p = document.createElement('div'); p.className = 'plus'; p.style.color = q ? 'var(--p1)' : 'var(--p0)'; p.textContent = '+' + n; $('card' + q).appendChild(p); setTimeout(() => p.remove(), 950); }
   function render() {
-    const per = SIZES[size].pens;
+    const per = perPlayer();
     for (const q of [0, 1]) {
       $('f' + q).innerHTML = `${st.fish[q]}<small>fish</small>`;
       const on = st.pens.filter(pn => pn.p === q && pn.t >= 0).length;
@@ -565,7 +655,7 @@ window.BB = (() => {
     $('left').textContent = st.phase === 'over' ? `${st.fish[0]} fish to ${st.fish[1]}` + (st.fish[0] === st.fish[1] ? ` · floes ${st.floes[0]} to ${st.floes[1]}` : '') + ' · Tap New game for a rematch'
       : lastMsg ? `${lastMsg} · ${left} floes left` : `${left} floes left`;
   }
-  function persist() { try { localStorage.setItem('fishyfloes', JSON.stringify({ names, wins, size, mode, muted, starter, game: st && st.phase !== 'over' ? { st, size } : null })); } catch (e) {} }
+  function persist() { try { localStorage.setItem('fishyfloes', JSON.stringify({ names, wins, size, mode, pens, muted, starter, game: st && st.phase !== 'over' ? { st, size, pens } : null })); } catch (e) {} }
 
   /* ---------- confetti ---------- */
   const ccv = $('confetti'), cx = ccv.getContext('2d'); let bits = [], raf = 0;
@@ -586,12 +676,15 @@ window.BB = (() => {
   function segs() {
     document.querySelectorAll('#segSize button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === size));
     document.querySelectorAll('#segMode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === mode));
+    document.querySelectorAll('#segPens button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === pens));
+    document.querySelector('#segPens [data-v=team]').textContent = `${SIZES[size].pens} each`;
   }
   let confirmT = 0;
   const midGame = () => st.phase !== 'over' && hist.length > 0;
   function guarded(fn, label) { if (midGame() && Date.now() - confirmT > 2500) { confirmT = Date.now(); lastMsg = `Tap ${label} again to start over`; render(); return; } confirmT = 0; fn(); }
   document.querySelectorAll('#segSize button').forEach(b => b.onclick = () => { if (b.dataset.v === size) return; guarded(() => { size = b.dataset.v; segs(); newGame(true); }, b.textContent); });
   document.querySelectorAll('#segMode button').forEach(b => b.onclick = () => { if (b.dataset.v === mode) return; guarded(() => { mode = b.dataset.v; segs(); newGame(true); }, b.textContent); });
+  document.querySelectorAll('#segPens button').forEach(b => b.onclick = () => { if (b.dataset.v === pens) return; guarded(() => { pens = b.dataset.v; segs(); newGame(true); }, b.textContent); });
   $('newGame').onclick = () => guarded(() => newGame(false), 'New game');
   $('resetWins').onclick = () => { wins = [0, 0]; persist(); render(); };
   $('undo').onclick = undo;
@@ -604,10 +697,10 @@ window.BB = (() => {
   addEventListener('resize', () => { layout(); draw(); });
 
   segs(); $('sound').textContent = muted ? '🔇' : '🔊';
-  if (saved && saved.st && saved.size === size) { st = saved.st; rebuildIndex(); layout(); render(); maybeCpu(); }
+  if (saved && saved.st && saved.size === size && (saved.pens || 'team') === pens) { st = saved.st; rebuildIndex(); layout(); render(); maybeCpu(); }
   else newGame(true);
   requestAnimationFrame(frame);
-  if (DEBUG) window.__ff = { get st() { return st; }, place, move, movesFrom, penMoves, canMove, get busy() { return busy; }, get sel() { return sel; }, pos, cpuMove, cpuPlace, newGame, undo, get hist() { return hist.length; } };
+  if (DEBUG) window.__ff = { get st() { return st; }, place, move, movesFrom, penMoves, canMove, get busy() { return busy; }, get sel() { return sel; }, pos, cpuMove, cpuPlace, newGame, undo, islandsOf, bestHaul, retireIslands, fairStart, get hist() { return hist.length; } };
 })();
 </script>
 <script id="pub-kit-says">
