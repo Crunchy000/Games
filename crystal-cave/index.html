@@ -24,7 +24,7 @@
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
 }</script>
 <title>Crystal Cave</title>
-<meta name="description" content="A cosy hidden-crystal hunt through rings of rock or across a limestone cavern floor. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A cosy hidden-crystal hunt through rings of rock or across a cavern floor by a waterfall. Find every crystal that matches the one Bear and Bean are after, by shape, colour and markings, and spot the fossils hidden in the rock. Every cave is new. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://www.bearandbean.uk/crystal-cave/">
 <style>
   :root { --bg:#efe7f1; --ink:#33283f; --muted:#85789a; --panel:#e2d6e8; --card:#fbf7fc; --accent:#8a4fd0; }
@@ -304,7 +304,7 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p>The cave is wide! <b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom in close. Tap the little map to jump.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: glassy and shiny, with a twinkle. <b>Frosted tips</b>: rough, matte white ends with no shine. <b>Banded</b>: stripes across. <b>Gold fractures</b>: gold cracks. <b>Two-tone</b>: a second colour at the tip.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Tap to collect</h3><p><b>Tap</b> a match to collect it. A wrong tap costs 10 points; a hint 🔍 costs 25. Fossils 🐚 hidden in the rock are a bonus.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🔦</div><h3>12 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a new cave: rings of rock, or a wide <b>crystal floor</b> in a limestone cavern.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔦</div><h3>12 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a new cave: rings of rock, or a wide <b>crystal floor</b> in a cavern with a waterfall.</p></section>
   </div>
   <div class="row2"><button class="btn pk-btn" data-close>Let's explore</button></div>
 </div></div>
@@ -315,7 +315,7 @@ document.addEventListener('click', e => {
   <p>Where shall Bear and Bean explore next?</p>
   <div class="modes">
     <button class="mode" data-mode="cave"><span>💎</span><b>Crystal cave</b><small>rings of rock, deep into the hill</small></button>
-    <button class="mode" data-mode="floor"><span>☀️</span><b>Crystal floor</b><small>a limestone cavern floor</small></button>
+    <button class="mode" data-mode="floor"><span>☀️</span><b>Crystal floor</b><small>a cavern with a waterfall</small></button>
   </div>
   <p class="warn" id="newWarn">This cave's hunt will end.</p>
 </div></div>
@@ -638,9 +638,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 25, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 26, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 25) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 26) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -762,6 +762,9 @@ function assignHunts(slots, hunts, decoys, fillers) {
   return counts;
 }
 // the crystal floor: a flat floor of mineral crust seen in perspective like a meadow, fading into darkness at the back
+const SKIES = [   // what shows through the skylight, and the colour of its light
+  { top: '#5fa8ea', bottom: '#cfeafc', light: [255, 244, 214] }, { top: '#f2a07b', bottom: '#ffe2ae', light: [255, 214, 160] }, { top: '#8fc2e8', bottom: '#f3f7f2', light: [236, 246, 255] },
+];
 const MINERAL_FLOORS = [   // limestone: cream, pale grey, warm ochre
   { base: [168, 156, 136], rim: [236, 228, 210], light: [255, 244, 222], wall: [196, 184, 160] }, { base: [150, 150, 146], rim: [226, 228, 224], light: [240, 244, 250], wall: [184, 184, 178] }, { base: [166, 140, 108], rim: [236, 214, 182], light: [255, 236, 208], wall: [204, 172, 132] },
 ];
@@ -796,7 +799,8 @@ function drapery(g, x, y, w, len, col) {
 function planFloor(T) {
   const { hunts, decoys, fillers, theme, rock } = T;
   // the floor is a rounded slab running the full width of the cave: straight back and front edges with rounded corners
-  const y0 = H * R(.22, .25), yF = H * .9, hwBack = W * .5 - 14, hwFront = W * .5 - 14, cr = R(120, 160), crF = R(130, 170);   // full width, rounded at the corners
+  const y0 = H * R(.31, .34), yF = H * .9, hwBack = W * .5 - 14, hwFront = W * .5 - 14, cr = R(120, 160), crF = R(130, 170);   // full width, rounded at the corners
+  let inPondLater = () => false;   // set once the pond is planned
   const halfAt = y => lerp(hwBack, hwFront, clamp((y - y0) / (yF - y0), 0, 1));
   const baseY = x => {   // the top edge of the floor at x (below the world if x is beyond the floor)
     const dx = Math.abs(x - W / 2);
@@ -811,9 +815,26 @@ function planFloor(T) {
     if (dx >= hwFront) return -999;
     return yF - crF + Math.sqrt(Math.max(0, crF * crF - (dx - (hwFront - crF)) ** 2));
   };
-  const onFloor = (x, y, m = 0) => y > baseY(x) + m && y < frontY(x) - m;
+  const onFloor = (x, y, m = 0) => y > baseY(x) + m && y < frontY(x) - m && !inPondLater(x, y, m);
   const depth = y => clamp((y - y0) / (yF - y0), 0, 1), persp = y => lerp(.85, 1.1, Math.pow(depth(y), .9));
-  const mineral = pick(MINERAL_FLOORS), pool = { x: W * R(.4, .6), y: y0 + (yF - y0) * R(.45, .55), rx: R(300, 380), ry: R(130, 170) };
+  const mineral = pick(MINERAL_FLOORS), sky = pick(SKIES);
+  // the back wall: tiers of blocky rock stepping up and back, each a run of blocks with a slightly slanted lip
+  const wallTop = 70, nT = 4, faceH = (y0 - wallTop) / (nT + .3), tiers = [];
+  for (let k = 0; k < nT; k++) {
+    const base = y0 - faceH * (k + 1), d = faceH * .36 * (1 - k * .12), blocks = [];
+    for (let x = -20; x < W + 20; ) { const w = R(50, 150), a = R(-14, 14) * (1 - k * .15); blocks.push([x, x + w, a, a + R(-7, 7)]); x += w; }
+    tiers.push({ base, d, blocks });
+  }
+  const lipAt = (k, x) => { const T = tiers[k], b = T.blocks.find(b => x >= b[0] && x < b[1]) || T.blocks[T.blocks.length - 1]; return T.base + lerp(b[2], b[3], (x - b[0]) / (b[1] - b[0])); };
+  // a waterfall stepping down the tiers into a pond at the back of the floor
+  const hx = W * R(.3, .7), wx = hx < W / 2 ? W * R(.62, .74) : W * R(.26, .38);   // the waterfall well clear of the skylight, and of the controls at the edges
+  const pond = { x: wx, y: y0 + R(34, 44), rx: R(110, 140), ry: R(28, 36) };
+  const falls = [];
+  for (let k = nT - 1; k >= 0; k--) falls.push({ x: wx + R(-4, 4), y0: k === nT - 1 ? lipAt(k, wx) - tiers[k].d - 18 : lipAt(k, wx) - tiers[k].d * .55, y1: k ? lipAt(k - 1, wx) - tiers[k - 1].d * .45 : pond.y - 4, w: lerp(16, 30, 1 - k / nT) });
+  const inPond = inPondLater = (x, y, m = 0) => ((x - pond.x) / (pond.rx + m)) ** 2 + ((y - pond.y) / (pond.ry + m * .4)) ** 2 < 1;
+  // a skylight in the roof, and the pool of light it throws on the floor
+  const hole = { x: hx, y: R(30, 42), rx: R(90, 120), ry: R(26, 34), off: R(0, 100) };
+  const pool = { x: clamp(hole.x + R(-80, 80), W * .25, W * .75), y: y0 + (yF - y0) * R(.45, .55), rx: R(300, 380), ry: R(130, 170) };
   const seedOf = () => (rnd() * 2147483647) | 0, floorI = [];
   const mk = (kind, x, y, ang, size, extra) => Object.assign({ kind, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 }, extra);
   const crowds = (list, it) => underControls(it.cx, it.cy, it.r) || underControls(it.x, it.y, 4) || list.some(o => Math.abs(o.cy - it.cy) < o.r + it.r && overlap(o.r, it.r, Math.hypot(o.cx - it.cx, o.cy - it.cy)) > .25 * Math.PI * Math.min(o.r, it.r) ** 2);
@@ -822,23 +843,26 @@ function planFloor(T) {
   for (let tries = 0; fossils.length < 3 && tries < 400; tries++) {
     const x = R(80, W - 80), y = R(baseY(x) + 90, frontY(x) - 60), r = R(11, 14) * persp(y);
     if (!onFloor(x, y, 60)) continue;
-    if (!underControls(x, y, r + 8) && !fossils.some(f => Math.hypot(f.x - x, f.y - y) < 260)) fossils.push({ x, y, r, rot: R(0, 6.3) });
+    if (!underControls(x, y, r + 8) && !inPondLater(x, y, 40) && !fossils.some(f => Math.hypot(f.x - x, f.y - y) < 260)) fossils.push({ x, y, r, rot: R(0, 6.3) });
   }
   const nearFossil = it => fossils.some(f => Math.hypot(f.x - it.cx, f.y - it.cy) < f.r + it.r + 8 || Math.hypot(f.x - it.x, f.y - it.y) < f.r + it.size * .3 + 8);
   // a staggered row along the back edge, leaning out into the cave
   for (let x = W / 2 - hwBack + R(10, 30), i = 0; x < W / 2 + hwBack - 10; x += R(52, 80), i++) {
-    const y = baseY(x) + (i % 2 ? R(4, 10) : R(16, 30)), lean = clamp((W / 2 - x) / (W / 2), -1, 1) * .5, it = mk('f', x, y, -Math.PI / 2 + lean + R(-.35, .35), bell(40, 50) * persp(y));
+    const y = baseY(x) + (i % 2 ? R(4, 10) : R(16, 30)); if (inPond(x, y, 30)) continue;
+    const lean = clamp((W / 2 - x) / (W / 2), -1, 1) * .5, it = mk('f', x, y, -Math.PI / 2 + lean + R(-.35, .35), bell(40, 50) * persp(y));
+    if (inPond(it.cx, it.cy, it.r + 10)) continue;
     if (!crowds(floorI, it)) floorI.push(it);
   }
   // a few boulders, then crystals scattered over the floor like flowers in a meadow; none covers more than a quarter of another
   for (let i = 0, n = 0, want = RI(6, 10); i < 400 && n < want; i++) {
     const x = R(0, W), y = R(y0 + 40, yF); if (!onFloor(x, y, 30)) continue;
-    const sc = persp(y), it = mk('boulder', x, y, -Math.PI / 2, R(26, 44) * sc); it.cy = y - it.size * .35; it.r = it.size * .7;
+    const sc = persp(y), it = mk('boulder', x, y, -Math.PI / 2, R(26, 44) * sc); it.cy = y - it.size * .35; it.r = it.size * .7; if (inPond(it.cx, it.cy, it.r + 10)) continue;
     if (!crowds(floorI, it) && !nearFossil(it)) { floorI.push(it); n++; }
   }
   for (let i = 0, n = 0; i < 14000 && n < 380; i++) {
     const x = R(0, W), y = R(y0 + 6, yF); if (!onFloor(x, y, 12)) continue;
     const it = mk('f', x, y, -Math.PI / 2 + R(-.45, .45), bell(44, 54) * persp(y));
+    if (inPond(it.cx, it.cy, it.r + 10) || inPond(x, y, 24)) continue;   // nothing standing in the pond
     if (!crowds(floorI, it) && !nearFossil(it) && !floorI.some(o => Math.hypot(o.cx - it.cx, o.cy - it.cy) < (o.r + it.r) * .85)) { floorI.push(it); n++; }
   }
   floorI.sort((a, b) => a.y - b.y);   // back to front, so nearer things are drawn over farther ones
@@ -857,7 +881,7 @@ function planFloor(T) {
     s.spare = onScreen && s.hidden <= .5 && s.r >= 11;
   });
   const counts = assignHunts(slots, hunts, decoys, fillers);
-  return { kind: 'floor', hw: hwFront, hunts, counts, decoys, slots, decor, items, fossils, rock, theme, mineral, pool, y0, yF, baseY, frontY, persp, view: { x: pool.x, y: pool.y - 60 } };
+  return { kind: 'floor', hw: hwFront, hunts, counts, decoys, slots, decor, items, fossils, rock, theme, mineral, pool, y0, yF, baseY, frontY, persp, tiers, faceH, lipAt, falls, pond, hole, sky, view: { x: pool.x, y: pool.y - 120 }, water: { falls, pond } };
 }
 // a rounded boulder, lit from above
 function boulder(g, x, y, s, col) {
@@ -867,6 +891,14 @@ function boulder(g, x, y, s, col) {
   const gr = g.createLinearGradient(x, y - s * .7, x, y); gr.addColorStop(0, rgba(shade(col, .3))); gr.addColorStop(1, rgba(shade(col, -.35)));
   g.fillStyle = gr; g.beginPath(); g.moveTo(pts[0][0], y); pts.forEach(p => g.lineTo(p[0], p[1])); g.lineTo(pts[pts.length - 1][0], y); g.closePath(); g.fill();
   g.strokeStyle = rgba(shade(col, .45), .5); g.lineWidth = Math.max(1, s * .04); g.beginPath(); pts.slice(4, 13).forEach((p, i) => i ? g.lineTo(p[0], p[1] + s * .04) : g.moveTo(p[0], p[1] + s * .04)); g.stroke();
+}
+// one drop of a waterfall: a translucent sheet with streaks, and foam where it lands
+function waterDrop(g, f, mineral) {
+  const { x, y0: a, y1: b, w } = f, p = new Path2D();
+  p.moveTo(x - w * .4, a); p.quadraticCurveTo(x - w * .55, (a + b) / 2, x - w * .5, b); p.lineTo(x + w * .5, b); p.quadraticCurveTo(x + w * .55, (a + b) / 2, x + w * .4, a); p.closePath();
+  const gr = g.createLinearGradient(x - w / 2, 0, x + w / 2, 0); gr.addColorStop(0, 'rgba(190,225,240,.35)'); gr.addColorStop(.5, 'rgba(235,248,255,.75)'); gr.addColorStop(1, 'rgba(190,225,240,.35)'); g.fillStyle = gr; g.fill(p);
+  g.save(); g.clip(p); g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.2; for (let i = 0; i < 6; i++) { const sx = x + R(-.4, .4) * w; g.beginPath(); g.moveTo(sx, a + R(0, 10)); g.lineTo(sx + R(-2, 2), b); g.stroke(); } g.restore();
+  for (let i = 0; i < 9; i++) { g.fillStyle = `rgba(255,255,255,${R(.45, .85)})`; g.beginPath(); g.ellipse(x + R(-.8, .8) * w, b + R(-3, 4), R(4, 9), R(2, 4), 0, 0, 6.3); g.fill(); }
 }
 // the painting steps for the crystal floor (patch-aware: near() says what's in the area being repainted)
 function floorOps(g, plan, removed, near, ops, glows, patch) {
@@ -879,19 +911,38 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
   const formationOp = it => () => { rnd = mulberry(it.seed); curSlot = it.i; const n0 = glows.length; formation(g, it.x, it.y, it.ang, it.size, it.type, glows); for (let k = n0; k < glows.length; k++) glows[k][4] = it.i; curSlot = -1; };
   const wanted = it => (it.kind !== 'f' || !removed.has(it.i)) && (near(it.x, it.y, it.size * 1.1) || near(it.cx, it.cy, it.size * 1.1));
   // the roof and back: just darkness
-  // the back of the cave: a dark limestone wall, distant columns, then flowstone columns and draperies, softly lit from the floor
+  // the back of the cave: tiers of blocky rock stepping up into the dark, a waterfall, and a skylight in the roof
   ops.push(() => {
     rnd = mulberry(S.seed ^ 0x13579b);
-    const wallCol = mineral.wall, top = y0 + 140;
+    const { tiers, faceH, lipAt, falls, hole, sky } = plan, wallCol = mineral.wall, top = y0 + 40;
     g.fillStyle = '#07050b'; g.fillRect(0, 0, W, H);   // dark everywhere, including below the floor
-    const dk = g.createLinearGradient(0, 0, 0, top); dk.addColorStop(0, '#07050b'); dk.addColorStop(1, rgba(mix([20, 16, 24], wallCol, .22))); g.fillStyle = dk; g.fillRect(0, 0, W, top);
-    for (let x = R(-20, 40); x < W + 40; x += R(70, 140)) flowColumn(g, x, R(10, 22), -20, top, mix([24, 20, 28], wallCol, .3), .9);   // far off, in shadow
-    const glow = g.createLinearGradient(0, y0 - 160, 0, top); glow.addColorStop(0, 'rgba(8,6,12,.75)'); glow.addColorStop(1, 'rgba(8,6,12,.15)'); g.fillStyle = glow; g.fillRect(0, 0, W, top);
-    for (let x = R(40, 140); x < W - 20; x += R(160, 300)) {
-      if (rnd() < .55) flowColumn(g, x, R(18, 32), -20, top, mix([40, 34, 40], wallCol, .62));
-      else drapery(g, x, -10, R(90, 150), R(110, Math.max(130, y0 - 30)), mix([46, 38, 42], wallCol, .7));
+    const face = tex('wall', mix([40, 34, 36], wallCol, .5));
+    for (let k = tiers.length - 1; k >= 0; k--) {
+      const T = tiers[k], fade = k / tiers.length, faceCol = mix(shade(wallCol, -.28), [18, 14, 22], fade * .55), topCol = mix(shade(wallCol, .18), [24, 20, 28], fade * .5);
+      const lipLine = []; for (const b of T.blocks) { lipLine.push([b[0], T.base + b[2]], [b[1], T.base + b[3]]); }
+      const body = new Path2D(); lipLine.forEach((q, i) => i ? body.lineTo(q[0], q[1] - T.d) : body.moveTo(q[0], q[1] - T.d)); body.lineTo(W + 30, top + 60); body.lineTo(-30, top + 60); body.closePath();
+      g.save(); g.clip(body);
+      g.fillStyle = face; g.fillRect(0, 0, W, top + 60); g.fillStyle = rgba(faceCol, .72); g.fillRect(0, 0, W, top + 60);
+      T.blocks.forEach((b, i) => { g.fillStyle = i % 2 ? 'rgba(0,0,0,.14)' : 'rgba(255,240,220,.05)'; g.fillRect(b[0], 0, b[1] - b[0], top + 60); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 2; g.beginPath(); g.moveTo(b[1], T.base + b[3]); g.lineTo(b[1] + R(-6, 6), T.base + faceH * 1.1); g.stroke(); });   // facets and joints
+      for (let i = 0; i < 3; i++) { const y = T.base + faceH * R(.25, .85); g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = R(1.5, 3); g.beginPath(); for (let x = 0; x <= W; x += 30) g.lineTo(x, y + fbm1(k * 9 + i * 3 + x / 200, 2) * 8); g.stroke(); }   // strata
+      // the flat ledge on top, lit from above, then its lip and the shadow under it
+      const ledge = new Path2D(); lipLine.forEach((q, i) => i ? ledge.lineTo(q[0], q[1] - T.d) : ledge.moveTo(q[0], q[1] - T.d)); for (let i = lipLine.length - 1; i >= 0; i--) ledge.lineTo(...lipLine[i]); ledge.closePath();
+      const lg = g.createLinearGradient(0, T.base - T.d - 10, 0, T.base + 10); lg.addColorStop(0, rgba(shade(topCol, -.2))); lg.addColorStop(1, rgba(shade(topCol, .12))); g.fillStyle = lg; g.fill(ledge);
+      const lip = new Path2D(); lipLine.forEach((q, i) => i ? lip.lineTo(...q) : lip.moveTo(...q));
+      g.save(); g.translate(0, 7); g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 12; g.stroke(lip); g.restore();
+      g.strokeStyle = rgba(shade(topCol, .35), .7); g.lineWidth = 2; g.stroke(lip);
+      g.restore();
     }
-    const dim = g.createLinearGradient(0, 0, 0, top); dim.addColorStop(0, 'rgba(6,4,10,.8)'); dim.addColorStop(.6, 'rgba(6,4,10,.25)'); dim.addColorStop(1, 'rgba(6,4,10,.05)'); g.fillStyle = dim; g.fillRect(0, 0, W, top);
+    // the roof above, and the skylight
+    const roof = g.createLinearGradient(0, 0, 0, tiers[tiers.length - 1].base); roof.addColorStop(0, 'rgba(7,5,11,1)'); roof.addColorStop(1, 'rgba(7,5,11,.0)'); g.fillStyle = roof; g.fillRect(0, 0, W, tiers[tiers.length - 1].base);
+    const holePath = new Path2D(); for (let i = 0; i <= 40; i++) { const a = i / 40 * Math.PI * 2, kk = 1 + fbm1(hole.off + Math.cos(a) * 2 + Math.sin(a) * 1.3, 3) * .2; const x = hole.x + Math.cos(a) * hole.rx * kk, y = hole.y + Math.sin(a) * hole.ry * kk; i ? holePath.lineTo(x, y) : holePath.moveTo(x, y); } holePath.closePath();
+    g.globalCompositeOperation = 'screen'; const sp = g.createRadialGradient(hole.x, hole.y, hole.rx * .5, hole.x, hole.y, hole.rx * 3.5); sp.addColorStop(0, rgba(sky.light, .3)); sp.addColorStop(1, rgba(sky.light, 0)); g.fillStyle = sp; g.fillRect(0, 0, W, top); g.globalCompositeOperation = 'source-over';
+    g.save(); g.translate(0, 9); g.fillStyle = 'rgba(30,24,28,1)'; g.fill(holePath); g.restore();
+    g.save(); g.clip(holePath); const skg = g.createLinearGradient(0, hole.y - hole.ry, 0, hole.y + hole.ry); skg.addColorStop(0, sky.top); skg.addColorStop(1, sky.bottom); g.fillStyle = skg; g.fillRect(hole.x - hole.rx * 1.5, 0, hole.rx * 3, hole.y + hole.ry * 2);
+    g.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 3; i++) { const cx = hole.x + R(-1, 1) * hole.rx, cy = hole.y + R(-.5, .4) * hole.ry; for (let j = 0; j < 3; j++) { g.beginPath(); g.ellipse(cx + j * 13 - 13, cy + R(-3, 3), R(12, 20), R(6, 9), 0, 0, 6.3); g.fill(); } } g.restore();
+    g.strokeStyle = rgba(sky.light, .5); g.lineWidth = 1.5; g.stroke(holePath);
+    // the waterfall, down every step but the last (that one lands on the floor, painted with it)
+    for (const f of falls.slice(0, -1)) waterDrop(g, f, mineral);
   });
   // the floor: a crust of minerals in raised cells, glittering a little, lit in the middle and fading into the dark at the back
   ops.push(() => {
@@ -921,6 +972,12 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
     const back = g.createLinearGradient(0, y0 - 10, 0, y0 + (H - y0) * .45); back.addColorStop(0, 'rgba(8,6,12,.92)'); back.addColorStop(.35, 'rgba(8,6,12,.45)'); back.addColorStop(1, 'rgba(8,6,12,0)'); g.fillStyle = back; g.fillRect(0, 0, W, H);
     g.restore();
     for (const f of plan.fossils) fossil(g, f, floorCol);
+    // the pond at the foot of the waterfall, and the last drop into it
+    const pd = plan.pond, pg = g.createRadialGradient(pd.x, pd.y - pd.ry * .3, 0, pd.x, pd.y, pd.rx);
+    g.fillStyle = rgba(shade(floorCol, -.5)); g.beginPath(); g.ellipse(pd.x, pd.y + 3, pd.rx + 6, pd.ry + 4, 0, 0, 6.3); g.fill();
+    pg.addColorStop(0, 'rgba(120,190,210,.95)'); pg.addColorStop(.7, 'rgba(40,96,120,.95)'); pg.addColorStop(1, 'rgba(20,50,70,.95)'); g.fillStyle = pg; g.beginPath(); g.ellipse(pd.x, pd.y, pd.rx, pd.ry, 0, 0, 6.3); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(pd.x + pd.rx * .25, pd.y - pd.ry * .35, pd.rx * .35, pd.ry * .15, 0, Math.PI * 1.1, Math.PI * 1.8); g.stroke();
+    waterDrop(g, plan.falls[plan.falls.length - 1], mineral);
   });
   // everything on the floor, back to front, a little dimmer the farther back it is
   const hazes = [y0 + (H - y0) * .12, y0 + (H - y0) * .3], fog = [10, 8, 16];
@@ -934,6 +991,11 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
   // the crystals' glow, a soft vignette, and a few motes drifting about
   ops.push(() => {
     glowPass(g, plan, removed, near, glows, patch);
+    { const { hole, sky } = plan; g.globalCompositeOperation = 'screen';
+      for (let i = 0, n = 5; i < n; i++) { const u = (i + .5) / n * 2 - 1, hx = hole.x + u * hole.rx * .7, hy = hole.y + hole.ry * .4, bx = pool.x + u * pool.rx * .7, by = pool.y, w1 = 22, w2 = 90, a = .07 + (i % 2) * .03;
+        const bg = g.createLinearGradient(hx, hy, bx, by); bg.addColorStop(0, rgba(sky.light, a)); bg.addColorStop(.8, rgba(sky.light, a * .5)); bg.addColorStop(1, rgba(sky.light, 0)); g.fillStyle = bg;
+        g.beginPath(); g.moveTo(hx - w1 / 2, hy); g.lineTo(hx + w1 / 2, hy); g.lineTo(bx + w2 / 2, by); g.lineTo(bx - w2 / 2, by); g.closePath(); g.fill(); }
+      g.globalCompositeOperation = 'source-over'; }
     const vg = g.createRadialGradient(pool.x, pool.y - 60, Math.min(W, H) * .32, pool.x, pool.y - 60, Math.max(W, H) * .78);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
     if (patch) return;
@@ -1333,6 +1395,12 @@ function frame(now) {
     else if (!reduceMotion) { m.y -= m.v * dt; m.x += Math.sin(t * .6 + m.p) * .15; if (m.y < -5) { m.y = H + 5; m.x = Math.random() * W; } mx = m.x; my = m.y; }
     if (!seen(mx, my)) continue;
     ctx.globalAlpha = m.a * (.6 + .4 * Math.sin(t * 1.3 + m.p)); ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(mx, my, m.r, 0, 6.3); ctx.fill();
+  }
+  if (cave.plan.water && !reduceMotion) {   // water streaking down the falls, and rings spreading on the pond
+    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.4;
+    for (const f of cave.plan.water.falls) { if (!seen(f.x, f.y0) && !seen(f.x, f.y1)) continue; const len = f.y1 - f.y0;
+      for (let i = 0; i < 4; i++) { const y = f.y0 + ((t * 90 + i * len / 4 + f.x) % len), sx = f.x + (i - 1.5) * f.w * .2; ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx, Math.min(f.y1, y + 10)); ctx.stroke(); } }
+    const pd = cave.plan.water.pond; if (seen(pd.x, pd.y)) for (let i = 0; i < 2; i++) { const k = ((t * .5 + i * .5) % 1); ctx.strokeStyle = `rgba(255,255,255,${.45 * (1 - k)})`; ctx.beginPath(); ctx.ellipse(pd.x, pd.y, pd.rx * (.15 + k * .7), pd.ry * (.15 + k * .7), 0, 0, 6.3); ctx.stroke(); }
   }
   if (!reduceMotion) for (const s of sparks) { if (!seen(s.x, s.y) || cave.removed.has(s.k)) continue; const v = Math.sin(t * s.f + s.p); if (v > .6) star(s.x, s.y, s.s * (v - .6) / .4 * .5, s.c, Math.min(1, (v - .6) * 2.4)); }
   ctx.globalAlpha = 1;
