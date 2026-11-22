@@ -493,8 +493,7 @@ function levelCfg(n) {
 
 /* ======================= game state ======================= */
 let inLevel = false;   // a level has been started and not yet won or lost
-// leaving now would lose the game in progress (the shared kit asks first)
-BB.leaveRisk = () => inLevel && (score > 0 || moves < L.moves);
+let settledSnap = null, wasBusy = false, finishing = null;   // the level as it stood after the last move settled; 'won'/'lost' during the finale
 let L = null, grid = [], frost = [], block = [], honeyGot = 0, honeySpawned = 0, chocHit = false, tool = null, extraUsed = false, flyers = [], score = 0, moves = 0, chainMax = 0, collected = [0, 0, 0, 0, 0, 0], busy = true, state = 'menu';
 let sel = null, hint = null, idleT = 0, uid = 0, time = 0, shownScore = 0, starPop = [0, 0, 0];
 let lolly = null, parts = [], beams = [], rings = [], zaps = [], popups = [], callout = null, tweens = [], waiters = [], shake = 0, bgCache = null;
@@ -524,9 +523,41 @@ function fillBoard() {
   if (!findMove()) return fillBoard();
 }
 
+/* ======================= keeping a level in progress ======================= */
+// the level in progress is saved whenever the page is hidden or closed (back gesture, home, switching apps, sleep) and after
+// every move once the board settles, then picked up again next time the game opens
+function levelSnapshot() {
+  return { n: L.n, score, moves, chainMax, collected: collected.slice(), honeyGot, honeySpawned, chocHit, extraUsed, boost: { ...boost },
+    frost: frost.map(r => r.slice()), block: block.map(row => row.map(b => b ? { k: b.k, hp: b.hp } : null)),
+    grid: grid.map(row => row.map(p => p && !p.dying ? [p.t, p.sp, p.k, p.lock] : null)) };
+}
+function storeLevel() {
+  if (finishing === 'won' && L) {   // left during the bonus round: the level is won, so count it
+    const stars = L.stars.filter(v => score >= v).length || 1;
+    save.stars[L.n] = Math.max(save.stars[L.n] || 0, stars); save.unlocked = Math.max(save.unlocked, L.n + 1); save.cur = null;
+  } else save.cur = inLevel && L && !finishing ? (busy ? settledSnap : levelSnapshot()) : null;
+  persist();
+}
+addEventListener('visibilitychange', () => { if (document.hidden) storeLevel(); });
+addEventListener('pagehide', storeLevel);
+function resumeLevel(c) {
+  boost = { ...c.boost }; inLevel = true; L = levelCfg(c.n); score = shownScore = c.score; moves = c.moves; chainMax = c.chainMax; collected = c.collected.slice();
+  sel = null; hint = null; idleT = 0; frost = c.frost.map(r => r.slice()); block = c.block.map(row => row.map(b => b ? { ...b, s: 1, hit: 0 } : null));
+  honeyGot = c.honeyGot; honeySpawned = c.honeySpawned; chocHit = c.chocHit; extraUsed = c.extraUsed; tool = null; flyers = [];
+  parts = []; beams = []; rings = []; zaps = []; popups = []; callout = null; tweens = []; bgDirty = true;
+  starPop = L.stars.map(v => v > 0 && score >= v ? 1 : 0);
+  grid = emptyGrid();
+  c.grid.forEach((row, r) => row.forEach((q, cc) => {
+    if (!q) return; const y = r - N - 1 - (N - cc) * .25;
+    const p = q[2] === 'honey' ? mkHoney(r, cc, y) : mk(q[0], r, cc, y); p.sp = q[1]; p.lock = q[3]; grid[r][cc] = p;
+  }));
+  settledSnap = c; finishing = null; state = 'play'; busy = true; show(null);
+  until(settled).then(() => { busy = false; call('Level ' + L.n); });
+}
+
 function startLevel(n) {
   boost = { hammer: BOOST_EACH, swap: BOOST_EACH };
-  inLevel = true; L = levelCfg(n); score = 0; shownScore = 0; moves = L.moves; chainMax = 0; collected = [0, 0, 0, 0, 0, 0]; sel = null; hint = null; idleT = 0;
+  finishing = null; inLevel = true; L = levelCfg(n); score = 0; shownScore = 0; moves = L.moves; chainMax = 0; collected = [0, 0, 0, 0, 0, 0]; sel = null; hint = null; idleT = 0;
   frost = L.frost ? L.frost.map(r => r.slice()) : Array.from({ length: N }, () => Array(N).fill(0));
   block = L.blocks.map(row => row.map(b => b ? { ...b, s: 1, hit: 0 } : null)); honeyGot = 0; tool = null; extraUsed = false; flyers = [];
   parts = []; beams = []; rings = []; zaps = []; popups = []; callout = null; tweens = []; starPop = [0, 0, 0]; bgDirty = true;
@@ -825,7 +856,7 @@ function goalsDone() {
   return frost.every(row => row.every(v => v === 0));
 }
 async function finale(won) {
-  busy = true;
+  busy = true; finishing = won ? 'won' : 'lost';
   if (won) {
     if (moves > 0) { call('Bonus round!'); await wait(900); }
     while (moves > 0) {
@@ -1134,6 +1165,8 @@ function draw(dt) {
 
 /* ======================= loop ======================= */
 function update(dt) {
+  if (busy) wasBusy = true;
+  else if (wasBusy && inLevel && state === 'play' && !finishing) { wasBusy = false; settledSnap = levelSnapshot(); save.cur = settledSnap; persist(); }
   time += dt; shake *= Math.pow(.01, dt); idleT += dt;
   for (let i = tweens.length - 1; i >= 0; i--) {
     const tw = tweens[i]; tw.t = Math.min(1, tw.t + dt / tw.dur);
@@ -1194,7 +1227,7 @@ function openStart(n) {
 }
 function openPause() { if (state !== 'play') return; $('btnSound').textContent = 'Sound: ' + (save.muted ? 'off' : 'on'); show('ovPause'); }
 function endLevel(won) {
-  state = 'end'; busy = true; inLevel = false;
+  state = 'end'; busy = true; inLevel = false; finishing = null; save.cur = null; persist();
   const stars = won ? L.stars.filter(v => score >= v).length || 1 : 0;
   if (won) { save.stars[L.n] = Math.max(save.stars[L.n] || 0, stars); save.unlocked = Math.max(save.unlocked, L.n + 1); persist(); }
   $('endTitle').textContent = won ? 'Level complete!' : 'Out of moves!';
@@ -1220,9 +1253,10 @@ document.addEventListener('visibilitychange', () => { if (ac) document.hidden ? 
 
 addEventListener('resize', () => { if (resize()) { boardCache = null; bgDirty = true; } });
 resize();
-L = levelCfg(1); block = L.blocks; fillBoard(); grid.flat().forEach(p => { if (p) p.y = p.tr; }); state = 'menu';
-openMenu();
-if (/[?&]debug\b/.test(location.search)) window.__gp = { get boost() { return boost; }, boosterRects, openStart, get state() { return state; }, get busy() { return busy; }, get score() { return score; }, get moves() { return moves; }, get level() { return L && L.n; }, findMove, trySwap, openStart, startLevel, goalsDone, levelCfg, allFed, useHammer, get grid() { return grid; }, get popups() { return popups; }, get block() { return block; }, get honeyGot() { return honeyGot; }, get L() { return L; }, set tool(v) { tool = v; }, set moves(v) { moves = v; } };
+let resumed = false;
+if (save.cur && save.cur.grid) { try { resumeLevel(save.cur); resumed = true; } catch (e) { save.cur = null; persist(); } }
+if (!resumed) { L = levelCfg(1); block = L.blocks; fillBoard(); grid.flat().forEach(p => { if (p) p.y = p.tr; }); state = 'menu'; openMenu(); }
+if (/[?&]debug\b/.test(location.search)) window.__gp = { storeLevel, levelSnapshot, get inLevel() { return inLevel; }, get boost() { return boost; }, boosterRects, openStart, get state() { return state; }, get busy() { return busy; }, get score() { return score; }, get moves() { return moves; }, get level() { return L && L.n; }, findMove, trySwap, openStart, startLevel, goalsDone, levelCfg, allFed, useHammer, get grid() { return grid; }, get popups() { return popups; }, get block() { return block; }, get honeyGot() { return honeyGot; }, get L() { return L; }, set tool(v) { tool = v; }, set moves(v) { moves = v; } };
 requestAnimationFrame(loop);
 })();
 </script>
