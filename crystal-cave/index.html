@@ -638,9 +638,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 21, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 23, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 21) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 23) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -648,7 +648,7 @@ let cave = null;   // everything about the cave now on screen: its hunts, format
 const bell = (a, b) => a + (b - a) * (rnd() + rnd() + rnd()) / 3;   // sizes on a bell curve round the middle of a range
 const overlap = (r1, r2, d) => { if (d >= r1 + r2) return 0; if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
   const a = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)), b = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2)); return a + b - .5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)); };
-const underControls = (x, y, r) => (x - r < 300 && y - r < 285) || (x + r > W - 150 && y - r < 265) || y + r > H - 55;   // the map, the zoom buttons (sized for a small phone zoomed right out) and a strip along the bottom
+const underControls = (x, y, r) => y + r > H - 55;   // a clear strip along the bottom (the top is handled by letting the view scroll up past the controls)
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const sameType = (a, b) => a.shape === b.shape && a.pal === b.pal && a.trait === b.trait;
 const inPoly = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
@@ -764,25 +764,33 @@ const MINERAL_FLOORS = [   // calcite cream, gypsum blue-grey, a lilac mineral
 ];
 function planFloor(T) {
   const { hunts, decoys, fillers, theme, rock } = T;
-  // the floor is a rounded square seen in perspective: a straight back edge with rounded corners, and sides that widen towards you
-  const y0 = H * R(.24, .27), hwBack = W * R(.32, .35), hwFront = W * .47, cr = R(110, 150);
-  const halfAt = y => lerp(hwBack, hwFront, clamp((y - y0) / (H - y0), 0, 1));
+  // the floor is a rounded slab running the full width of the cave: straight back and front edges with rounded corners
+  const y0 = H * R(.12, .15), yF = H * .87, hwBack = W * .5 - 14, hwFront = W * .5 - 14, cr = R(120, 160), crF = R(130, 170);   // full width, rounded at the corners
+  const halfAt = y => lerp(hwBack, hwFront, clamp((y - y0) / (yF - y0), 0, 1));
   const baseY = x => {   // the top edge of the floor at x (below the world if x is beyond the floor)
     const dx = Math.abs(x - W / 2);
     if (dx <= hwBack - cr) return y0;
     if (dx <= hwBack) return y0 + cr - Math.sqrt(Math.max(0, cr * cr - (dx - (hwBack - cr)) ** 2));
     if (dx >= hwFront) return H + 999;
-    return Math.max(y0 + cr, y0 + (dx - hwBack) / (hwFront - hwBack) * (H - y0));
+    return hwFront > hwBack ? Math.max(y0 + cr, y0 + (dx - hwBack) / (hwFront - hwBack) * (yF - y0)) : H + 999;
   };
-  const depth = y => clamp((y - y0) / (H - y0), 0, 1), persp = y => lerp(.85, 1.1, Math.pow(depth(y), .9));
-  const mineral = pick(MINERAL_FLOORS), pool = { x: W * R(.4, .6), y: y0 + (H - y0) * R(.45, .55), rx: R(300, 380), ry: R(130, 170) };
+  const frontY = x => {   // the front edge of the floor at x, rounded at the corners
+    const dx = Math.abs(x - W / 2);
+    if (dx <= hwFront - crF) return yF;
+    if (dx >= hwFront) return -999;
+    return yF - crF + Math.sqrt(Math.max(0, crF * crF - (dx - (hwFront - crF)) ** 2));
+  };
+  const onFloor = (x, y, m = 0) => y > baseY(x) + m && y < frontY(x) - m;
+  const depth = y => clamp((y - y0) / (yF - y0), 0, 1), persp = y => lerp(.85, 1.1, Math.pow(depth(y), .9));
+  const mineral = pick(MINERAL_FLOORS), pool = { x: W * R(.4, .6), y: y0 + (yF - y0) * R(.45, .55), rx: R(300, 380), ry: R(130, 170) };
   const seedOf = () => (rnd() * 2147483647) | 0, floorI = [];
   const mk = (kind, x, y, ang, size, extra) => Object.assign({ kind, x, y, ang, size, seed: seedOf(), cx: x + Math.cos(ang) * size * .4, cy: y + Math.sin(ang) * size * .4, r: size * .55 }, extra);
   const crowds = (list, it) => underControls(it.cx, it.cy, it.r) || underControls(it.x, it.y, 4) || list.some(o => Math.abs(o.cy - it.cy) < o.r + it.r && overlap(o.r, it.r, Math.hypot(o.cx - it.cx, o.cy - it.cy)) > .25 * Math.PI * Math.min(o.r, it.r) ** 2);
   // three fossils lying in the crust, placed first so nothing grows over them
   const fossils = [];
   for (let tries = 0; fossils.length < 3 && tries < 400; tries++) {
-    const x = R(80, W - 80), y = R(baseY(x) + 90, H - 50), r = R(11, 14) * persp(y);
+    const x = R(80, W - 80), y = R(baseY(x) + 90, frontY(x) - 60), r = R(11, 14) * persp(y);
+    if (!onFloor(x, y, 60)) continue;
     if (!underControls(x, y, r + 8) && !fossils.some(f => Math.hypot(f.x - x, f.y - y) < 260)) fossils.push({ x, y, r, rot: R(0, 6.3) });
   }
   const nearFossil = it => fossils.some(f => Math.hypot(f.x - it.cx, f.y - it.cy) < f.r + it.r + 8 || Math.hypot(f.x - it.x, f.y - it.y) < f.r + it.size * .3 + 8);
@@ -793,12 +801,12 @@ function planFloor(T) {
   }
   // a few boulders, then crystals scattered over the floor like flowers in a meadow; none covers more than a quarter of another
   for (let i = 0, n = 0, want = RI(6, 10); i < 400 && n < want; i++) {
-    const x = R(0, W), y = R(y0 + 40, H + 10); if (y < baseY(x) + 30) continue;
+    const x = R(0, W), y = R(y0 + 40, yF); if (!onFloor(x, y, 30)) continue;
     const sc = persp(y), it = mk('boulder', x, y, -Math.PI / 2, R(26, 44) * sc); it.cy = y - it.size * .35; it.r = it.size * .7;
     if (!crowds(floorI, it) && !nearFossil(it)) { floorI.push(it); n++; }
   }
   for (let i = 0, n = 0; i < 14000 && n < 380; i++) {
-    const x = R(-10, W + 10), y = R(y0 + 6, H + 20); if (y < baseY(x) + 12) continue;
+    const x = R(0, W), y = R(y0 + 6, yF); if (!onFloor(x, y, 12)) continue;
     const it = mk('f', x, y, -Math.PI / 2 + R(-.45, .45), bell(44, 54) * persp(y));
     if (!crowds(floorI, it) && !nearFossil(it) && !floorI.some(o => Math.hypot(o.cx - it.cx, o.cy - it.cy) < (o.r + it.r) * .85)) { floorI.push(it); n++; }
   }
@@ -818,7 +826,7 @@ function planFloor(T) {
     s.spare = onScreen && s.hidden <= .5 && s.r >= 11;
   });
   const counts = assignHunts(slots, hunts, decoys, fillers);
-  return { kind: 'floor', hunts, counts, decoys, slots, decor, items, fossils, rock, theme, mineral, pool, y0, baseY, persp, view: { x: pool.x, y: (y0 + pool.y) / 2 } };
+  return { kind: 'floor', hw: hwFront, hunts, counts, decoys, slots, decor, items, fossils, rock, theme, mineral, pool, y0, baseY, frontY, persp, view: { x: pool.x, y: pool.y - 60 } };
 }
 // a rounded boulder, lit from above
 function boulder(g, x, y, s, col) {
@@ -831,10 +839,12 @@ function boulder(g, x, y, s, col) {
 }
 // the painting steps for the crystal floor (patch-aware: near() says what's in the area being repainted)
 function floorOps(g, plan, removed, near, ops, glows, patch) {
-  const { theme, mineral, pool, y0, baseY, persp } = plan, floorCol = mineral.base, light = mineral.light;
+  const { theme, mineral, pool, y0, baseY, frontY, persp } = plan, floorCol = mineral.base, light = mineral.light;
   const toHex = c => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
   const tex = (k, col) => { if (plan.tex[k]) { for (let i = 0; i < 4; i++) rnd(); return plan.tex[k]; } return (plan.tex[k] = rockTexture(toHex(col))); };
-  const floorPath = (() => { const p = new Path2D(), x0 = W * .03, x1 = W * .97; p.moveTo(x0, H + 10); for (let x = x0; x <= x1; x += 6) p.lineTo(x, Math.min(baseY(x), H + 10)); p.lineTo(x1, H + 10); p.closePath(); return p; })();
+  const hwFrontOf = pl => pl.hw;
+  const floorPath = (() => { const p = new Path2D(), x0 = W / 2 - hwFrontOf(plan), x1 = W / 2 + hwFrontOf(plan), top = x => Math.min(baseY(x), Math.max(frontY(x), y0)), bot = x => Math.max(frontY(x), top(x));
+    for (let x = x0; x <= x1; x += 6) x > x0 ? p.lineTo(x, top(x)) : p.moveTo(x, top(x)); for (let x = x1; x >= x0; x -= 6) p.lineTo(x, bot(x)); p.closePath(); return p; })();
   const formationOp = it => () => { rnd = mulberry(it.seed); curSlot = it.i; const n0 = glows.length; formation(g, it.x, it.y, it.ang, it.size, it.type, glows); for (let k = n0; k < glows.length; k++) glows[k][4] = it.i; curSlot = -1; };
   const wanted = it => (it.kind !== 'f' || !removed.has(it.i)) && (near(it.x, it.y, it.size * 1.1) || near(it.cx, it.cy, it.size * 1.1));
   // the roof and back: just darkness
@@ -1148,7 +1158,10 @@ let viewW = 1, viewH = 1, zoom = 1, targetZoom = 1, camX = 0, camY = 0, targetCa
 const minZoom = () => Math.max(viewW / WORLD_W, viewH / WORLD_H, .4);   // never so far out that the controls cover more than the clear corners
 const maxZoom = () => Math.max(minZoom() * 1.5, 1.8);
 const clampZoom = z => Math.max(minZoom(), Math.min(maxZoom(), z));
-function clampCam(x, y, z) { return { x: Math.max(0, Math.min(WORLD_W - viewW / z, x)), y: Math.max(0, Math.min(WORLD_H - viewH / z, y)) }; }
+// the view can scroll up past the top of the cave by the height of the controls floating there, so nothing is ever stuck under them
+let padTop = 0;
+const measurePad = () => { const st = stage.getBoundingClientRect(), m = $('mini').getBoundingClientRect(), zb = document.querySelector('.zoom').getBoundingClientRect(); padTop = Math.max(m.bottom, zb.bottom) - st.top + 6; };
+function clampCam(x, y, z) { const y0 = -padTop / z; return { x: Math.max(0, Math.min(WORLD_W - viewW / z, x)), y: Math.max(y0, Math.min(Math.max(y0, WORLD_H - viewH / z), y)) }; }
 function zoomAt(z, sx, sy, now) {
   const nz = clampZoom(z), wx = sx / zoom + camX, wy = sy / zoom + camY, c = clampCam(wx - sx / nz, wy - sy / nz, nz);
   targetZoom = nz; targetCamX = c.x; targetCamY = c.y; if (now) { zoom = nz; camX = c.x; camY = c.y; }
@@ -1165,7 +1178,7 @@ function layout() {
   if (cv.width !== cw) cv.width = cw; if (cv.height !== ch) cv.height = ch;   // only when it really changes
   zoom = clampZoom(zoom); targetZoom = clampZoom(targetZoom);
   let c = clampCam(camX, camY, zoom); camX = c.x; camY = c.y; c = clampCam(targetCamX, targetCamY, targetZoom); targetCamX = c.x; targetCamY = c.y;
-  sizeMini();
+  sizeMini(); measurePad();
 }
 // turning the phone just moves the camera: the cave itself never changes
 addEventListener('resize', layout); if (window.visualViewport) visualViewport.addEventListener('resize', layout);
