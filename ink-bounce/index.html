@@ -242,7 +242,8 @@ window.BB = (() => {
 <script>
 (() => {
 'use strict';
-const W = 360, COLS = 8, BW = 40, BH = 17, GAP = 3, BX = (W - COLS * BW - (COLS - 1) * GAP) / 2, BY = 78;
+const W = 360, COLS = 8, BW = 40, BH = 17, GAP = 3, BX = (W - COLS * BW - (COLS - 1) * GAP) / 2;
+let BY = 78;   // the top of the brick field: moves down on taller screens so the board stays balanced
 const INK_MAX = 600, INK_REGEN = 22, R = 6.5;
 const INK_PER_HIT = 18;   // every hit on a brick tops the ink up a little
 const BRICK_COLS = ['#ff6b6b', '#ff922b', '#ffd43b', '#94d82d', '#38d9a9', '#4dabf7', '#748ffc', '#da77f2', '#f783ac'];
@@ -255,7 +256,11 @@ if (BB.muted === null) BB.muted = save.muted; else save.muted = BB.muted;   // s
 const persist = () => { try { localStorage.setItem('inkbounce', JSON.stringify(save)); } catch (e) {} };
 
 function resize() {
-  H = Math.round(clamp(W * innerHeight / innerWidth, 600, 780)); ZONE = Math.round(BY + 10 * (BH + GAP) + 26);
+  H = Math.round(clamp(W * innerHeight / innerWidth, 600, 860));
+  // share any height beyond the shortest board between the top (bricks come down a little) and the drawing area
+  const by = Math.round(78 + (H - 600) * .3);
+  if (by !== BY) { for (const b of bricks) b.y += by - BY; BY = by; }
+  ZONE = Math.round(BY + 10 * (BH + GAP) + 26);
   const s = Math.min(innerWidth / W, innerHeight / H), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px'; cv.width = Math.round(W * s * dpr); cv.height = Math.round(H * s * dpr); SC = cv.width / W;
   paper = null;
