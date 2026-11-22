@@ -557,7 +557,14 @@ function formation(g, x, y, ang, size, ty, glows) {
     }
     case 'druse': {
       const r = size * .45; bed(g, x, y, r * 1.2, ang);
-      g.fillStyle = rgba(shade(st.c, -.7)); g.beginPath(); g.ellipse(x + dx * r * .1, y + dy * r * .1, r, r * .62, ang + Math.PI / 2, Math.PI, 0); g.fill();
+      // the lump of rock the points grow on: a lit, bumpy mound in stone colours, not a dark hole
+      const nx = -dy, ny = dx, stone = mix([92, 86, 104], st.c, .12), mound = [];
+      for (let i = 0; i <= 14; i++) { const t = Math.PI * i / 14, k = r * (.9 + R(-.08, .08)); mound.push([x + nx * Math.cos(t) * k + dx * Math.sin(t) * k * .7, y + ny * Math.cos(t) * k + dy * Math.sin(t) * k * .7]); }
+      const mg = g.createLinearGradient(x, y, x + dx * r * .7, y + dy * r * .7); mg.addColorStop(0, rgba(shade(stone, -.45))); mg.addColorStop(1, rgba(shade(stone, .18)));
+      g.fillStyle = mg; g.beginPath(); mound.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.closePath(); g.fill();
+      g.strokeStyle = rgba(shade(stone, .3), .5); g.lineWidth = Math.max(.6, size * .015); g.beginPath(); mound.slice(2, 13).forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.stroke();
+      // points fringing the edge of the mound, then filling its top
+      for (let i = 1; i < 14; i += R(.8, 1.4)) { const t = Math.PI * i / 14, [px, py] = mound[Math.floor(i)]; pointPc(g, px, py, Math.atan2(py - y, px - x) + R(-.3, .3), size * R(.09, .15), size * R(.035, .05), st); }
       for (let i = 0; i < RI(26, 40); i++) {
         const a = ang + R(-1.35, 1.35), d = R(.2, .95), px = x + Math.cos(a) * r * d * .5 + dx * r * d * .5, py = y + Math.sin(a) * r * d * .5 + dy * r * d * .5;
         pointPc(g, px, py, a + R(-.25, .25), size * R(.1, .2), size * R(.04, .06), st);
