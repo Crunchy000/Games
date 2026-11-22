@@ -160,7 +160,7 @@ body.dark .pk-chip:disabled { color:rgba(243,230,204,.36) !important; box-shadow
 .pk-home { background:color-mix(in srgb, currentColor 11%, transparent) !important; border:0 !important; border-radius:13px !important; box-shadow:none !important; }
 .pk-home:active { background:color-mix(in srgb, currentColor 20%, transparent) !important; }
 </style>
-<script id="asset-versions">window.AV = {};</script>
+<script id="asset-versions">window.AV = {"bear-and-bean-picnic.webp":"53b8e142"};</script>
 <script id="pub-kit-settings">
 window.BB = (() => {
   const KEY = 'bearbean-settings'; let s = {};
@@ -1353,8 +1353,8 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
       }
     }
 
-// keep tall flowers from growing up in front of Bear and Bean's picnic
-function inPicnic(fx, fy) { const s = campPos.scale; return Math.abs(fx - campPos.x) < 112 * s && fy > campPos.y - 34 * s && fy < campPos.y + 120 * s; }
+// a little clearing for the picnic blanket (flowers in front can still hide Bear and Bean: finding them is a bonus)
+function inPicnic(fx, fy) { return Math.abs(fx - campPos.x) < 68 * campPos.scale && Math.abs(fy - campPos.y) < 34 * campPos.scale; }
 
 function initCampPos() {
   const xNorm = 0.50;
@@ -1362,13 +1362,26 @@ function initCampPos() {
   campPos = { xNorm, depth, x: xNorm * worldW, y: depthToWorldY(depth, xNorm), scale: 1.18 };
 }
 
-// Bear and Bean's faces sit on their picnic blanket; the meadow is baked again once they've loaded
-const faces = ['../icons/bear.png?v=406624f3', '../icons/bean.png?v=2ef68eca'].map(src => { const im = new Image(); im.onload = () => { if (cachedStaticFlowers.length) rebake(); }; im.src = src; return im; });
+// Bear and Bean's picnic picture (and, until it loads or if it can't, their faces on a drawn blanket);
+// the meadow is baked again once they've loaded. Addresses carry a fingerprint of the file (tools/update-sw.py).
+const av = f => f + (window.AV && AV[f] ? '?v=' + AV[f] : '');
+const whenLoaded = src => { const im = new Image(); im.onload = () => { if (cachedStaticFlowers.length) rebake(); }; im.src = src; return im; };
+const picnicImg = whenLoaded(av('bear-and-bean-picnic.webp'));
+const faces = ['../icons/bear.png?v=406624f3', '../icons/bean.png?v=2ef68eca'].map(whenLoaded);
+const picnicReady = () => picnicImg.complete && picnicImg.naturalWidth > 0;
 
-// Bear & Bean's picnic on the knoll: a gingham blanket with the two of them sat on it, drawn into the baked meadow
+// Bear & Bean's picnic on the knoll, drawn into the baked meadow
 function drawBearAndBeanCampStatic(targetCtx) {
   const { x, y, scale: s } = campPos;
   const g = targetCtx;
+  if (picnicReady()) {
+    const drawW = 240 * s, drawH = drawW * (picnicImg.naturalHeight / picnicImg.naturalWidth);
+    g.save();
+    g.beginPath(); g.ellipse(x, y + 12 * s, drawW * 0.44, 22 * s, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(18, 38, 14, 0.28)'; g.fill();
+    g.drawImage(picnicImg, x - drawW * 0.5, y - drawH * 0.78, drawW, drawH);
+    g.restore();
+    return;
+  }
   g.save();
   g.translate(x, y);
   // soft ground shadow
@@ -1460,6 +1473,7 @@ function drawBearAndBeanCampStatic(targetCtx) {
         targetCtx.restore();
       }
 
+      if (!picnicReady()) {   // with the picture, found flowers sit on its basket instead
       // Basket handle
       targetCtx.beginPath();
       targetCtx.arc(0, -6 * scale, 14 * scale, Math.PI, 0);
@@ -1479,6 +1493,7 @@ function drawBearAndBeanCampStatic(targetCtx) {
       targetCtx.strokeStyle = "#6e4219";
       targetCtx.lineWidth = Math.max(1.2, 1.8 * scale);
       targetCtx.stroke();
+      }
 
       // Cozy warm picnic lantern beside the basket during Dusk & Starlight
       const tod = TIMES_OF_DAY[currentTimeIndex];
@@ -2137,7 +2152,6 @@ function drawBearAndBeanCampStatic(targetCtx) {
         if (Math.abs(ix - campPos.x) < 92 * campPos.scale && Math.abs(iy - campPos.y) < 34 * campPos.scale) {
           continue;
         }
-        if (item.kind === "cattail" && inPicnic(ix, iy)) continue;
         if (item.kind === "grass") {
           const baseX = item.xNorm * worldW;
           const baseY = depthToWorldY(item.depth, item.xNorm);
@@ -2220,7 +2234,6 @@ function startRound(next) {
   luckyClovers = [];
   movingFlowers = [];
   const staticFlowers = [];
-  const clearOfPicnic = fl => { for (let k = 0; k < 20 && inPicnic(fl.xNorm * worldW, depthToWorldY(fl.depth, fl.xNorm)); k++) fl.xNorm = Math.random(); return fl; };
 
   // 3 rare four-leaf clovers, drawn on top so they are never hidden
   for (let c = 0; c < 3; c++) {
@@ -2237,7 +2250,7 @@ function startRound(next) {
   for (let t = 0; t < totalTargetsThisRound; t++) {
     const depth = rand(0.28, 0.92);
     const xNorm = rand(0.06, 0.94);
-    const tf = clearOfPicnic(makeFlower(xNorm, depth, targetSpec, true, true));
+    const tf = makeFlower(xNorm, depth, targetSpec, true, true);
     const live = getLiveTargetWorldPos(tf);
     tf.worldHeadX = live.x; tf.worldHeadY = live.y; tf.hitRadius = live.r;
     targetFlowers.push(tf);
@@ -2254,7 +2267,7 @@ function startRound(next) {
     if (dPalette.label === palette.label && (dArch.key === arch.key || dArch.petals === arch.petals)) {
       dArch = ARCHETYPES[(ARCHETYPES.indexOf(dArch) + 1) % ARCHETYPES.length];
     }
-    const fl = clearOfPicnic(makeFlower(Math.random(), depth, { arch: dArch, palette: dPalette, speckles: Math.random() < 0.45 }, false, isAnimated));
+    const fl = makeFlower(Math.random(), depth, { arch: dArch, palette: dPalette, speckles: Math.random() < 0.45 }, false, isAnimated);
     (isAnimated ? movingFlowers : staticFlowers).push(fl);
   }
 
