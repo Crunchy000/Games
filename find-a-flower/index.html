@@ -2201,9 +2201,27 @@ function drawBearAndBeanCampStatic(targetCtx) {
       }
     }
 
-    function bakeStaticBackdrop(staticFlowers) {
+    // painting the meadow: the sky and the list of everything in it first (all the randomness is there), then the things
+    // themselves back to front. Sliced, the painting is done a few milliseconds at a time so the page stays responsive
+    // (the help card can be read and tapped while a first meadow is planted); it returns a promise then.
+    function bakeStaticBackdrop(staticFlowers, sliced) {
       // every bake starts from the same drawing settings, so a re-bake (or a patch of one) matches the first exactly
-      bCtx.save(); try { return seeded(S.seed * 7 + 1, () => bakeMeadow(staticFlowers)); } finally { bCtx.restore(); }
+      bCtx.save();
+      let items;
+      try { items = seeded(S.seed * 7 + 1, () => bakeMeadow(staticFlowers)); } catch (e) { bCtx.restore(); throw e; }
+      const finish = () => { try { bakeHaze(); } finally { bCtx.restore(); } };
+      if (!sliced) { try { bakeItems(items, 0, items.length); } catch (e) { bCtx.restore(); throw e; } finish(); return; }
+      return new Promise((resolve, reject) => {
+        let i = 0;
+        const step = () => {
+          try {
+            const t0 = performance.now();
+            while (i < items.length && performance.now() - t0 < 10) { const j = Math.min(items.length, i + 6); bakeItems(items, i, j); i = j; }
+            if (i < items.length) setTimeout(step, 0); else { finish(); resolve(); }
+          } catch (e) { bCtx.restore(); reject(e); }
+        };
+        step();
+      });
     }
     function bakeMeadow(staticFlowers) {
       drawScenicHillsAndSky();
@@ -2275,8 +2293,13 @@ function drawBearAndBeanCampStatic(targetCtx) {
       for (const fl of huntFlowers) if (!fl.found) items.push({ kind: "flower", depth: fl.depth, flower: fl, hunt: true });
       items.push({ kind: "camp", depth: campPos.depth });
       items.sort((a, b) => a.depth - b.depth);
-
-      for (const item of items) {
+      return items;
+    }
+    // paints items[from..to) of a bake, back to front
+    function bakeItems(items, from, to) {
+      const tod = TIMES_OF_DAY[currentTimeIndex];
+      for (let k = from; k < to; k++) {
+        const item = items[k];
         // re-baking one patch: skip anything that can't reach it (drawing uses no randomness, so the rest is unchanged)
         if (bakeClip && item.kind !== "camp") {
           const ix = item.xNorm * worldW, iy = depthToWorldY(item.depth, item.xNorm);
@@ -2318,7 +2341,9 @@ function drawBearAndBeanCampStatic(targetCtx) {
           drawFlowerTo(bCtx, item.flower, 0);
         }
       }
-
+    }
+    function bakeHaze() {
+      const tod = TIMES_OF_DAY[currentTimeIndex];
       // Contoured atmospheric mist following the undulating hillside crest (no straight edge!)
       bCtx.save();
       bCtx.beginPath();
@@ -2340,7 +2365,7 @@ function drawBearAndBeanCampStatic(targetCtx) {
     }
 
 let bakeClip = null;
-function rebake() { bakeStaticBackdrop(cachedStaticFlowers); paintMiniArt(); }
+function rebake(sliced) { const r = bakeStaticBackdrop(cachedStaticFlowers, sliced); if (r) return r.then(paintMiniArt); paintMiniArt(); }
 // re-bake just the patch of meadow a flower stood in (after it's picked): the same seed draws the same meadow
 function rebakeAround(fl) {
   const h = headShape(fl), s = depthToScale(fl.depth), bx = fl.xNorm * worldW, by = depthToWorldY(fl.depth, fl.xNorm), pad = 8 + 34 * s;   // room for leaves and the tip of a spire
@@ -2355,7 +2380,7 @@ function rebakeAround(fl) {
 
 /* ---------- rounds ---------- */
 /* ---------- meadows and hunts: each meadow has 20 flowers to hunt, one after another ---------- */
-function newMeadow(fresh) {
+function newMeadow(fresh, sliced) {
   if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.clovers = []; S.misses = 0; S.hints = 0; save(); }
   if (S.hunt > HUNTS) S.hunt = HUNTS;
   roundDone = false; hintedFlower = null; hintTimer = 0; sparkles = [];
@@ -2405,7 +2430,7 @@ function newMeadow(fresh) {
   showHunt();   // the tray first, so the meadow is measured at its final size
   layout();
   sizeWorld();
-  sizeMini();
+  sizeMini(false);
   initCampPos();
   luckyClovers.forEach(lc => { lc.worldX = lc.xNorm * worldW; lc.worldY = depthToWorldY(lc.depth, lc.xNorm); });
   placeHuntFlowers();
@@ -2418,10 +2443,11 @@ function newMeadow(fresh) {
   centreCamera();
   currentTimeIndex = Math.min(TIMES_OF_DAY.length - 1, Math.floor((S.hunt - 1) / PER_TIME));
   $('bTime').textContent = TIMES_OF_DAY[currentTimeIndex].label;
-  rebake();
+  const baking = rebake(sliced);
   initMeadowCritters();
   initFireflies();
   startHunt();
+  return baking;
 }
 
 // a hunted flower may be tucked in a little, but at least half of it must show: not more than half behind a flower
@@ -2582,7 +2608,7 @@ function win() {
 
 /* ---------- the little map ---------- */
 let miniW = 120, miniH = 80;
-function sizeMini() {
+function sizeMini(paint = true) {   // paint: false while planting, when the meadow isn't painted yet (it's painted after)
   if (!worldW) return;
   miniW = viewW < 420 ? 108 : 132; miniH = Math.round(miniW * worldH / worldW);
   const d = Math.min(3, window.devicePixelRatio || 1);
@@ -2590,7 +2616,7 @@ function sizeMini() {
     minimapCanvas.width = miniW * d; minimapCanvas.height = miniH * d;
     minimapCanvas.style.width = miniW + 'px'; minimapCanvas.style.height = miniH + 'px';
     miniArt.width = minimapCanvas.width; miniArt.height = minimapCanvas.height;
-    paintMiniArt();
+    if (paint) paintMiniArt();
   }
 }
 function paintMiniArt() {
@@ -2719,7 +2745,7 @@ function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
-  if (document.hidden || !worldW) return;
+  if (document.hidden || !worldW || loadingEl.classList.contains('show')) return;   // nothing to draw under the loading screen
   const time = now * 0.001;
 
   updateCamera(dt);
@@ -3065,16 +3091,20 @@ function hideLoading(atLeast = 500, then) {   // stays up a moment so it never j
   const wait = Math.max(0, atLeast - (performance.now() - loadingSince));
   setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => { loadingEl.classList.remove('show'); if (then) then(); })), wait);
 }
+// plants a meadow (painting it in slices) and resolves when it's ready; if the phone can't spare the memory it tries once
+// more at a smaller size
 function plant(fresh) {
-  try { newMeadow(fresh); }
-  catch (e) { bakeBudget = 2e6; try { newMeadow(false); } catch (e2) { console.error(e2); } }
+  const retry = () => { bakeBudget = 2e6; try { newMeadow(false); } catch (e2) { console.error(e2); } layout(); };
+  let baking;
+  try { baking = newMeadow(fresh, true); } catch (e) { retry(); return Promise.resolve(); }
   layout();
+  return Promise.resolve(baking).catch(retry);
 }
 function freshMeadow() {
   S.meadow++;
   loadingEl.classList.remove('tips');
   showLoading();
-  requestAnimationFrame(() => setTimeout(() => { plant(true); hideLoading(); }, 30));
+  requestAnimationFrame(() => setTimeout(() => plant(true).then(() => hideLoading()), 30));
 }
 if (window.ResizeObserver) new ResizeObserver(() => layout()).observe(stage);
 // if the phone runs short of graphics memory it can take canvases away; when it gives them back, bake the meadow again
@@ -3084,11 +3114,12 @@ applyTheme(); renderSound();
 requestAnimationFrame(loop);
 // wait (briefly) for Bear and Bean's picnic picture so the meadow is planted once, not twice
 const settle = im => im.complete ? Promise.resolve() : new Promise(res => { im.addEventListener('load', res, { once: true }); im.addEventListener('error', res, { once: true }); });
-Promise.race([Promise.all([picnicImg, ...faces].map(settle)), new Promise(res => setTimeout(res, 3500))]).then(() => {
-  plant(!S.seed);
-  if (firstVisit && !S.seenHelp) { loadingEl.classList.remove('tips'); hideLoading(700, () => $('ovHelp').classList.add('show')); }
-  else hideLoading(2600);   // long enough to read the tips   // long enough to read the tips, even when the meadow is ready at once
-});
+// a first visit: how to play straight away, with the meadow planted behind it; closed before it's ready, the spinner shows
+const firstHelp = firstVisit && !S.seenHelp;
+if (firstHelp) { loadingEl.classList.remove('tips'); $('ovHelp').classList.add('show'); }
+Promise.race([Promise.all([picnicImg, ...faces].map(settle)), new Promise(res => setTimeout(res, 3500))])
+  .then(() => plant(!S.seed))
+  .then(() => hideLoading(firstHelp ? 0 : 2600));   // otherwise the tips stay up long enough to read
 if (/[?&]debug\b/.test(location.search)) window.__ff = {
   get targets() { return targetFlowers; }, get clovers() { return luckyClovers; }, get S() { return S; },
   get cam() { return { camX, camY, zoom, viewW, viewH, worldW, worldH }; }, newMeadow, freshMeadow, get hunts() { return hunts; }, get live() { return liveFlowers; }, get picked() { return pickedFlowers; }, get MP() { return MP; }, get camp() { return campPos; }, wl: getLiveTargetWorldPos, live2: getLiveTargetWorldPos,
