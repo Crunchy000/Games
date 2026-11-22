@@ -178,7 +178,7 @@ window.BB = (() => {
     <h2 style="text-align:center">How to play</h2>
   <div class="pk-steps">
     <section class="pk-step"><div class=pk-step-art>🔴</div><h3>Link the dots</h3><p>Drag across neighbouring dots of the <b>same colour</b> (up, down, left or right), and let go to clear them. Drag back to undo a link.</p></section>
-    <section class="pk-step"><div class=pk-step-art>⭕</div><h3>Close a loop</h3><p>Join back onto your own line to make a <b>loop</b>: it clears <b>every</b> dot of that colour, and any dots trapped inside.</p></section>
+    <section class="pk-step"><div class=pk-step-art>⭕</div><h3>Close a loop</h3><p>Join back onto your own line to make a <b>loop</b>: it clears <b>every</b> dot of that colour, and dots trapped inside turn into <b>bombs</b> that set each other off.</p></section>
     <section class="pk-step"><div class=pk-step-art>🌰</div><h3>Tricky bits</h3><p>❄️ <b>Frost</b> melts when you clear the dots on it.<br>🌰 <b>Acorns</b> can’t be linked: drop them out of the bottom.<br>🌈 <b>Rainbow dots</b> link up with any colour.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔨</div><h3>Power-ups</h3><p>Every level and every try gives you three of each, and they don’t use a move. Tap one, then tap a dot:<br>🔨 <b>Pop</b> clears that dot.<br>🎨 <b>Colour</b> clears every dot of its colour.</p></section>
     <section class="pk-step"><div class=pk-step-art>⏱️</div><h3>Two ways to play</h3><p><b>Levels:</b> collect the dots shown before you run out of moves; spare moves earn stars.</p><p><b>60-second dash:</b> clear all you can. Every loop adds 2 seconds.</p></section>
@@ -246,7 +246,22 @@ function note(semi, d = .35, vol = .09, delay = 0) {
     });
   } catch (e) {}
 }
-const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+// haptics: navigator.vibrate where there is one (Android); recent iPhones have no vibrate, but tapping a hidden
+// switch control gives a light system tick, so that stands in there
+let tickSwitch = null;
+function iosTick() {
+  try {
+    if (!tickSwitch) {
+      const lab = document.createElement('label'), inp = document.createElement('input');
+      inp.type = 'checkbox'; inp.setAttribute('switch', ''); lab.appendChild(inp);
+      lab.style.cssText = 'position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+      lab.setAttribute('aria-hidden', 'true'); inp.tabIndex = -1; document.body.appendChild(lab); tickSwitch = lab;
+    }
+    tickSwitch.click();
+  } catch (e) {}
+}
+const canVibrate = typeof navigator.vibrate === 'function';
+const buzz = ms => { try { if (canVibrate) navigator.vibrate(ms); else iosTick(); } catch (e) {} };
 
 /* ---------- levels ---------- */
 // board layouts: the squares left out of the 6x6 board
@@ -323,7 +338,8 @@ const hole = (r, c) => L && L.holes.has(r * N + c);
 const cx = c => BX + c * CS + CS / 2, cy = r => BY + r * CS + CS / 2;
 const mk = (t, r, y, k = 'dot') => ({ k, t, y, tr: r, vy: 0, s: 1, sq: 0, dying: 0, pulse: 0 });
 const dotColor = t => t >= 0 ? COLORS[t] : '#9a92ad';
-const linkable = d => d && d.k !== 'acorn';
+const linkable = d => d && d.k !== 'acorn' && !d.bomb;
+let blasting = false;
 // the path's colour: the first ordinary dot in it (rainbow dots take on whatever they join)
 const pathCol = () => { for (const [r, c] of path) { const d = grid[r][c]; if (d && d.k === 'dot') return d.t; } return -1; };
 // a new piece from the top: now and then an acorn (while the level has some to come) or a rainbow dot
@@ -379,14 +395,14 @@ function extend(cell) {
   if (path.length >= 2 && same(cell, path[path.length - 2])) { path.pop(); loop = false; note(SCALE[Math.min(path.length - 1, 15)], .2, .05); return; }
   if (loop) return;
   const idx = path.findIndex(p => same(p, cell));
-  if (idx >= 0) { if (path.length >= 3 && col >= 0) { path.push(cell); loop = true; tintCol = col; note(SCALE[0] + 12, .6, .08); note(SCALE[4] + 12, .6, .06, .05); note(SCALE[7] + 12, .6, .05, .1); buzz(20); } return; }
+  if (idx >= 0) { if (path.length >= 3 && col >= 0) { path.push(cell); loop = true; tintCol = col; note(SCALE[0] + 12, .6, .08); note(SCALE[4] + 12, .6, .06, .05); note(SCALE[7] + 12, .6, .05, .1); buzz([35, 45, 35]); } return; }
   path.push(cell); g.pulse = 1; rings.push({ x: cx(cell[1]), y: cy(cell[0]), t: g.k === 'dot' ? g.t : col, life: .45, max: .45 });
   note(SCALE[Math.min(path.length - 1, 15)]); buzz(5);
 }
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); const p = local(e);
   if (p.y < 70 && p.x < 64 && state === 'play') { openPause(); return; }
-  if (state !== 'play' || pause || (!L.timed && moves <= 0)) return;   // out of moves: the level is ending
+  if (state !== 'play' || pause || blasting || (!L.timed && moves <= 0)) return;   // out of moves (the level is ending), or bombs going off
   // a power-up button: tap to get it ready (or put it away again)
   const pi = POWERS.findIndex((q, i) => Math.hypot(p.x - powerX(i), p.y - powerY()) < 28);
   if (pi >= 0) { const id = POWERS[pi].id; if (powers[id]) { armed = armed === id ? null : id; note(armed ? 12 : 5, .15, .05); } return; }
@@ -424,12 +440,13 @@ function commit() {
   const uniq = path.filter((p, i) => path.findIndex(q => same(p, q)) === i);
   if (uniq.length < 2) { path = []; loop = false; return; }
   const col = pathCol();
-  let clear = uniq.slice();
+  let clear = uniq.slice(); const trapped = [];
   if (loop) {
     const inside = enclosed(col);
     for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] && grid[r][c].k === 'dot' && grid[r][c].t === col && !clear.some(p => same(p, [r, c]))) clear.push([r, c]);
-    inside.forEach(p => { if (grid[p[0]][p[1]].k !== 'acorn' && !clear.some(q => same(p, q))) clear.push(p); });
-    callout = { t: inside.length ? 'Loop + trap!' : 'Loop!', c: dotColor(col), life: 1 };
+    // dots trapped inside the loop turn into bombs, which go off once the loop has cleared
+    inside.forEach(p => { const d = grid[p[0]][p[1]]; if (d.k !== 'acorn' && !clear.some(q => same(p, q))) { d.bomb = time; trapped.push(p); } });
+    callout = { t: trapped.length ? 'Loop + trap!' : 'Loop!', c: dotColor(col), life: 1 };
     if (L.timed) { timeLeft += 2; popups.push({ t: '+2s', x: W / 2, y: BY - 18, life: 1, c: dotColor(col) }); }
   }
   let i = 0;
@@ -443,9 +460,14 @@ function commit() {
   popups.push({ t: '+' + pts, x: cx(uniq[uniq.length - 1][1]), y: cy(uniq[uniq.length - 1][0]) - 20, life: .9, c: dotColor(col) });
   if (clear.length >= 15) setTimeout(() => callout = { t: clear.length >= 25 ? 'Incredible!' : 'Superb!', c: dotColor(col), life: 1 }, 250);
   if (!L.timed) moves--;
-  const avoid = loop ? col : -1; path = []; loop = false;
-  setTimeout(() => { collapse(avoid); setTimeout(checkEnd, 380); }, 260 + clear.length * 18);
-  [0, 4, 7].forEach((s, k) => note(SCALE[Math.min(uniq.length, 12)] + s, .4, .05, k * .04)); buzz(loop ? 40 : 12);
+  const avoid = loop ? col : -1, wasLoop = loop, end = uniq[uniq.length - 1]; path = []; loop = false;
+  if (trapped.length) {
+    blasting = true;
+    const first = trapped.slice().sort((a, b) => Math.hypot(a[0] - end[0], a[1] - end[1]) - Math.hypot(b[0] - end[0], b[1] - end[1]))[0];
+    setTimeout(() => detonate([first], 0, avoid), 320 + clear.length * 18);
+  }
+  else setTimeout(() => { collapse(avoid); setTimeout(checkEnd, 380); }, 260 + clear.length * 18);
+  [0, 4, 7].forEach((s, k) => note(SCALE[Math.min(uniq.length, 12)] + s, .4, .05, k * .04)); buzz(wasLoop ? [50, 60, 90] : 14);
 }
 function usePower(id, [r, c]) {
   const d = grid[r][c];
@@ -466,6 +488,37 @@ function usePower(id, [r, c]) {
   callout = { t: id === 'pop' ? 'Pop!' : 'Colour clear!', c: dotColor(col), life: 1 };
   [0, 4, 7, 12].forEach((s, k) => note(SCALE[4] + s, .35, .05, k * .05)); buzz(25);
   setTimeout(() => { collapse(-1); setTimeout(checkEnd, 380); }, 260 + cells.length * 20);
+}
+// one wave of the chain: each bomb clears itself and every dot around it; a bomb caught in the blast goes off next
+function detonate(wave, n, avoid) {
+  const next = [];
+  let cleared = 0;
+  const kill = (r, c) => {
+    const d = grid[r][c]; if (!d || d.dying || d.k === 'acorn') return;
+    d.dying = .0001; d.delay = 0; cleared++;
+    if (d.k === 'dot') collected[d.t]++;
+    const f = frost.get(r * N + c);
+    if (f) { if (f > 1) frost.set(r * N + c, f - 1); else { frost.delete(r * N + c); frostMelted++; } melts.push({ x: cx(c), y: cy(r), life: .5 }); }
+  };
+  for (const [r, c] of wave) {
+    const b = grid[r][c]; if (!b || b.dying) continue;
+    kill(r, c);
+    rings.push({ x: cx(c), y: cy(r), t: -1, c: '#3b3550', life: .5, max: .5, big: true });
+    for (let i = 0; i < 10; i++) { const a = rnd(0, 6.28), sp = rnd(80, 190); parts.push({ x: cx(c), y: cy(r), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rnd(.3, .55), max: .55, s: rnd(2, 4), c: i % 2 ? '#3b3550' : '#ffd43b' }); }
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const y = r + dr, x = c + dc; if ((!dr && !dc) || y < 0 || x < 0 || y >= N || x >= N) continue;
+      const d = grid[y][x]; if (!d || d.dying) continue;
+      if (d.bomb) { if (!next.some(q => same(q, [y, x]))) next.push([y, x]); } else kill(y, x);
+    }
+  }
+  score += cleared * 10;
+  if (cleared) popups.push({ t: '+' + cleared * 10, x: cx(wave[0][1]), y: cy(wave[0][0]) - 22, life: .8, c: '#3b3550' });
+  [0, 5, 9].forEach((s, k) => note(SCALE[2] - 12 + n * 2 + s, .3, .06, k * .03)); buzz(n ? 28 : 40);
+  if (n === 1) callout = { t: 'Chain reaction!', c: '#3b3550', life: 1 };
+  // bombs the blasts didn't reach go off next, so every trapped dot gets its turn
+  if (!next.length) { for (let y = 0; y < N && !next.length; y++) for (let x = 0; x < N; x++) { const d = grid[y][x]; if (d && d.bomb && !d.dying) { next.push([y, x]); break; } } }
+  if (next.length) setTimeout(() => detonate(next, n + 1, avoid), 170);
+  else setTimeout(() => { collapse(avoid); blasting = false; setTimeout(checkEnd, 380); }, 320);
 }
 function collapse(avoid) {
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] && grid[r][c].dying) grid[r][c] = null;
@@ -491,12 +544,12 @@ function collapse(avoid) {
       setTimeout(() => { collapse(-1); harvesting = false; setTimeout(checkEnd, 380); }, 280);
     }, 380);
   }
-  if (!hasMove()) setTimeout(() => { callout = { t: 'Shuffle', c: '#3b3550', life: 1 }; for (const row of grid) for (const d of row) if (d && d.k === 'dot') { d.t = ri(L.colors); d.s = .3; } if (!hasMove()) collapse(-1); }, 450);
+  if (!hasMove()) setTimeout(() => { callout = { t: 'Shuffle', c: '#3b3550', life: 1 }; for (const row of grid) for (const d of row) if (d && d.k === 'dot' && !d.bomb) { d.t = ri(L.colors); d.s = .3; } if (!hasMove()) collapse(-1); }, 450);
 }
 const progress = key => key === 'frost' ? frostMelted : key === 'acorn' ? acornsGot : collected[key];
 function goalsDone() { return L.goals.every(([t, k]) => progress(t) >= k); }
 function checkEnd() {
-  if (state !== 'play' || L.timed || harvesting) return;
+  if (state !== 'play' || L.timed || harvesting || blasting) return;
   if (goalsDone()) return endLevel(true);
   if (moves <= 0) return endLevel(false);
 }
@@ -590,11 +643,19 @@ function draw(dt) {
     if (s <= 0.01) continue;
     ctx.beginPath(); ctx.ellipse(x, y + 2.5, R * s, R * s * (1 - d.sq * .15), 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(59,53,80,.12)'; ctx.fill();
     if (d.k === 'acorn') { drawAcorn(x, y, s); continue; }
+    if (d.bomb) {   // a trapped dot turned bomb: dark, with a fizzing fuse
+      const w = 1 + Math.sin((time - d.bomb) * 22) * .06;
+      ctx.beginPath(); ctx.arc(x, y, R * s * 1.08 * w, 0, Math.PI * 2); ctx.fillStyle = '#2b2440'; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, R * s * .55, 0, Math.PI * 2); ctx.fillStyle = d.k === 'dot' ? COLORS[d.t] : '#9a92ad'; ctx.globalAlpha = .55; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = '#2b2440'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x + R * .55, y - R * .7); ctx.quadraticCurveTo(x + R * .9, y - R * 1.3, x + R * 1.25, y - R * 1.2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + R * 1.25, y - R * 1.2, 2.2 + Math.random() * 1.6, 0, Math.PI * 2); ctx.fillStyle = Math.random() < .5 ? '#ffd43b' : '#ff922b'; ctx.fill();
+      continue;
+    }
     if (d.k === 'wild') { drawWild(x, y, R * s * 1.05); continue; }
     ctx.beginPath(); ctx.ellipse(x, y, R * s * (1 + d.sq * .1), R * s * (1 - d.sq * .12), 0, 0, Math.PI * 2); ctx.fillStyle = COLORS[d.t]; ctx.fill();
     ctx.beginPath(); ctx.arc(x - R * .35 * s, y - R * .38 * s, R * .22 * s, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fill();
   }
-  for (const q of rings) { const t = 1 - q.life / q.max; ctx.beginPath(); ctx.arc(q.x, q.y, R + t * 16, 0, Math.PI * 2); ctx.strokeStyle = dotColor(q.t); ctx.globalAlpha = 1 - t; ctx.lineWidth = 3; ctx.stroke(); }
+  for (const q of rings) { const t = 1 - q.life / q.max; ctx.beginPath(); ctx.arc(q.x, q.y, R + t * (q.big ? 44 : 16), 0, Math.PI * 2); ctx.strokeStyle = q.c || dotColor(q.t); ctx.globalAlpha = 1 - t; ctx.lineWidth = 3; ctx.stroke(); }
   for (const q of parts) { ctx.globalAlpha = clamp(q.life / q.max * 1.4, 0, 1); ctx.beginPath(); ctx.arc(q.x, q.y, q.s, 0, Math.PI * 2); ctx.fillStyle = q.c; ctx.fill(); }
   ctx.globalAlpha = 1;
   if (state === 'play' || state === 'end') drawPowers();
@@ -691,7 +752,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && sta
 addEventListener('resize', resize); resize();
 L = levelCfg(1); fill(); for (const row of grid) for (const d of row) if (d) d.y = d.tr;
 openMenu();
-if (/[?&]debug\b/.test(location.search)) window.__dl = { get powers() { return powers; }, get armed() { return armed; }, powerX, powerY, get H() { return H; }, get frost() { return frost; }, get acornsGot() { return acornsGot; }, get harvesting() { return harvesting; }, openStart, levelCfg, get path() { return path; }, get state() { return state; }, get grid() { return grid; }, get moves() { return moves; }, get L() { return L; }, get score() { return score; }, collected: () => collected, BX, CS, get BY() { return BY; } };
+if (/[?&]debug\b/.test(location.search)) window.__dl = { get blasting() { return blasting; }, get powers() { return powers; }, get armed() { return armed; }, powerX, powerY, get H() { return H; }, get frost() { return frost; }, get acornsGot() { return acornsGot; }, get harvesting() { return harvesting; }, openStart, levelCfg, get path() { return path; }, get state() { return state; }, get grid() { return grid; }, get moves() { return moves; }, get L() { return L; }, get score() { return score; }, collected: () => collected, BX, CS, get BY() { return BY; } };
 requestAnimationFrame(frame);
 })();
 </script>
