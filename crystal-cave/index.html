@@ -302,7 +302,7 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>💎</div><h3>Find the crystal</h3><p>Bear and Bean are collecting one special crystal. Find every one hidden in the cave that matches it: same <b>shape, colour and markings</b>.</p></section>
     <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check all three</h3><p>A match is the same <b>mineral</b>, the same <b>shape</b> and the same <b>marking</b>. Some crystals share one of those, so look closely.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p>The cave is wide! <b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom in close. Tap the little map to jump.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: glassy and shiny, with a twinkle. <b>Frosted tips</b>: rough, matte white ends with no shine. <b>Banded</b>: stripes across. <b>Gold fractures</b>: gold cracks. <b>Two-tone</b>: a second colour at the tip.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: plain and glassy, with a twinkle. <b>Banded</b>: stripes across. <b>Two-tone</b>: a second colour at the tip.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Tap to collect</h3><p><b>Tap</b> a match to collect it. A wrong tap costs 10 points; a hint 🔍 costs 25. Fossils 🐚 hidden in the rock are a bonus.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔦</div><h3>12 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a new cave: rings of rock, or a wide <b>crystal floor</b> in a cavern with a waterfall.</p></section>
   </div>
@@ -387,6 +387,8 @@ const SHAPES = [
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },
 ];
 const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
+const MARKINGS_OFF = ['frost', 'gold'];   // switched off for now: delete from this list to bring them back
+const MARKINGS = TRAITS.filter(t => !MARKINGS_OFF.includes(t.k));
 const typeName = ty => `${ty.pal.n} ${ty.shape.n}`, typeTraits = ty => `${ty.shape.t} · ${ty.trait.t}`;
 const ROCKS = [   // cave rock: far, mid, near tones
   ['#2a2a3d', '#1c1b2b', '#121119'], ['#33281f', '#231b16', '#15100d'], ['#2c2236', '#1d1626', '#120d18'], ['#22303a', '#172229', '#0e1519'], ['#2f2d2a', '#1f1e1c', '#131211'],
@@ -638,9 +640,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 34, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 35, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 34) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 35) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -658,7 +660,7 @@ function planCave() {
   rnd = mulberry(S.seed); makeNoise();
   W = WORLD_W; H = WORLD_H; const scale = 1.15, MORE = 1.8, rock = pick(ROCKS).map(hex);
   const apart = [['Ametrine', 'Bicolour Sapphire']].map(pr => pr[rnd() < .5 ? 0 : 1]);   // minerals too alike to share a cave: one of each pair sits this cave out
-  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k) && !apart.includes(pal.n)) TRAITS.forEach(trait => { if (!(pal.zoned && trait.k === 'two') && !(pal.not || '').split(' ').includes(trait.k)) combos.push({ shape, pal, trait }); /* some markings are too subtle on some minerals */ }); })); shuffle(combos);
+  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k) && !apart.includes(pal.n)) MARKINGS.forEach(trait => { if (!(pal.zoned && trait.k === 'two') && !(pal.not || '').split(' ').includes(trait.k)) combos.push({ shape, pal, trait }); /* some markings are too subtle on some minerals */ }); })); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
   for (const c of combos) { if (hunts.length >= HUNTS) break; if (!hunts.some(h => h.pal === c.pal && h.shape === c.shape)) hunts.push(c); }
@@ -1207,8 +1209,6 @@ function win() {
 /* ---------- making caves ---------- */
 let busyGen = false, genId = 0;
 const TIPS = [
-  'Frosted tips are rough and matte white at the ends, with no shine. Clear crystals are glassy and twinkle.',
-  'Gold fractures are bright gold cracks running across the crystal.',
   'Banded crystals have stripes across them. Two-tone ones change colour near the tip.',
   'A match needs the same mineral, the same shape and the same marking.',
   'A Tower stands alone; a Cluster is a bunch of columns growing together.',
