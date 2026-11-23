@@ -406,7 +406,7 @@ const PALETTES = [
   { n: 'Sulfur', c: '#f3e64a', glow: '#fff59a', alt: '#fffbd0', h: 'cluster tower' },
   { n: 'Vanadinite', c: '#d6452a', glow: '#ff7a52', alt: '#ffb08a', h: 'tower' },
   { n: 'Chevron Amethyst', c: '#8f4ed0', glow: '#e6d4ff', alt: '#f6f0ff', zoned: true, h: 'tower cluster' },
-  { n: 'LuAG', c: '#d6ee78', glow: '#7dff4a', alt: '#f4ffd0', h: 'dodeca', not: 'band two', only: 'cave', bright: true },   // made in labs, imagined here growing as a natural garnet: ring cave only
+  { n: 'LuAG', c: '#d6ee78', glow: '#7dff4a', alt: '#f4ffd0', h: 'dodeca', not: 'band two', only: 'cave', bright: true, ceil: true },   // made in labs, imagined here growing as a natural garnet: only on the ring cave's ceilings
 ];
 const SHAPES = [
   { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' },
@@ -630,7 +630,7 @@ function roundPoly(p, pts, r) {   // a polygon with its corners smoothed off, li
   }
 }
 // a garnet: a rhombic dodecahedron, twelve diamond faces, turned in 3D and lit from the top left
-function dodeca(g, x, y, r, yaw, pitch, st) {
+function dodeca(g, x, y, r, yaw, pitch, st, noShadow) {
   const col = st.c, rot = ([px, py, pz]) => { const c4 = Math.SQRT1_2, ax = px * c4 - py * c4, ay = px * c4 + py * c4, bx = ax, by = -pz, bz = ay;   // a diamond face towards us, then turned a little
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), x1 = bx * cy + bz * sy, z1 = -bx * sy + bz * cy; return [x1, by * cp - z1 * sp, by * sp + z1 * cp]; };
   const L = [-.52, -.78, .35], faces = [];
@@ -639,7 +639,7 @@ function dodeca(g, x, y, r, yaw, pitch, st) {
     const n = rot(nr).map(v => v / Math.SQRT2); if (n[2] <= .02) continue;
     const pts = [A, C1, B, C2].map(rot); faces.push({ pts, n, depth: pts.reduce((a, q) => a + q[2], 0) });
   }
-  g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(x + r * .15, y + r * .9, r * .9, r * .26, 0, 0, 6.3); g.fill();
+  if (!noShadow) { g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(x + r * .15, y + r * .9, r * .9, r * .26, 0, 0, 6.3); g.fill(); }
   faces.sort((a, b) => a.depth - b.depth);
   for (const f of faces) { const lam = Math.max(0, -(f.n[0] * L[0] + f.n[1] * L[1]) + f.n[2] * L[2]), t = lam * 1.5 - .62;
     g.beginPath(); f.pts.forEach(([px, py], i) => i ? g.lineTo(x + px * r / 2, y + py * r / 2) : g.moveTo(x + px * r / 2, y + py * r / 2)); g.closePath();
@@ -813,10 +813,11 @@ function formation(g, x, y, ang, size, ty, glows) {
       break;
     }
     case 'dodeca': {   // two or three garnets sitting in a lump of schist
-      const bx = x + dx * size * .3, by = y + dy * size * .3; schist(g, bx, by + size * .14, size * .62, size * .28);
-      const spots = rnd() < .5 ? [[-.24, -.1, .27], [.24, -.04, .31]] : [[-.3, -.12, .24], [.27, -.14, .28], [-.02, .06, .22]];
-      for (const [ox, oy, r] of spots) dodeca(g, bx + ox * size, by + oy * size, size * r, .72 + R(-.15, .15), .05 + R(-.15, .25), st);
-      if (ty.pal.bright && glows) { glows.push([bx, by - size * .05, size * 2.4, st.glow, undefined, .42]); glows.push([bx, by - size * .05, size * 1.2, st.glow, undefined, .36]); glows.push([bx, by - size * .05, size * .5, '#f4ffd0', undefined, .16]); }   // LuAG shines bright green, steadily
+      const hang = dy > .35, bx = x + dx * size * .3, by = y + dy * size * .3;   // hanging from a ceiling, or sitting on a ledge
+      if (hang) { g.save(); g.translate(0, (by - size * .16) * 2); g.scale(1, -1); schist(g, bx, by - size * .16, size * .62, size * .28); g.restore(); } else schist(g, bx, by + size * .14, size * .62, size * .28);
+      const spots = (rnd() < .5 ? [[-.24, -.1, .27], [.24, -.04, .31]] : [[-.3, -.12, .24], [.27, -.14, .28], [-.02, .06, .22]]).map(([ox, oy, r]) => [ox, hang ? -oy + .04 : oy, r]);
+      for (const [ox, oy, r] of spots) dodeca(g, bx + ox * size, by + oy * size, size * r, .72 + R(-.15, .15), .05 + R(-.15, .25), st, hang);
+      if (ty.pal.bright && glows) { glows.push([bx, by - size * .05, size * 2.2, st.glow, undefined, .28]); glows.push([bx, by - size * .05, size * 1.2, st.glow, undefined, .36]); glows.push([bx, by - size * .05, size * .5, '#f4ffd0', undefined, .16]); }   // LuAG shines bright green, steadily
       sparkAt(bx - size * .18, by - size * .28, size * .12, st);
       return { x: bx, y: by - size * .05, r: size * .5, ty };
     }
@@ -839,9 +840,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 47, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 48, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 47) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 48) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -878,8 +879,8 @@ function planCave() {
   // everything else in the cave: kinds that share at most one feature (mineral, shape or marking) with any crystal being hunted, so there are as few lookalikes as possible
   const mark = c => c.shape.k === 'tumbled' ? 'tumbled:' + c.pal.n : c.trait.k;   // a pebble's own pattern is its marking
   const shared = (a, b) => (a.pal === b.pal) + (a.shape === b.shape) + (mark(a) === mark(b));
-  let fillers = combos.filter(c => !isHunt(c) && hunts.every(h => shared(c, h) <= 1)).slice(0, 24);
-  if (fillers.length < 8) fillers = combos.filter(c => !isHunt(c)).slice(0, 24);   // never short of kinds
+  let fillers = combos.filter(c => !isHunt(c) && !c.pal.ceil && hunts.every(h => shared(c, h) <= 1)).slice(0, 24);
+  if (fillers.length < 8) fillers = combos.filter(c => !isHunt(c) && !c.pal.ceil).slice(0, 24);   // never short of kinds
   const theme = [hunts[0].pal, hunts[1].pal, hunts[2].pal];
   if (S.mode === 'floor') return planFloor({ hunts, decoys, fillers, theme, rock });
   // five rings of rock, from a small deep pocket out to the rocks right in front of you
@@ -927,6 +928,18 @@ function planCave() {
   }
   // then the rock between the rims, ring by ring from the back
   layers.forEach((L, li) => li < NEAR ? scatter(li, 4000, 999, () => bell(SIZES[li][0], SIZES[li][1]) * scale) : scatter(li, 1200, 14, () => bell(52, 68) * scale));
+  // glowing LuAG garnets hanging from the ceilings of the rings, the only thing up there (in some caves, and always when it's hunted)
+  const ceilType = combos.find(c => c.pal.ceil), luagAt = hunts.findIndex(h => h.pal.ceil);
+  if (ceilType && (luagAt >= 0 || rnd() < .5)) for (let li = 0; li < NEAR; li++) {
+    const L = layers[li].sh;
+    for (let k = 0, got = 0; k < 600 && got < 5; k++) {
+      const [x, y] = inRock(L, R(0, Math.PI * 2), R(2, 14) * scale), size = bell(SIZES[li][0], SIZES[li][1]) * scale, ang = Math.atan2(L.cy - y, L.cx - x) + R(-.2, .2);
+      if (y > L.cy - L.ry * .25 || y < H * .25 + 24 || x < 30 || x > W - 30 || Math.sin(ang) < .35) continue;   // the roof only, below the part of the cave that's cut off
+      const cx = x + Math.cos(ang) * size * .3, cy = y + Math.sin(ang) * size * .3 + size * .05, r = size * .55;
+      if (!visibleOn(li, cx, cy) || crowds(cx, cy, r) || slots.some(o => Math.abs(o.cy - cy) < o.r + r && Math.hypot(o.cx - cx, o.cy - cy) < (o.r + r) * .9)) continue;
+      slots.push({ li, x, y, ang, size, seed: seedOf(), cx, cy, r, ceil: true }); got++;
+    }
+  }
   // drawn from the back of the cave to the front: ring by ring, and within a ring from the top of the screen down
   slots.sort((a, b) => a.li - b.li || a.y - b.y);
   // how much of each formation is hidden: by nearer rock in front of it, and by formations drawn over it
@@ -943,9 +956,10 @@ function planCave() {
     s.huntable = !s.centre && onScreen && s.hidden <= .5 && s.r >= 15;   // never a hunt crystal if more than half of it is covered
     s.spare = !s.centre && onScreen && s.hidden <= .5 && s.r >= 11;       // a fallback if a cave runs short
   });
-  const counts = assignHunts(slots, hunts, decoys, fillers);
+  if (luagAt >= 0 && slots.filter(s => s.ceil && (s.huntable || s.spare)).length < huntSize(luagAt + 1) + 1) { const alt = combos.find(c => !c.pal.ceil && !hunts.includes(c) && !hunts.some(h => h.pal === c.pal && h.shape === c.shape)); if (alt) hunts[luagAt] = alt; }   // not enough room up there: hunt something else
+  const counts = assignHunts(slots, hunts, decoys, fillers, ceilType);
   for (const s of slots) if (s.type.shape.k === 'tumbled') { s.cx = s.x; s.cy = s.y - s.size * .25; }   // heaps sit on the spot they're placed
-  for (const s of slots) if (s.type.shape.k === 'dodeca') { s.cx = s.x + Math.cos(s.ang) * s.size * .3; s.cy = s.y + Math.sin(s.ang) * s.size * .3 - s.size * .05; }   // garnets sit in their lump of rock
+  for (const s of slots) if (s.type.shape.k === 'dodeca' && !s.ceil) { s.cx = s.x + Math.cos(s.ang) * s.size * .3; s.cy = s.y + Math.sin(s.ang) * s.size * .3 - s.size * .05; }   // garnets sit in their lump of rock
   // three fossils pressed into the rock, just behind the rim of the middle rings
   const fossils = [];
   for (let tries = 0; fossils.length < 3 && tries < 2000; tries++) {
@@ -959,16 +973,16 @@ function planCave() {
 }
 
 // the hunted ones, spread about; everything else is a lookalike or another kind
-function assignHunts(slots, hunts, decoys, fillers) {
+function assignHunts(slots, hunts, decoys, fillers, ceilType) {   // ceiling spots only ever hold the ceiling kind (LuAG), and it goes nowhere else
   const pool = shuffle(slots.filter(s => s.huntable)).concat(shuffle(slots.filter(s => s.spare && !s.huntable))), counts = [];
   hunts.forEach((h, k) => {
     const want = huntSize(k + 1), got = [];
     for (const gap of [160, 70, 0]) for (const s of pool) {   // spread them out, but never leave a hunt short
-      if (got.length >= want) break; if (s.type || got.some(o => Math.hypot(o.cx - s.cx, o.cy - s.cy) < gap)) continue; s.type = h; s.hunt = k; s.slot = got.length; got.push(s);
+      if (got.length >= want) break; if (s.type || !!s.ceil !== !!h.pal.ceil || got.some(o => Math.hypot(o.cx - s.cx, o.cy - s.cy) < gap)) continue; s.type = h; s.hunt = k; s.slot = got.length; got.push(s);
     }
     counts.push(got.length);
   });
-  for (const s of slots) if (!s.type) s.type = pick(fillers);
+  for (const s of slots) if (!s.type) s.type = s.ceil ? ceilType : pick(fillers);
   return counts;
 }
 // the crystal floor: a flat floor of mineral crust seen in perspective like a meadow, fading into darkness at the back
@@ -1502,7 +1516,7 @@ const TIPS = [
   'Pyrite is called fool\'s gold: shiny golden cubes that grow in nature.',
   'Tumbled stones are polished pebbles: Sodalite has white veins, Bloodstone red spots, Zebra Jasper black stripes.',
   'Calcite breaks into slanted boxes called rhombs. Look through clear Optical Calcite and you see double!',
-  'LuAG glows bright green. In real life it is only made in labs; in the ring cave we imagine it growing as a natural garnet.',
+  'LuAG glows bright green. In real life it is only made in labs; in the ring cave we imagine it growing as a natural garnet, hanging from the ceilings.',
   'Pyramids and obelisks are carved by hand. A natural Tower has six sides; an Obelisk has four and a pointed cap.',
   'Labradorite flashes blue and green when the light catches it, and Moonstone glows with a soft blue sheen.',
   'Septarian has bright yellow cracks, Ocean Jasper little eye-like rings, and Petrified Wood the grain of an ancient tree.',
