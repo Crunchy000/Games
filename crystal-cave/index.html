@@ -378,12 +378,19 @@ const PALETTES = [
   { n: 'Watermelon Tourmaline', c: '#3a9a4c', glow: '#ff8fa6', alt: '#ff6a8e', zoned: true, h: 'tower fan' }, { n: 'Ametrine', c: '#8d4fd0', glow: '#ffcf6a', alt: '#f5b83a', zoned: true, h: 'tower cluster' },
   { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true, h: 'cubes' },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true, h: 'tower cluster' },
   { n: 'Pyrite', c: '#c9a23a', glow: '#ffe08a', alt: '#fff2b8', h: 'cubes' },
+  // metallic and other very distinct minerals: sheen sets how strongly the cube faces shimmer (bismuth's rainbow, galena's plain silver)
+  { n: 'Bismuth', c: '#b48fc8', glow: '#ffd0ff', alt: '#9ff0ff', h: 'cubes', sheen: .9, not: 'two band' },
+  { n: 'Galena', c: '#a8adb8', glow: '#e8eef8', alt: '#e8eef8', h: 'cubes', sheen: .04, not: 'two' },
+  { n: 'Selenite', c: '#e6e2d8', glow: '#ffffff', alt: '#ffffff', h: 'blades', not: 'two' },
+  { n: 'Sulfur', c: '#f3e64a', glow: '#fff59a', alt: '#fffbd0', h: 'cluster tower' },
+  { n: 'Vanadinite', c: '#d6452a', glow: '#ff7a52', alt: '#ffb08a', h: 'tower' },
   { n: 'Chevron Amethyst', c: '#8f4ed0', glow: '#e6d4ff', alt: '#f6f0ff', zoned: true, h: 'tower cluster' },
 ];
 const SHAPES = [
-  { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' }, { k: 'fan', n: 'Spike Fan', t: 'a fan of long thin spikes' },
-  { k: 'tower', n: 'Tower', t: 'one tall column on its own' },               
-  { k: 'cubes', n: 'Cube Stack', t: 'nested metallic cubes' },           ,
+  { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' },
+  { k: 'fan', n: 'Spike Fan', t: 'a fan of long thin spikes' },
+  { k: 'tower', n: 'Tower', t: 'one tall column on its own' },
+  { k: 'cubes', n: 'Cube Stack', t: 'nested metallic cubes' },
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },
 ];
 const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
@@ -449,7 +456,7 @@ function inRock(sh, t, d) {
 
 /* ---------- crystals: every piece is drawn from its type's style (colour, second colour, marking) ---------- */
 // a style: base colour, its second colour (for two-tone), the marking, and where sparkles and glow go
-const styleOf = ty => ({ c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k, two: ty.trait.k === 'two' || !!ty.pal.zoned, zoned: !!ty.pal.zoned });
+const styleOf = ty => ({ sheen: ty.pal.sheen === undefined ? .42 : ty.pal.sheen, c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k, two: ty.trait.k === 'two' || !!ty.pal.zoned, zoned: !!ty.pal.zoned });
 let curSlot = -1;   // the formation being drawn, so its sparkles and glow can go with it when it's collected
 function sparkAt(x, y, s, st) { const p = rnd() * 6.3, f = R(.6, 1.6); if (st.trait !== 'frost') sparks.push({ x, y, s: clamp(s * (st.trait === 'clear' ? 1.5 : 1), 2.5, 14), c: st.glow, p, f, k: curSlot }); }
 // a jagged crack filled with gold, from a to b
@@ -531,7 +538,7 @@ const SHEEN = [[236, 196, 98], [214, 92, 164], [78, 178, 216], [118, 210, 150]];
 function cube(g, x, y, s, rot, st, glows) {
   const v = (a, r) => [x + Math.cos(a + rot) * r * s, y + Math.sin(a + rot) * r * s], C = [x, y];
   const pts = [0, 1, 2, 3, 4, 5].map(i => v(-Math.PI / 2 + i * Math.PI / 3, 1)), o = RI(0, 3);
-  const tint = (k, t, base) => shade(mix(base || st.c, SHEEN[(o + k) % 4], .42), t);
+  const tint = (k, t, base) => shade(mix(base || st.c, SHEEN[(o + k) % 4], st.sheen), t);
   const face = (poly, k, t, base) => {
     const [a, , c] = [poly[0], poly[1], poly[2]], gr = g.createLinearGradient(poly[1][0], poly[1][1], poly[3][0], poly[3][1]);
     gr.addColorStop(0, rgba(tint(k, t + .12, base), .97)); gr.addColorStop(.5, rgba(shade(base || st.c, t), .97)); gr.addColorStop(1, rgba(tint(k + 1, t, base), .97));
@@ -640,9 +647,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 35, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 36, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 35) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 36) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -1218,6 +1225,8 @@ const TIPS = [
   'Watermelon Tourmaline really is green at the bottom and pink at the top.',
   'Ametrine is amethyst and citrine in one crystal: purple, then gold.',
   'Pyrite is called fool\'s gold: shiny golden cubes that grow in nature.',
+  'Galena is the silver cousin of pyrite, and bismuth crystals shimmer with every colour of the rainbow.',
+  'Selenite is a glassy white form of gypsum. Some caves have selenite crystals taller than a house.',
   'Every crystal here grows only in the shapes it forms in real life.',
 ];
 const loadingEl = $('loading');
@@ -1427,6 +1436,11 @@ requestAnimationFrame(() => { layout(); makeCave(!S.seed); });
 requestAnimationFrame(frame);
 if (/[?&]debug\b/.test(location.search)) window.__cc = {
   get S() { return S; }, get cave() { return cave; }, get targets() { return targetsNow(); }, tapAt, makeCave, nextHunt, hint, get busy() { return busyGen; },
+  draw(g, x, y, size, name, shapeK, traitK) {   // one crystal of a named kind, for side-by-side checks
+    const keep = rnd, ks = sparks; rnd = mulberry(11); sparks = [];
+    const t = TRAITS.find(t => t.k === traitK); formation(g, x, y, -Math.PI / 2, size, { shape: SHAPES.find(s => s.k === shapeK), pal: PALETTES.find(p => p.n === name), trait: t }, null);
+    rnd = keep; sparks = ks;
+  },
   pairs(list) {   // pairs of crystals side by side, as towers and clusters, to judge how alike they look
     const c = document.createElement('canvas'), rowH = 120, W2 = 900; c.width = W2 * 2; c.height = list.length * rowH * 2; c.style.cssText = 'position:fixed;left:0;top:0;z-index:99;background:#1a1424;width:' + W2 + 'px';
     const g = c.getContext('2d'); g.scale(2, 2); const keep = rnd, ks = sparks; rnd = mulberry(11); sparks = [];
