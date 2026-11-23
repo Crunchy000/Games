@@ -310,7 +310,7 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>💎</div><h3>Find the crystal</h3><p>Bear and Bean are collecting one special crystal. Find every one hidden in the cave that matches it: same <b>shape, colour and markings</b>.</p></section>
     <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check all three</h3><p>A match is the same <b>mineral</b>, the same <b>shape</b> and the same <b>marking</b>. Some crystals share one of those, so look closely.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p>The cave is wide! <b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom in close. Tap the little map to jump.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: plain and glassy, with a twinkle. <b>Banded</b>: stripes across. <b>Two-tone</b>: a second colour at the tip. <b>Tumbled</b> stones are polished pebbles, each known by its own pattern.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: plain and glassy, with a twinkle. <b>Banded</b>: stripes across. <b>Two-tone</b>: a second colour at the tip. <b>Tumbled</b> stones are polished pebbles, hearts, pyramids and more, each known by its own pattern.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Tap to collect</h3><p><b>Tap</b> a match to collect it. A wrong tap costs 10 points; a hint 🔍 costs 25. Fossils 🐚 hidden in the rock are a bonus.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔦</div><h3>12 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a new cave: rings of rock, or a wide <b>crystal floor</b> in a cavern with a waterfall.</p></section>
   </div>
@@ -376,21 +376,22 @@ const PALETTES = [
   { n: 'Emerald', c: '#2fbf71', glow: '#4dffa0', alt: '#e0ff80', h: 'tower cluster' },  { n: 'Aquamarine', c: '#4cc9e6', glow: '#6fe3ff', alt: '#ffffff', h: 'tower cluster' },
   { n: 'Rose Quartz', c: '#f095bd', glow: '#ffb0d6', alt: '#fff0f6', h: 'cluster tower tumbled', tumble: 'rose', form: 'heart' },     { n: 'Citrine', c: '#f2ae3a', glow: '#ffcf63', alt: '#ff6a2a', h: 'cluster tower' },
   { n: 'Ruby', c: '#e0405e', glow: '#ff6a86', alt: '#ffc0cc', h: 'tower cluster' },     { n: 'Sapphire', c: '#3a63e0', glow: '#6f8fff', alt: '#a8ecff', h: 'tower cluster' },
-  { n: 'Smoky Quartz', c: '#8d7b6e', glow: '#c9b29c', alt: '#f1e2cf', h: 'cluster tower fan' },    { n: 'Peridot', c: '#a6d43a', glow: '#d4ff63', alt: '#fff27a', h: 'cluster tower' },
-  { n: 'Orange Calcite', c: '#ff7a2e', glow: '#ffa15c', alt: '#ffe08a', h: 'blades cluster' }, { n: 'Apatite', c: '#1fa39a', glow: '#45e0d4', alt: '#ff8fb8', h: 'tower cluster', not: 'frost two' },
+  { n: 'Smoky Quartz', c: '#8d7b6e', glow: '#c9b29c', alt: '#f1e2cf', h: 'tumbled', tumble: 'smoky', form: 'obelisk' },    { n: 'Peridot', c: '#a6d43a', glow: '#d4ff63', alt: '#fff27a', h: 'cluster tower' },
+  { n: 'Orange Calcite', c: '#ff7a2e', glow: '#ffa15c', alt: '#ffe08a', h: 'tumbled', tumble: 'calcite', form: 'rhomb' }, { n: 'Apatite', c: '#1fa39a', glow: '#45e0d4', alt: '#ff8fb8', h: 'tower cluster', not: 'frost two' },
   { n: 'Iolite', c: '#5f5aa8', glow: '#8f88e0', alt: '#d6cfff', h: 'tower blades' },  { n: 'Imperial Topaz', c: '#b8682a', glow: '#ffa45c', alt: '#ffd9a8', h: 'tower cluster' },
   { n: 'Rubellite', c: '#d63aa0', glow: '#ff6ad0', alt: '#ffd0f0', h: 'fan tower' },   { n: 'Morganite', c: '#f2a88a', glow: '#ffc8ae', alt: '#fff0e4', h: 'tower cluster' },
   { n: 'Garnet', c: '#7a1e2c', glow: '#d8465e', alt: '#ff9ab0', h: 'cluster' },
-  { n: 'Prehnite', c: '#74e0b4', glow: '#a6ffd8', alt: '#f0fff8', h: 'fan cluster' },      { n: 'Black Tourmaline', c: '#2e2a38', glow: '#8c84b8', alt: '#bdb6e0', h: 'fan tower' },
+  { n: 'Prehnite', c: '#74e0b4', glow: '#a6ffd8', alt: '#f0fff8', h: 'fan cluster' },      { n: 'Black Tourmaline', c: '#2e2a38', glow: '#8c84b8', alt: '#bdb6e0', h: 'fan tower tumbled', tumble: 'tourmaline', form: 'obelisk' },
   // minerals that grow in two colours: always zoned from the first colour into the second
   { n: 'Watermelon Tourmaline', c: '#3a9a4c', glow: '#ff8fa6', alt: '#ff6a8e', zoned: true, h: 'tower fan' }, { n: 'Ametrine', c: '#8d4fd0', glow: '#ffcf6a', alt: '#f5b83a', zoned: true, h: 'tower cluster' },
-  { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true, h: 'cubes tumbled', tumble: 'fluorite' },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true, h: 'tower cluster' },
+  { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true, h: 'cubes tumbled', tumble: 'fluorite', form: 'pyramid' },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true, h: 'tower cluster' },
   // tumbled stones: polished pebbles, each known by its pattern (tumble), so they take no markings
-  { n: "Tiger's Eye", c: '#a8701e', glow: '#ffd27a', alt: '#e7b04a', h: 'tumbled', tumble: 'tiger' },        { n: 'Malachite', c: '#1f8a4a', glow: '#6fe0a0', alt: '#5cc485', h: 'tumbled', tumble: 'malachite' },     { n: 'Carnelian', c: '#e0622a', glow: '#ffa06a', alt: '#ffb46a', h: 'tumbled', tumble: 'carnelian' },
+  { n: "Tiger's Eye", c: '#a8701e', glow: '#ffd27a', alt: '#e7b04a', h: 'tumbled', tumble: 'tiger', form: 'pyramid' },        { n: 'Malachite', c: '#1f8a4a', glow: '#6fe0a0', alt: '#5cc485', h: 'tumbled', tumble: 'malachite' },     { n: 'Carnelian', c: '#e0622a', glow: '#ffa06a', alt: '#ffb46a', h: 'tumbled', tumble: 'carnelian' },
   { n: 'Labradorite', c: '#4a4e56', glow: '#6fd0ff', alt: '#3cb4ff', h: 'tumbled', tumble: 'labradorite' }, { n: 'Moonstone', c: '#e6e2da', glow: '#b8d4ff', alt: '#8cbeff', h: 'tumbled', tumble: 'moonstone', form: 'dome' },
   { n: 'Turquoise', c: '#3fc2b4', glow: '#7fefe2', alt: '#4a3524', h: 'tumbled', tumble: 'turquoise' },     { n: 'Snowflake Obsidian', c: '#18161c', glow: '#bdb6e0', alt: '#e1e1e6', h: 'tumbled', tumble: 'snowflake' },
   { n: 'Sodalite', c: '#24399a', glow: '#7f9cff', alt: '#f0f4fa', h: 'tumbled', tumble: 'sodalite' },       { n: 'Bloodstone', c: '#1f4a36', glow: '#6fbf90', alt: '#c6322a', h: 'tumbled', tumble: 'bloodstone' },
   { n: 'Unakite', c: '#5f8a52', glow: '#ffb0a0', alt: '#e98a7a', h: 'tumbled', tumble: 'unakite' },        { n: 'Blue Lace Agate', c: '#9ec4e6', glow: '#d8ecff', alt: '#ffffff', h: 'tumbled', tumble: 'lace' },
+  { n: 'Optical Calcite', c: '#dfeeea', glow: '#ffffff', alt: '#bfe0ff', h: 'tumbled', tumble: 'optical', form: 'rhomb' },
   { n: 'Red Jasper', c: '#a83224', glow: '#ff7a5c', alt: '#3c140e', h: 'tumbled', tumble: 'jasper' },
   { n: 'Jade', c: '#4caf7a', glow: '#9fe8bf', alt: '#d8f5e4', h: 'tumbled', tumble: 'jade', form: 'donut' },
   { n: 'Zebra Jasper', c: '#efeae0', glow: '#ffffff', alt: '#1b1a1d', h: 'tumbled', tumble: 'zebra' },      { n: 'Dalmatian Jasper', c: '#ece3cf', glow: '#fff4dc', alt: '#222222', h: 'tumbled', tumble: 'dalmatian' },
@@ -417,7 +418,7 @@ const SHAPES = [
 const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
 const MARKINGS_OFF = ['frost', 'gold'];   // switched off for now: delete from this list to bring them back
 const MARKINGS = TRAITS.filter(t => !MARKINGS_OFF.includes(t.k));
-const FORMS = { heart: ['Heart', 'polished hearts'], donut: ['Donut', 'carved donuts with a hole'], slice: ['Slice', 'polished slices with tree rings'], halfegg: ['Dragon Egg', 'cut in half to show the crystal inside'], wand: ['Wand', 'long silky sticks'], dome: ['Dome', 'smooth polished domes'] };
+const FORMS = { heart: ['Heart', 'polished hearts'], donut: ['Donut', 'carved donuts with a hole'], slice: ['Slice', 'polished slices with tree rings'], halfegg: ['Dragon Egg', 'cut in half to show the crystal inside'], wand: ['Wand', 'long silky sticks'], dome: ['Dome', 'smooth polished domes'], rhomb: ['Rhomb', 'slanted boxes, smoothed at the edges'], pyramid: ['Pyramid', 'smooth carved pyramids'], obelisk: ['Obelisk', 'tall carved points with four sides'] };
 const typeName = ty => ty.shape.k === 'tumbled' ? (ty.pal.form ? `${ty.pal.n} ${FORMS[ty.pal.form][0]}` : `Tumbled ${ty.pal.n}`) : `${ty.pal.n} ${ty.shape.n}`, typeTraits = ty => ty.shape.k === 'tumbled' ? (ty.pal.form ? FORMS[ty.pal.form][1] : ty.shape.t) : `${ty.shape.t} · ${ty.trait.t}`;
 const ROCKS = [   // cave rock: far, mid, near tones
   ['#2a2a3d', '#1c1b2b', '#121119'], ['#33281f', '#231b16', '#15100d'], ['#2c2236', '#1d1626', '#120d18'], ['#22303a', '#172229', '#0e1519'], ['#2f2d2a', '#1f1e1c', '#131211'],
@@ -605,6 +606,27 @@ function octa(g, x, y, s, rot, st, glows) {
   if (rnd() < .5) sparkAt(...T, s * .5, st);
   if (glows && rnd() < .3) glows.push([x, y, s * 2.6, st.glow]);
 }
+// carved shapes, in units of the stone's half width; each face carries the light that falls on it
+const FACETS = {
+  rhomb: (sx, j) => { const A = [-.85 * sx, -.38], B = [.2 * sx, -.85 + j], C = [.85 * sx, -.55], D = [-.2 * sx, -.08 + j], d = [.28 * sx, .72], at = (q) => [q[0] + d[0], q[1] + d[1]];
+    const f = [{ t: 'rgba(255,255,255,.2)', pts: [A, B, C, D] }, { t: 'rgba(0,0,0,.34)', pts: [A, D, at(D), at(A)] }, { t: 'rgba(0,0,0,.1)', pts: [D, C, at(C), at(D)] }];
+    if (sx < 0) [f[1].t, f[2].t] = [f[2].t, f[1].t]; f.outline = [A, B, C, at(C), at(D), at(A)]; return f; },
+  pyramid: (sx, j) => { const P = [.05 * sx + j, -1.0], L = [-.95, .25], F = [.12 * sx + j * .6, .6], Rr = [.95, .2];
+    const f = [{ t: 'rgba(0,0,0,.32)', pts: [P, L, F] }, { t: 'rgba(255,255,255,.1)', pts: [P, F, Rr] }]; f.outline = [P, L, F, Rr]; return f; },
+  obelisk: (sx, j) => { const fx = .1 * sx + j * .4, L = [-.5, .55], F = [fx, .78], Rr = [.5, .55], L2 = [-.38, -.95], F2 = [fx * .8, -.78], R2 = [.38, -.95], P = [fx * .3, -1.5];
+    const f = [{ t: 'rgba(0,0,0,.34)', pts: [L, F, F2, L2] }, { t: 'rgba(255,255,255,.05)', pts: [F, Rr, R2, F2] }, { t: 'rgba(0,0,0,.18)', pts: [P, L2, F2] }, { t: 'rgba(255,255,255,.26)', pts: [P, F2, R2] }];
+    f.outline = [P, L2, L, F, Rr, R2]; return f; },
+};
+const RIDGES = { rhomb: [[[0, 0], [0, 3]], [[0, 3], [0, 2]], [[1, 1], [1, 2]]], pyramid: [[[0, 0], [0, 2]]], obelisk: [[[0, 1], [0, 2]], [[2, 1], [2, 2]], [[2, 0], [2, 2]]] };
+const LIT = { rhomb: 0, pyramid: 1, obelisk: 3 }, FOOT = { rhomb: .62, pyramid: .45, obelisk: .7 };
+function roundPoly(p, pts, r) {   // a polygon with its corners smoothed off, like a polished stone
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a = pts[(i + n - 1) % n], b = pts[i], c = pts[(i + 1) % n], la = Math.hypot(a[0] - b[0], a[1] - b[1]), lc = Math.hypot(c[0] - b[0], c[1] - b[1]), ta = Math.min(.45, r / la), tc = Math.min(.45, r / lc);
+    const s0 = [b[0] + (a[0] - b[0]) * ta, b[1] + (a[1] - b[1]) * ta], s1 = [b[0] + (c[0] - b[0]) * tc, b[1] + (c[1] - b[1]) * tc];
+    i ? p.lineTo(...s0) : p.moveTo(...s0); p.quadraticCurveTo(...b, ...s1);
+  }
+}
 // a polished tumbled stone: a smooth pebble with its own pattern, a darker rim and a gloss highlight
 function pebble(g, cx, cy, rx, ry, kind, glows, glow, form) {
   const k = rx / 62, n = 32, o = R(0, 6), p = new Path2D();
@@ -613,6 +635,10 @@ function pebble(g, cx, cy, rx, ry, kind, glows, glow, form) {
     for (let i = 0; i <= 40; i++) { const t = i / 40 * Math.PI * 2, ex = Math.cos(t), ey = Math.sin(t), lx = (Math.abs(ex) > .3 ? Math.sign(ex) * (L - w) + ex * w : ex * (L - w) / .3) , ly = ey * w; i ? p.lineTo(cx + lx * ca - ly * sa, cy + lx * sa + ly * ca) : p.moveTo(cx + lx * ca - ly * sa, cy + lx * sa + ly * ca); }
   } else if (form === 'dome') {   // a cabochon: a smooth dome on a flat base
     p.ellipse(cx, cy + ry * .3, rx, ry * 1.2, 0, Math.PI, 0); p.ellipse(cx, cy + ry * .3, rx, ry * .22, 0, 0, Math.PI);
+  } else if (FACETS[form]) {   // carved and polished: flat faces, softly rounded edges
+    const raw = FACETS[form](rnd() < .5 ? 1 : -1, R(-.12, .12)), to = ([px, py]) => [cx + px * rx, cy + py * rx];
+    var faces = raw.map(f => ({ t: f.t, pts: f.pts.map(to) }));
+    roundPoly(p, raw.outline.map(to), rx * .13);
   } else if (form === 'heart') {   // a polished heart
     for (let i = 0; i <= 48; i++) { const t = i / 48 * Math.PI * 2, hx = 16 * Math.sin(t) ** 3, hy = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)); const x = cx + hx * rx / 16, y = cy + (hy + 2.5) * ry / 14; i ? p.lineTo(x, y) : p.moveTo(x, y); }
   } else {
@@ -623,6 +649,7 @@ function pebble(g, cx, cy, rx, ry, kind, glows, glow, form) {
   if (form === 'heart' || form === 'donut') { g.save(); g.translate(0, ry * .2); g.fillStyle = form === 'heart' ? '#a8506f' : '#1c5e3a'; g.fill(p, 'evenodd'); g.translate(0, -ry * .1); g.fillStyle = form === 'heart' ? '#c46a8c' : '#25744a'; g.fill(p, 'evenodd'); g.restore(); }   // the side of a puffy heart or a thick ring
   if (form === 'donut') { p.moveTo(cx + rx * .36, cy); p.ellipse(cx, cy, rx * .36, ry * .36, 0, 0, Math.PI * 2); }   // the hole through a carved donut
   if (form === 'wand') { g.save(); g.translate(2 * k, ry * .3); g.fillStyle = 'rgba(0,0,0,.38)'; g.fill(p); g.restore(); }   // a wand's shadow follows it, just below
+  else if (faces) { g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.ellipse(cx + 3 * k, cy + rx * FOOT[form], rx * (form === 'obelisk' ? .7 : form === 'rhomb' ? 1.05 : 1), rx * .2, 0, 0, 6.3); g.fill(); }   // flat on the ground under its base
   else if (form === 'dome') { g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.ellipse(cx + 2 * k, cy + ry * .55, rx * 1.02, ry * .26, 0, 0, 6.3); g.fill(); }   // right under the dome's flat base
   else { g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(cx + 3 * k, cy + ry * .85, rx * .9, ry * .26, 0, 0, 6.3); g.fill(); }
   g.save(); g.clip(p, 'evenodd');
@@ -665,7 +692,15 @@ function pebble(g, cx, cy, rx, ry, kind, glows, glow, form) {
     case 'hematite': { const gr = g.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry); gr.addColorStop(0, '#d8dbe2'); gr.addColorStop(.35, '#55595f'); gr.addColorStop(.6, '#2a2c31'); gr.addColorStop(1, '#8a8e96'); g.fillStyle = gr; g.fillRect(cx - W, cy - H, W * 2, H * 2); } break;
     case 'wood': fill('#8a5a34'); { const ox = cx + rx * R(-1.6, -1.2); for (let i = 40; i > 0; i--) { g.strokeStyle = i % 3 ? 'rgba(60,34,18,.45)' : 'rgba(210,160,110,.5)'; g.lineWidth = 1.6 * k; g.beginPath(); g.ellipse(ox, cy, i * 4.2 * k, i * 3 * k, 0, 0, 6.3); g.stroke(); } } break;
     case 'septarian': fill('#6e6a64'); g.strokeStyle = '#e8b832'; g.lineCap = 'round'; for (let i = 0; i < 7; i++) { let x = cx + R(-.6, .6) * rx, y = cy + R(-.6, .6) * ry; g.lineWidth = R(3, 6) * k; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += R(-16, 16) * k; y += R(-12, 12) * k; g.lineTo(x, y); } g.stroke(); } veins('rgba(40,36,32,.6)', 4, 1.5); break;
-    case 'fluorite': waves(['#7a4ab0', '#3fa088', '#b090e0', '#2f7a68', '#e6e0f0'], 9, 3, 30, 11); break;
+    case 'fluorite': fill('#5c8a9a'); waves(['#7a4ab0', '#3fa088', '#b090e0', '#2f7a68', '#e6e0f0'], 9, 3, 30, 11); break;
+    case 'optical': g.fillStyle = 'rgba(226,242,238,.62)'; g.fillRect(cx - W, cy - H, W * 2, H * 2);   // clear: the rock shows through, and a crack inside is seen twice
+      { const a = R(-.6, .6), ca = Math.cos(a) * rx * 1.4, sa = Math.sin(a) * rx * 1.4; g.lineWidth = 1.8 * k; g.lineCap = 'round';
+        for (const [ox, oy, al] of [[0, 0, .7], [6 * k, 5 * k, .45]]) { g.strokeStyle = `rgba(60,70,84,${al})`; g.beginPath(); g.moveTo(cx - ca + ox, cy - sa + oy); g.quadraticCurveTo(cx + ox + 4 * k, cy + oy - 6 * k, cx + ca + ox, cy + sa + oy); g.stroke(); } }
+      { const gr = g.createLinearGradient(cx - rx, cy, cx + rx, cy - ry); gr.addColorStop(.55, 'rgba(255,160,200,0)'); gr.addColorStop(.62, 'rgba(255,170,210,.3)'); gr.addColorStop(.68, 'rgba(150,220,255,.3)'); gr.addColorStop(.75, 'rgba(150,220,255,0)'); g.fillStyle = gr; g.fillRect(cx - W, cy - H, W * 2, H * 2); } break;
+    case 'calcite': radial([[0, '#ffd08a'], [.6, '#f6912e'], [1, '#d8661c']]); g.strokeStyle = 'rgba(255,236,200,.35)'; g.lineWidth = 1.4 * k;
+      for (let i = -3; i <= 3; i++) { g.beginPath(); g.moveTo(cx - W, cy + i * 14 * k - W * .4); g.lineTo(cx + W, cy + i * 14 * k + W * .4); g.stroke(); } break;   // cleavage lines all one way
+    case 'tourmaline': fill('#17161b'); for (let x = cx - W; x < cx + W; x += R(3, 6) * k) { g.strokeStyle = rnd() < .3 ? 'rgba(130,128,150,.5)' : 'rgba(60,58,70,.6)'; g.lineWidth = R(.6, 1.4) * k; g.beginPath(); g.moveTo(x, cy - H); g.lineTo(x + R(-2, 2) * k, cy + H); g.stroke(); } break;   // fine lengthways grooves
+    case 'smoky': radial([[0, '#d0b494'], [.45, '#8e6e52'], [1, '#3a2c24']], -6, -18); break;
     case 'amethyst': fill('#7a4ab0'); veins('rgba(235,220,255,.55)', 5, 4); dots('rgba(60,30,100,.4)', 8, 6, 12); break;
   }
   if (form === 'donut') {   // round like a ring: dark at the inner and outer edges, lit across the middle of the band
@@ -675,12 +710,20 @@ function pebble(g, cx, cy, rx, ry, kind, glows, glow, form) {
     for (const [ox, a] of [[-.36, .42], [.36, .22]]) { const hg = g.createRadialGradient(cx + ox * rx, cy - ry * .32, 1, cx + ox * rx, cy - ry * .32, rx * .7); hg.addColorStop(0, `rgba(255,255,255,${a})`); hg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = hg; g.fillRect(cx - W, cy - H, W * 2, H * 2); }
     const eg = g.createRadialGradient(cx - rx * .1, cy - ry * .1, rx * .35, cx, cy, rx * 1.15); eg.addColorStop(0, 'rgba(0,0,0,0)'); eg.addColorStop(1, 'rgba(90,10,40,.55)'); g.fillStyle = eg; g.fillRect(cx - W, cy - H, W * 2, H * 2);
     const cg = g.createLinearGradient(cx, cy - ry * .75, cx, cy + ry * .2); cg.addColorStop(0, 'rgba(110,20,50,.4)'); cg.addColorStop(1, 'rgba(110,20,50,0)'); g.strokeStyle = cg; g.lineWidth = rx * .12; g.lineCap = 'round'; g.beginPath(); g.moveTo(cx, cy - ry * .62); g.lineTo(cx, cy + ry * .15); g.stroke();   // the dip between the lobes
+  } else if (faces) {   // each face lit by how it leans to the light
+    for (const f of faces) { g.fillStyle = f.t; g.beginPath(); f.pts.forEach((q, i) => i ? g.lineTo(...q) : g.moveTo(...q)); g.closePath(); g.fill(); }
   } else {
   const rim = g.createRadialGradient(cx - 10 * k, cy - 10 * k, ry * .4, cx, cy, rx * 1.05); rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = rim; g.fillRect(cx - W, cy - H, W * 2, H * 2);
   }
   g.restore();
   if (form === 'heart') { for (const [ox, w] of [[-.42, .16], [.3, .1]]) { g.fillStyle = 'rgba(255,255,255,.8)'; g.beginPath(); g.ellipse(cx + ox * rx, cy - ry * .5, rx * w, ry * w * .55, -.5, 0, 6.3); g.fill(); } }
   else if (form === 'donut') { g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = Math.max(1, ry * .09); g.lineCap = 'round'; g.beginPath(); g.ellipse(cx, cy, rx * .7, ry * .66, 0, Math.PI * 1.08, Math.PI * 1.55); g.stroke(); g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.ellipse(cx + rx * .62, cy - ry * .32, rx * .06, ry * .05, 0, 0, 6.3); g.fill(); }
+  else if (faces) {   // shine along the ridges, and a gleam on the lit face
+    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = Math.max(.8, 1.6 * k); g.lineCap = 'round';
+    for (const [a, b] of RIDGES[form]) { g.beginPath(); g.moveTo(...faces[a[0]].pts[a[1]]); g.lineTo(...faces[b[0]].pts[b[1]]); g.stroke(); }
+    const lit = faces[LIT[form]].pts, m = lit.reduce((s, q) => [s[0] + q[0] / lit.length, s[1] + q[1] / lit.length], [0, 0]);
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.ellipse(m[0] - rx * .08, m[1] - rx * .12, rx * .07, rx * .2, .35, 0, 6.3); g.fill();
+  }
   else {
   g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.ellipse(cx - rx * .38, cy - ry * .48, rx * .2, ry * .12, -.5, 0, 6.3); g.fill();
   g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.ellipse(cx + rx * .3, cy + ry * .45, rx * .25, ry * .07, -.2, 0, 6.3); g.fill();
@@ -738,8 +781,8 @@ function formation(g, x, y, ang, size, ty, glows) {
     }
     case 'tumbled': {
       const hx = x, hy = y - size * .25, n = RI(2, 3), kind = ty.pal.tumble;
-      const spots = n === 2 ? [[-.32, -.12, .34], [.28, .1, .38]] : [[-.36, -.2, .3], [.34, -.16, .3], [-.02, .14, .36]];
-      for (const [ox, oy, r] of spots) pebble(g, hx + ox * size, hy + oy * size * .7, size * r * R(.92, 1.08), size * r * ({ donut: .62, slice: .55, halfegg: .7, wand: .74, dome: .6 }[ty.pal.form] || .74) * R(.92, 1.08), kind, glows, ty.pal.glow, ty.pal.form);
+      const form = ty.pal.form, spots = form === 'obelisk' ? [[-.22, -.02, .3], [.18, .14, .38]] : form === 'pyramid' ? [[-.27, -.05, .33], [.25, .15, .36]] : n === 2 ? [[-.32, -.12, .34], [.28, .1, .38]] : [[-.36, -.2, .3], [.34, -.16, .3], [-.02, .14, .36]];
+      for (const [ox, oy, r] of spots) pebble(g, hx + ox * size, hy + oy * size * .7, size * r * R(.92, 1.08), size * r * ({ donut: .62, slice: .55, halfegg: .7, wand: .74, dome: .6, rhomb: .95, pyramid: 1.05, obelisk: 1.55 }[ty.pal.form] || .74) * R(.92, 1.08), kind, glows, ty.pal.glow, ty.pal.form);
       if (rnd() < .5) sparkAt(hx - size * .2, hy - size * .2, size * .1, st);
       break;
     }
@@ -762,9 +805,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 43, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 44, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 43) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 44) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -1348,6 +1391,8 @@ const TIPS = [
   'Ametrine is amethyst and citrine in one crystal: purple, then gold.',
   'Pyrite is called fool\'s gold: shiny golden cubes that grow in nature.',
   'Tumbled stones are polished pebbles: Sodalite has white veins, Bloodstone red spots, Zebra Jasper black stripes.',
+  'Calcite breaks into slanted boxes called rhombs. Look through clear Optical Calcite and you see double!',
+  'Pyramids and obelisks are carved by hand. A natural Tower has six sides; an Obelisk has four and a pointed cap.',
   'Labradorite flashes blue and green when the light catches it, and Moonstone glows with a soft blue sheen.',
   'Septarian has bright yellow cracks, Ocean Jasper little eye-like rings, and Petrified Wood the grain of an ancient tree.',
   'Galena is the silver cousin of pyrite, and bismuth crystals shimmer with every colour of the rainbow.',
