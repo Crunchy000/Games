@@ -23,9 +23,9 @@
   }).catch(() => {}));
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
 }</script>
-<title>Find the Sheep</title>
-<meta name="description" content="A cosy hidden-sheep hunt across a wide meadow. Find every sheep in a colourful knitted fleece that matches the one Bear and Bean are after, by colour, pattern and face: stripes, Fair Isle, tartan, patchwork and more. Tap a sheep to shoo it aside and see who is hiding behind. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
-<link rel="canonical" href="https://www.bearandbean.uk/find-the-sheep/">
+<title>Sheep Wearing Jumpers</title>
+<meta name="description" content="A cosy hidden-sheep hunt across a wide meadow, where freshly sheared sheep wear knitted jumpers. Find every sheep whose jumper matches the one Bear and Bean are after, by colour, pattern and face: stripes, Fair Isle, tartan, patchwork and more. Tap by a flock to scatter it and see who is hiding in the middle. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<link rel="canonical" href="https://www.bearandbean.uk/sheep-wearing-jumpers/">
 <style>
   :root { --bg:#eef1e2; --ink:#2e3326; --muted:#7a8470; --panel:#dde4cc; --card:#fbfcf5; --accent:#c8467a; }
   body.dark { --bg:#131a12; --ink:#e9f0e0; --muted:#9aa98e; --panel:#24301f; --card:#1a2317; --accent:#f08ab0; }
@@ -37,6 +37,7 @@
   header .grp { display:flex; gap:2px; }
   header h1 { margin:0; text-align:center; font-size:clamp(1.1rem, 5.6vw, 1.4rem); font-weight:900; white-space:nowrap; }
   header h1 span { color:var(--accent); }
+  header h1 { font-size:clamp(.95rem, 4.5vw, 1.4rem); white-space:normal; line-height:1.05; text-wrap:balance; min-width:0; }
   .ib { width:40px; height:40px; border:0; border-radius:12px; background:transparent; color:var(--ink); display:grid; place-items:center; cursor:pointer; padding:0; font:inherit; }
   .ib svg { width:23px; height:23px; }
   .info { width:100%; display:flex; align-items:center; gap:8px; padding:0 14px 6px; flex:none; font-weight:800; white-space:nowrap; }
@@ -281,7 +282,7 @@ document.addEventListener('click', e => {
       <button class="ib pk-home" aria-label="All games" onclick="BB.home()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg></button>
       <button class="ib pk-home" id="bHelp" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.3a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.4M12 17.2v.2"/></svg></button>
     </div>
-    <h1>Find the <span>Sheep</span></h1>
+    <h1>Sheep Wearing <span>Jumpers</span></h1>
     <div class="grp">
       <button class="ib pk-home" id="bTheme" aria-label="Dark mode"></button>
       <button class="ib pk-home" id="bSound" aria-label="Sound"></button>
@@ -289,7 +290,7 @@ document.addEventListener('click', e => {
   </header>
   <div class="info"><div><small>Hunt</small><span id="rnd">1/12</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="A new field">↻</button></div>
   <div class="main">
-  <div id="stage" aria-label="The meadow. Pinch to zoom, drag to look around, tap a matching sheep to find it, or another sheep to shoo it aside.">
+  <div id="stage" aria-label="The meadow. Pinch to zoom, drag to look around, tap a matching sheep to find it, or the grass by a flock to scatter it.">
     <canvas id="game"></canvas>
     <canvas id="mini" aria-label="Map of the whole field: tap or drag to look there"></canvas>
     <div class="zoom"><button class="tool pk-chip" id="bIn" aria-label="Zoom in">＋</button><button class="tool pk-chip" id="bOut" aria-label="Zoom out">－</button></div>
@@ -307,12 +308,12 @@ document.addEventListener('click', e => {
 <div class="ov" id="ovHelp"><div class="card pk-card">
   <div class="pk-presents"><img src="../icons/bear.png?v=406624f3" alt="">The Bear &amp; Bean presents<img src="../icons/bean.png?v=2ef68eca" alt=""></div>
   <button class="ib x" data-close aria-label="Close">✕</button>
-  <h2>Find the Sheep</h2>
+  <h2>Sheep Wearing Jumpers</h2>
   <div class="pk-steps">
-    <section class="pk-step"><div class=pk-step-art>🐑</div><h3>Find the sheep</h3><p>Bear and Bean are looking for one special sheep. Find every sheep in the meadow that matches it.</p></section>
-    <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check all three</h3><p>A match has the same <b>colour</b>, the same knitted <b>pattern</b> and the same <b>face</b>, black or white. Lots of sheep share one or two of those, so look closely.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🐑</div><h3>Find the sheep</h3><p>The sheep have just been sheared, so they're keeping warm in knitted jumpers. Bear and Bean are looking for one special jumper: find every sheep wearing a match.</p></section>
+    <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check all three</h3><p>A match has the same jumper <b>colour</b>, the same knitted <b>pattern</b> and the same <b>face</b>, black or white. Lots of sheep share one or two of those, so look closely.</p></section>
     <section class="pk-step"><div class=pk-step-art>🧶</div><h3>The patterns</h3><p><b>Stripy</b>, <b>Zigzag</b>, <b>Argyle</b> diamonds, <b>Spotty</b>, <b>Hearts</b>, <b>Starry</b>, <b>Fair Isle</b> snowflakes, <b>Tartan</b> checks and <b>Patchwork</b> quilt squares.</p></section>
-    <section class="pk-step"><div class=pk-step-art>👆</div><h3>Shoo and find</h3><p>The sheep huddle in flocks. <b>Tap</b> a sheep that isn't a match and it trots out of the way (5 points), so you can see who's hiding behind. Tap a match to find it.</p></section>
+    <section class="pk-step"><div class=pk-step-art>👆</div><h3>Scatter the flock</h3><p>The sheep huddle in flocks. <b>Tap the grass</b> by a flock and they scatter, then slowly huddle back together, so you can see who's hiding. Tap a match to find it. Tapping a sheep that isn't a match scatters them too, but costs 5 points.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p><b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom. Tap the little map to jump. A hint 🔍 costs 25; four-leaf clovers 🍀 under the flocks are a bonus.</p></section>
     <section class="pk-step"><div class=pk-step-art>🌙</div><h3>12 hunts a field</h3><p>More sheep to find as you go, and the day moves on every three hunts. Tap ↻ for a new field.</p></section>
   </div>
@@ -384,14 +385,11 @@ const sameType = (a, b) => a.col === b.col && a.pat === b.pat && a.face === b.fa
 const typeKey = ty => ty.col.n + '|' + ty.pat.k + '|' + ty.face.k;
 
 // the woolly body, in a sheep's own space: feet at (0, 0), facing right, about 80 across
-const BODY = { x: -4, y: -32, rx: 31, ry: 20 };
-function fleecePath() {
-  const p = new Path2D(), n = 22;
-  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, x = BODY.x + Math.cos(a) * BODY.rx * .93, y = BODY.y + Math.sin(a) * BODY.ry * .9, r = 6.4 + (i % 3) * .9; p.moveTo(x + r, y); p.arc(x, y, r, 0, Math.PI * 2); }
-  p.moveTo(BODY.x + BODY.rx, BODY.y); p.ellipse(BODY.x, BODY.y, BODY.rx, BODY.ry, 0, 0, Math.PI * 2);
-  return p;
-}
-const FLEECE = fleecePath();
+const BODY = { x: -3, y: -31, rx: 29, ry: 17 };
+// a sheared sheep: a slim smooth body and neck, the wool clipped short
+const SKIN = (() => { const p = new Path2D(); p.ellipse(-3, -31, 28, 14.5, 0, 0, Math.PI * 2);
+  p.moveTo(14, -42); p.quadraticCurveTo(24, -48, 31, -44); p.lineTo(33, -32); p.quadraticCurveTo(24, -26, 16, -22); p.closePath(); return p; })();
+const FLEECE = SKIN;
 // a knitted pattern over the body's box, in the fleece's colours
 function heart(g, x, y, s) { g.beginPath(); g.moveTo(x, y + s * .9); g.bezierCurveTo(x - s * 1.4, y - s * .1, x - s * .6, y - s * 1.1, x, y - s * .35); g.bezierCurveTo(x + s * .6, y - s * 1.1, x + s * 1.4, y - s * .1, x, y + s * .9); g.fill(); }
 function starShape(g, x, y, s) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? s * .45 : s; i ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.fill(); }
@@ -420,29 +418,62 @@ function paintPattern(g, ty) {
       g.strokeStyle = rgba(shade(c, -.45), .7); g.lineWidth = .7; g.setLineDash([1.4, 1.2]); for (let i = 0; i * s < W; i++) { g.beginPath(); g.moveTo(x0 + i * s, y0); g.lineTo(x0 + i * s, y1); g.stroke(); } for (let j = 0; j * s < H; j++) { g.beginPath(); g.moveTo(x0, y0 + j * s); g.lineTo(x1, y0 + j * s); g.stroke(); } g.setLineDash([]); break; }
   }
 }
+// the jumper: a knitted tube over the middle of the body, with the woolly fleece puffing out behind and below
+const JUMPER = (() => { const p = new Path2D();   // from the hem over the hips to the collar at the neck
+  p.moveTo(-19, -52); p.lineTo(17, -52); p.quadraticCurveTo(21, -42, 21, -31); p.quadraticCurveTo(21, -20, 17, -12);
+  p.lineTo(-19, -12); p.quadraticCurveTo(-23, -22, -23, -32); p.quadraticCurveTo(-23, -42, -19, -52); p.closePath(); return p; })();
+const JUMPER_TOP = (() => { const p = new Path2D(); p.ellipse(-1, -31.5, 27, 17.5, 0, 0, Math.PI * 2); return p; })();   // a little roomier than the sheep
+const WOOL = '#efe4d4';   // short sheared wool
+// little curls of wool over a woolly area
+function curls(g, x0, y0, x1, y1, col) { g.strokeStyle = col; g.lineWidth = .8; for (let y = y0, j = 0; y < y1; y += 4.2, j++) for (let x = x0 + (j % 2) * 2.4; x < x1; x += 4.8) { g.beginPath(); g.arc(x, y, 1.6, .4, 4.2); g.stroke(); } }
 // one sheep, facing right, feet at the origin
 function drawSheep(g, ty) {
-  const c = hex(ty.col.c), black = ty.face.k === 'black', faceC = black ? '#2b2326' : '#f6ecdc', legC = black ? '#2b2326' : '#5a4a44';
+  const c = hex(ty.col.c), black = ty.face.k === 'black', faceC = black ? '#2e2528' : '#f7eddd', faceHi = black ? '#4d4045' : '#fffaf2', legC = black ? '#2e2528' : '#6a5a52';
   g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(-2, 0, 30, 5.5, 0, 0, 6.3); g.fill();   // its shadow on the grass
   g.lineCap = 'round';
-  for (const [x, back] of [[-22, 1], [10, 1], [-15, 0], [17, 0]]) { g.strokeStyle = back ? rgba(shade(hex(legC), -.25)) : legC; g.lineWidth = 4.6; g.beginPath(); g.moveTo(x, -16); g.lineTo(x + (back ? -1 : 1), -1.5); g.stroke(); g.fillStyle = '#1d1719'; g.beginPath(); g.ellipse(x + (back ? -1 : 1), -1.2, 2.8, 1.7, 0, 0, 6.3); g.fill(); }
-  g.fillStyle = ty.col.c; g.beginPath(); g.arc(BODY.x - BODY.rx - 1, BODY.y - 4, 5.5, 0, 6.3); g.fill();   // a tail
-  g.strokeStyle = rgba(shade(c, -.5), .6); g.lineWidth = 2.2; g.stroke(FLEECE);   // the outline, behind: the fleece covers its inner lines
-  g.save(); g.clip(FLEECE); paintPattern(g, ty);
-  // knitted: rows of little V stitches, and the light from the top left
-  g.strokeStyle = 'rgba(0,0,0,.09)'; g.lineWidth = .8; for (let y = BODY.y - BODY.ry - 6; y < BODY.y + BODY.ry + 6; y += 3.4) { g.beginPath(); for (let x = BODY.x - BODY.rx - 8; x < BODY.x + BODY.rx + 8; x += 3) { g.moveTo(x, y); g.lineTo(x + 1.5, y + 1.8); g.lineTo(x + 3, y); } g.stroke(); }
-  const lg = g.createRadialGradient(BODY.x - 10, BODY.y - 14, 4, BODY.x, BODY.y, BODY.rx * 1.25); lg.addColorStop(0, 'rgba(255,255,255,.28)'); lg.addColorStop(.55, 'rgba(255,255,255,0)'); lg.addColorStop(1, 'rgba(0,0,0,.3)'); g.fillStyle = lg; g.fillRect(BODY.x - BODY.rx - 9, BODY.y - BODY.ry - 9, BODY.rx * 2 + 18, BODY.ry * 2 + 18);
+  // legs, the front pair in knitted sleeves
+  for (const [x, back] of [[-22, 1], [10, 1], [-15, 0], [17, 0]]) {
+    g.strokeStyle = back ? rgba(shade(hex(legC), -.25)) : legC; g.lineWidth = 4.6; g.beginPath(); g.moveTo(x, -20); g.lineTo(x + (back ? -1 : 1), -1.5); g.stroke();
+    g.fillStyle = '#1d1719'; g.beginPath(); g.ellipse(x + (back ? -1 : 1), -1.2, 2.8, 1.7, 0, 0, 6.3); g.fill();
+    if (x > 0) { g.fillStyle = back ? rgba(shade(c, -.25)) : ty.col.c; g.beginPath(); g.roundRect(x - 3.8, -24, 7.6, 15, 2.5); g.fill(); g.fillStyle = rgba(shade(hex(ty.col.alt), back ? -.2 : 0)); g.fillRect(x - 3.8, -11.5, 7.6, 2.8); }
+  }
+  // the sheared body: short creamy wool, a soft outline behind, a stubbly texture and a little tail
+  g.fillStyle = WOOL; g.beginPath(); g.ellipse(BODY.x - 27, BODY.y - 4, 3, 5, -.5, 0, 6.3); g.fill();
+  g.strokeStyle = 'rgba(120,100,84,.55)'; g.lineWidth = 2; g.stroke(SKIN); g.fillStyle = WOOL; g.fill(SKIN);
+  g.save(); g.clip(SKIN); g.fillStyle = 'rgba(150,120,100,.22)'; for (let y = -48; y < -14; y += 2.2) for (let x = -32 + (Math.round(y) % 2); x < 34; x += 2.6) g.fillRect(x, y, .8, .8);
+  const wl = g.createLinearGradient(0, -46, 0, -16); wl.addColorStop(0, 'rgba(255,255,255,.35)'); wl.addColorStop(1, 'rgba(120,90,70,.25)'); g.fillStyle = wl; g.fillRect(-34, -50, 70, 36);
   g.restore();
-  // the head: ears, face, eyes and a woolly topknot
-  const hx = 29, hy = -38;
-  g.fillStyle = faceC; for (const [ex, ey, a] of [[hx - 6, hy - 6, -2.6], [hx + 7, hy - 7, -.4]]) { g.save(); g.translate(ex, ey); g.rotate(a); g.beginPath(); g.ellipse(4, 0, 6, 2.6, 0, 0, 6.3); g.fill(); g.fillStyle = black ? '#5a3a40' : '#e8b4b0'; g.beginPath(); g.ellipse(4.4, 0, 3.6, 1.2, 0, 0, 6.3); g.fill(); g.restore(); g.fillStyle = faceC; }
-  g.save(); g.translate(hx, hy); g.rotate(.35);
-  const fg = g.createLinearGradient(-8, -10, 8, 10); fg.addColorStop(0, black ? '#4a3e42' : '#fffaf0'); fg.addColorStop(1, faceC); g.fillStyle = fg; g.beginPath(); g.ellipse(0, 2, 8.4, 11.5, 0, 0, 6.3); g.fill();
-  g.fillStyle = black ? '#151012' : '#d9a7a2'; g.beginPath(); g.ellipse(0, 11, 4, 2.6, 0, 0, 6.3); g.fill();   // nose
-  for (const ex of [-3.6, 3.6]) { g.fillStyle = '#fff'; g.beginPath(); g.ellipse(ex, 0, 2.3, 2.6, 0, 0, 6.3); g.fill(); g.fillStyle = '#1b1416'; g.beginPath(); g.arc(ex + .5, .5, 1.3, 0, 6.3); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(ex + 1, -.2, .45, 0, 6.3); g.fill(); }
+  // the jumper, with its pattern, knitted stitches, shading, and ribbing at the hem and the neck
+  g.save(); g.clip(JUMPER); g.clip(JUMPER_TOP); paintPattern(g, ty);
+  g.strokeStyle = 'rgba(0,0,0,.09)'; g.lineWidth = .8; for (let y = -54; y < -12; y += 3.4) { g.beginPath(); for (let x = -28; x < 28; x += 3) { g.moveTo(x, y); g.lineTo(x + 1.5, y + 1.8); g.lineTo(x + 3, y); } g.stroke(); }
+  const lg = g.createRadialGradient(-6, -46, 3, -2, -32, 30); lg.addColorStop(0, 'rgba(255,255,255,.26)'); lg.addColorStop(.55, 'rgba(255,255,255,0)'); lg.addColorStop(1, 'rgba(0,0,0,.3)'); g.fillStyle = lg; g.fillRect(-30, -56, 60, 44);
   g.restore();
-  g.fillStyle = ty.col.c; for (const [tx, ty2, r] of [[hx - 5, hy - 9, 4.2], [hx, hy - 11.5, 4.6], [hx + 5, hy - 9.5, 4]]) { g.beginPath(); g.arc(tx, ty2, r, 0, 6.3); g.fill(); }
-  g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.arc(hx - 1.5, hy - 13, 2, 0, 6.3); g.fill();
+  const rib = (pts, w) => { g.lineWidth = w; g.strokeStyle = ty.col.alt; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke();
+    g.lineWidth = .7; g.strokeStyle = 'rgba(0,0,0,.22)'; for (let i = 0; i < pts.length - 1; i++) { const [ax, ay] = pts[i], [bx, by] = pts[i + 1], n = Math.max(2, Math.round(Math.hypot(bx - ax, by - ay) / 2.2)); for (let k = 0; k < n; k++) { const t = k / n, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, l = Math.hypot(bx - ax, by - ay) || 1, nx = -(by - ay) / l * w * .45, ny = (bx - ax) / l * w * .45; g.beginPath(); g.moveTo(x - nx, y - ny); g.lineTo(x + nx, y + ny); g.stroke(); } } };
+  rib([[-16, -47.5], [-21, -42], [-23, -33], [-22, -23], [-18.5, -16]], 4);   // the hem, round the hips
+  rib([[15.5, -47], [20, -42], [22, -34], [21, -25], [17.5, -18.5]], 4.6);     // the collar, round the neck
+  g.save(); g.clip(JUMPER_TOP); g.strokeStyle = rgba(shade(c, -.45), .5); g.lineWidth = .9; g.stroke(JUMPER); g.restore(); g.save(); g.clip(JUMPER); g.stroke(JUMPER_TOP); g.restore();
+  // the head: long droopy ears, a gentle face with a soft muzzle, and a woolly cap
+  const hx = 31, hy = -40;
+  g.save(); g.translate(hx, hy); g.rotate(.28);
+  const ear = (x, y, a, back) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = back ? rgba(shade(hex(faceC), -.2)) : faceC; g.beginPath(); g.ellipse(6.5, 0, 7.5, 3, 0, 0, 6.3); g.fill(); g.fillStyle = black ? '#5c3c44' : '#efb7b4'; g.beginPath(); g.ellipse(7, .3, 4.8, 1.4, 0, 0, 6.3); g.fill(); g.restore(); };
+  ear(-5, -7, 2.75, true);   // the far ear, behind
+  const head = new Path2D(); head.moveTo(-8, -6); head.bezierCurveTo(-9, -14, 6, -15, 8, -7); head.bezierCurveTo(10, -1, 10, 7, 7, 12); head.bezierCurveTo(4, 16, -3, 16, -5, 12); head.bezierCurveTo(-8, 7, -8, 1, -8, -6); head.closePath();
+  const fg = g.createLinearGradient(-8, -12, 8, 14); fg.addColorStop(0, faceHi); fg.addColorStop(1, faceC); g.fillStyle = fg; g.fill(head);
+  g.fillStyle = black ? 'rgba(255,255,255,.06)' : 'rgba(150,110,90,.12)'; g.beginPath(); g.ellipse(1.5, 10, 6, 4.5, 0, 0, 6.3); g.fill();   // the muzzle
+  g.fillStyle = black ? '#120d0f' : '#c98e8a'; g.beginPath(); g.moveTo(-.6, 9.6); g.quadraticCurveTo(1.5, 8.2, 3.6, 9.6); g.quadraticCurveTo(1.5, 12, -.6, 9.6); g.fill();   // a nose
+  g.strokeStyle = black ? '#120d0f' : '#a86e6a'; g.lineWidth = .8; g.beginPath(); g.moveTo(1.5, 11.2); g.lineTo(1.5, 12.6); g.moveTo(-.8, 13.2); g.quadraticCurveTo(1.5, 14.6, 3.8, 13.2); g.stroke();   // and a little smile
+  for (const [ex, s] of [[-3.4, .9], [4, 1]]) {   // big friendly eyes
+    g.fillStyle = '#fff'; g.beginPath(); g.ellipse(ex, 0, 2.6 * s, 3 * s, 0, 0, 6.3); g.fill();
+    g.fillStyle = '#2a1d18'; g.beginPath(); g.ellipse(ex + .5, .6, 1.7 * s, 2.1 * s, 0, 0, 6.3); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(ex + 1.1, -.4, .7 * s, 0, 6.3); g.fill();
+    g.strokeStyle = black ? '#1a1214' : 'rgba(90,60,50,.55)'; g.lineWidth = .7; g.beginPath(); g.arc(ex, -.2, 3 * s, -2.7, -.45); g.stroke();   // a lid
+  }
+  if (!black) { g.fillStyle = 'rgba(240,140,140,.28)'; for (const ex of [-5.5, 6.5]) { g.beginPath(); g.ellipse(ex, 5.5, 2, 1.2, 0, 0, 6.3); g.fill(); } }   // rosy cheeks
+  ear(5, -8, -.35, false);   // the near ear
+  g.restore();
+  g.fillStyle = WOOL; for (const [tx, ty2, r] of [[hx - 4.5, hy - 10, 3], [hx - .5, hy - 12, 3.4], [hx + 3.5, hy - 11, 2.8]]) { g.beginPath(); g.arc(tx, ty2, r, 0, 6.3); g.fill(); }
+  curls(g, hx - 7, hy - 14, hx + 6, hy - 9, 'rgba(150,130,110,.3)');
 }
 // each kind of sheep is drawn once into a little picture, facing each way, and stamped from then on
 const SPR = { ox: 46, oy: 62, w: 92, h: 70, res: 3 };
@@ -456,11 +487,11 @@ function sprite(ty, dir) {
 
 /* ---------- saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 1, seed: 0, hunt: 1, found: [], moved: {}, clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
-const firstVisit = !localStorage.getItem('findthesheep');
-try { const s = JSON.parse(localStorage.getItem('findthesheep') || 'null'); if (s && s.v === 1) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
+let S = { v: 2, seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
+const firstVisit = !localStorage.getItem('sheepjumpers');
+try { const s = JSON.parse(localStorage.getItem('sheepjumpers') || 'null'); if (s && (s.v === 1 || s.v === 2)) { S = Object.assign(S, s); delete S.moved; S.v = 2; } else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
-const save = () => { try { localStorage.setItem('findthesheep', JSON.stringify(S)); } catch (e) {} };
+const save = () => { try { localStorage.setItem('sheepjumpers', JSON.stringify(S)); } catch (e) {} };
 
 /* ---------- planning a field from its seed: the hunts, the flocks, who stands where ---------- */
 const persp = y => .5 + .72 * clamp((y - CREST) / (WORLD_H - CREST), 0, 1);   // sheep at the back are smaller
@@ -627,16 +658,17 @@ function tapAt(x, y) {
   if (!field || busy) return;
   audio();
   // the sheep in front under the tap
-  let hit = null; for (let i = order.length - 1; i >= 0; i--) { const sh = order[i]; if (!sh.anim && hits(sh, x, y, 0)) { hit = sh; break; } }
-  if (!hit) for (let i = order.length - 1; i >= 0; i--) { const sh = order[i]; if (!sh.anim && hits(sh, x, y, 10 / zoom)) { hit = sh; break; } }   // a near miss on a small screen
-  if (!hit) {   // nothing woolly there: a clover?
+  let hit = null; for (let i = order.length - 1; i >= 0; i--) { const sh = order[i]; if (hits(sh, x, y, 0)) { hit = sh; break; } }
+  if (!hit) for (let i = order.length - 1; i >= 0; i--) { const sh = order[i]; if (hits(sh, x, y, 10 / zoom)) { hit = sh; break; } }   // a near miss on a small screen
+  if (!hit) {   // nothing woolly there: a clover, or the grass beside a flock
     const ci = field.plan.clovers.findIndex((c, i) => !S.clovers.includes(i) && Math.hypot(c.x - x, c.y - y) < Math.max(14 / zoom, c.r * 2.4));
-    if (ci >= 0) { const c = field.plan.clovers[ci]; S.clovers.push(ci); S.score += 75; save(); sClover(); buzz(15); burst(c.x, c.y, '#7fdc6a'); note('A four-leaf clover! +75'); renderHud(); }
+    if (ci >= 0) { const c = field.plan.clovers[ci]; S.clovers.push(ci); S.score += 75; save(); sClover(); buzz(15); burst(c.x, c.y, '#7fdc6a'); note('A four-leaf clover! +75'); renderHud(); return; }
+    if (scatter(x, y, .8)) sShoo();
     return;
   }
   if (hit.hunt === S.hunt - 1) {
     S.found.push(hit.slot); S.score += 100; if (hit === hintSheep) hintSheep = null;
-    leaving.push({ sh: hit, t: 0 }); sortSheep();
+    hit.anim = null; leaving.push({ sh: hit, t: 0, x: hit.x, y: hit.y }); sortSheep();
     sFound(S.found.length - 1); buzz(12); burst(hit.x, hit.y - 30 * hit.s, hit.type.col.c, 18);
     if (S.found.length >= targetsNow().length) {
       S.score += 150; save(); renderHud();
@@ -645,12 +677,25 @@ function tapAt(x, y) {
     } else { save(); renderHud(); }
     return;
   }
-  // not this one: it trots out of the way, so you can see who's behind
-  S.shoos++; S.score = Math.max(0, S.score - 5); sShoo(); buzz(8);
-  const dir = x < hit.x ? 1 : -1, dist = R(58, 80) * hit.s, nx = clamp(hit.x + dir * dist, 40, WORLD_W - 40), ny = clamp(hit.y + R(-8, 8) * hit.s, CREST + 40, WORLD_H - 30);
-  hit.anim = { x0: hit.x, y0: hit.y, x1: nx, y1: ny, t: 0 }; hit.dir = dir;
-  S.moved[hit.id] = [Math.round(nx), Math.round(ny), dir]; save(); renderHud();
+  // not this one: the sheep round about scatter, then slowly huddle back together
+  S.shoos++; S.score = Math.max(0, S.score - 5); save(); sShoo(); buzz(8); renderHud();
+  scatter(x, y, 1);
   note(`That's ${/^[AEIOU]/.test(hit.type.col.n) ? 'an' : 'a'} ${typeName(hit.type)}, ${hit.type.face.n}. Shoo! −5`);
+}
+// every sheep near (x, y) runs a little way out from it, waits, then wanders back to its place in the flock
+function scatter(x, y, k) {
+  const reach = 150 * persp(y) * k; let n = 0;
+  for (const sh of order) {
+    const dx = sh.x - x, dy = (sh.y - y) * 1.7, d = Math.hypot(dx, dy); if (d > reach) continue;
+    const ux = d > 1 ? dx / d : (Math.random() < .5 ? -1 : 1), uy = d > 1 ? dy / d : 0, push = (30 + 90 * (1 - d / reach)) * sh.s * (.8 + Math.random() * .4);
+    let tx = sh.x + ux * push, ty = sh.y + uy * push * .45;
+    const far = 150 * sh.s, hx = tx - sh.x0, hy = ty - sh.y0, hd = Math.hypot(hx, hy); if (hd > far) { tx = sh.x0 + hx / hd * far; ty = sh.y0 + hy / hd * far; }   // never too far from its place in the flock
+    tx = clamp(tx, 40, WORLD_W - 40); ty = clamp(ty, CREST + 40, WORLD_H - 30);
+    sh.anim = { ph: 'out', x0: sh.x, y0: sh.y, x1: tx, y1: ty, t: 0, wait: 1.2 + Math.random() * 1.8, sp: (16 + Math.random() * 10) * sh.s };
+    sh.dir = ux >= 0 ? 1 : -1; n++;
+  }
+  if (n) sortSheep();
+  return n;
 }
 function nextHunt() {
   S.hunt++; S.found = []; hintSheep = null; save(); sortSheep();
@@ -674,8 +719,10 @@ function win() {
 /* ---------- making fields ---------- */
 let busy = false;
 const TIPS = [
-  'A match is the same colour, the same pattern and the same face.',
-  'Tap a sheep that isn\'t a match and it trots out of the way. Who was hiding behind it?',
+  'A match is the same jumper colour, the same pattern and the same face.',
+  'The sheep have just been sheared, so Bear and Bean knitted them jumpers to keep warm.',
+  'Tap the grass by a flock and the sheep scatter, then slowly huddle back together. Who was hiding in the middle?',
+  'Tapping a sheep that isn\'t a match scatters the flock too, but costs 5 points.',
   'Some sheep have black faces and some white: check the face as well as the jumper.',
   'Tartan is criss-cross checks; Patchwork is little quilted squares.',
   'Fair Isle jumpers have bands of snowflakes, from islands far in the north of Scotland.',
@@ -687,14 +734,13 @@ const TIPS = [
 ];
 const loadingEl = $('loading');
 function makeField(fresh) {
-  if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.moved = {}; S.clovers = []; S.score = 0; S.shoos = 0; S.hints = 0; save(); }
+  if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.clovers = []; S.score = 0; S.shoos = 0; S.hints = 0; save(); }
   BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(4.6e6 / (WORLD_W * WORLD_H)));
   busy = true; $('tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)]; loadingEl.classList.add('show');
   return new Promise(res => setTimeout(() => {
     let plan;
     try { plan = planField(); } catch (e) { busy = false; loadingEl.classList.remove('show'); note('Sorry, the sheep wandered off. Tap ↻ for another field'); res(); return; }
     S.found = S.found.filter(i => i < plan.counts[S.hunt - 1]);
-    for (const sh of plan.sheep) { const m = S.moved[sh.id]; if (m) { sh.x = m[0]; sh.y = m[1]; sh.dir = m[2]; } }
     if (field && field.pic) field.pic.width = field.pic.height = 0;
     field = { plan, pic: null }; leaving = []; hintSheep = null;
     try { paintBackdrop(); } catch (e) { (window.__ftsErr = window.__ftsErr || []).push(String(e && e.stack || e).slice(0, 300)); }
@@ -844,12 +890,17 @@ function frame(now) {
     ctx.drawImage(field.pic, sx * BDPR, sy * BDPR, sw * BDPR, sh * BDPR, sx, sy, sw, sh); }
   field.plan.clovers.forEach((c, i) => { if (seen(c.x, c.y)) { clover(c.x, c.y, c.r); if (S.clovers.includes(i)) tick(c.x + c.r, c.y - c.r, 6 / Math.max(.6, zoom)); } });
   // sheep trotting aside, with a little hop
-  let moved = false;
-  for (const sh of order) if (sh.anim) { const a = sh.anim; a.t += dt / .55; const u = Math.min(1, a.t), e = u * u * (3 - 2 * u); sh.x = lerp(a.x0, a.x1, e); sh.y = lerp(a.y0, a.y1, e); if (u >= 1) { sh.anim = null; moved = true; } }
-  if (moved) sortSheep();
-  for (const sh of order) { if (!seen(sh.x, sh.y)) continue; const hop = sh.anim && !reduceMotion ? Math.abs(Math.sin(sh.anim.t * Math.PI * 3)) * 7 * sh.s : 0; drawOne(sh, sh.x, sh.y, hop); }
+  let moving = false;
+  for (const sh of order) { const a = sh.anim; if (!a) continue; moving = true; a.t += dt;
+    if (a.ph === 'out') { const u = Math.min(1, a.t / .5), e = 1 - (1 - u) * (1 - u); sh.x = lerp(a.x0, a.x1, e); sh.y = lerp(a.y0, a.y1, e); a.hop = reduceMotion ? 0 : Math.abs(Math.sin(u * Math.PI * 3)) * 7 * sh.s; if (u >= 1) { a.ph = 'wait'; a.t = 0; a.hop = 0; } }
+    else if (a.ph === 'wait') { if (a.t > a.wait) { a.ph = 'home'; a.t = 0; } }
+    else { const dx = sh.x0 - sh.x, dy = sh.y0 - sh.y, d = Math.hypot(dx, dy), step = a.sp * Math.min(1, a.t / .8) * dt;   // amble back, easing into a walk
+      if (d <= step || d < .5) { sh.x = sh.x0; sh.y = sh.y0; sh.dir = sh.dir0; sh.anim = null; }
+      else { sh.x += dx / d * step; sh.y += dy / d * step; if (Math.abs(dx) > 2) sh.dir = dx > 0 ? 1 : -1; a.hop = reduceMotion ? 0 : Math.abs(Math.sin(a.t * 7)) * 1.6 * sh.s; } } }
+  if (moving) sortSheep();
+  for (const sh of order) { if (!seen(sh.x, sh.y)) continue; drawOne(sh, sh.x, sh.y, sh.anim ? sh.anim.hop || 0 : 0); }
   // found sheep skip away with a happy bounce, fading
-  for (const L of leaving) { L.t += dt; const sh = L.sh, u = L.t / .9; drawOne(sh, sh.x + sh.dir * u * 40 * sh.s, sh.y, Math.abs(Math.sin(u * Math.PI * 2.5)) * 16 * sh.s, Math.max(0, 1 - u)); }
+  for (const L of leaving) { L.t += dt; const sh = L.sh, u = L.t / .9; drawOne(sh, L.x + sh.dir * u * 40 * sh.s, L.y, Math.abs(Math.sin(u * Math.PI * 2.5)) * 16 * sh.s, Math.max(0, 1 - u)); }
   leaving = leaving.filter(L => L.t < .9);
   const night = TIMES[todNow()].night; if (night) { ctx.fillStyle = `rgba(14,20,50,${night * .8})`; ctx.fillRect(camX, camY, viewW / zoom, viewH / zoom); }
   if (hintSheep) {
