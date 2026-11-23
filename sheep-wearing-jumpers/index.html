@@ -24,7 +24,7 @@
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
 }</script>
 <title>Sheep Wearing Jumpers</title>
-<meta name="description" content="A cosy hidden-sheep hunt across a wide meadow, where freshly sheared sheep wear knitted jumpers. Find every sheep whose jumper matches the one Bear and Bean are after, by colour, pattern and face: stripes, Fair Isle, tartan, patchwork and more. Tap by a flock to scatter it and see who is hiding in the middle. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A cosy hidden-sheep hunt across a wide meadow, where freshly sheared sheep wear knitted jumpers. Find every sheep whose jumper matches the one Bear and Bean are after, by colour and pattern: stripes, Fair Isle, tartan, patchwork and more. Tap by a flock to scatter it and see who is hiding in the middle. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://www.bearandbean.uk/sheep-wearing-jumpers/">
 <style>
   :root { --bg:#eef1e2; --ink:#2e3326; --muted:#7a8470; --panel:#dde4cc; --card:#fbfcf5; --accent:#c8467a; }
@@ -311,7 +311,7 @@ document.addEventListener('click', e => {
   <h2>Sheep Wearing Jumpers</h2>
   <div class="pk-steps">
     <section class="pk-step"><div class=pk-step-art>🐑</div><h3>Find the sheep</h3><p>The sheep have just been sheared, so they're keeping warm in knitted jumpers. Bear and Bean are looking for one special jumper: find every sheep wearing a match.</p></section>
-    <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check all three</h3><p>A match has the same jumper <b>colour</b>, the same knitted <b>pattern</b> and the same <b>face</b>, black or white. Lots of sheep share one or two of those, so look closely.</p></section>
+    <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check both</h3><p>A match has the same jumper <b>colour</b> and the same knitted <b>pattern</b>. Lots of sheep share one of those, so look closely.</p></section>
     <section class="pk-step"><div class=pk-step-art>🧶</div><h3>The patterns</h3><p><b>Stripy</b>, <b>Zigzag</b>, <b>Argyle</b> diamonds, <b>Spotty</b>, <b>Hearts</b>, <b>Starry</b>, <b>Fair Isle</b> snowflakes, <b>Tartan</b> checks and <b>Patchwork</b> quilt squares.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Scatter the flock</h3><p>The sheep huddle in flocks. <b>Tap the grass</b> by a flock and they scatter wide for a few seconds, then slowly huddle back together, so you can see who's hiding in the middle. Tap a match to find it. Tapping a sheep that isn't a match scatters them too, but costs 5 points.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p><b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom. Tap the little map to jump. A hint 🔍 costs 25; four-leaf clovers 🍀 under the flocks are a bonus.</p></section>
@@ -358,7 +358,7 @@ const rgba = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
 const mix = (c, d, t) => [lerp(c[0], d[0], t), lerp(c[1], d[1], t), lerp(c[2], d[2], t)];
 const shade = (c, t) => t < 0 ? mix(c, [0, 0, 0], -t) : mix(c, [255, 255, 255], t);
 
-/* ---------- the sheep: a fleece colour, a knitted pattern and a face ---------- */
+/* ---------- the sheep: every one has a black face, and wears a jumper of one colour and one knitted pattern ---------- */
 const COLOURS = [   // base fleece, the pattern's main yarn, and a third yarn
   { n: 'Raspberry', c: '#e0457b', ink: '#fff0f5', alt: '#8e1d4a' },
   { n: 'Tangerine', c: '#f5882c', ink: '#fff3e0', alt: '#9c4310' },
@@ -379,10 +379,10 @@ const PATTERNS = [
   { k: 'tartan', n: 'Tartan', t: 'criss-cross checks' },
   { k: 'quilt', n: 'Patchwork', t: 'quilted squares' },
 ];
-const FACES = [{ k: 'white', n: 'white face' }, { k: 'black', n: 'black face' }];
-const typeName = ty => `${ty.col.n} ${ty.pat.n} Sheep`, typeTraits = ty => `${ty.pat.t} · ${ty.face.n}`;
-const sameType = (a, b) => a.col === b.col && a.pat === b.pat && a.face === b.face;
-const typeKey = ty => ty.col.n + '|' + ty.pat.k + '|' + ty.face.k;
+const FACES = [{ k: 'black', n: 'black face' }];
+const typeName = ty => `${ty.col.n} ${ty.pat.n} Sheep`, typeTraits = ty => ty.pat.t;
+const sameType = (a, b) => a.col === b.col && a.pat === b.pat;
+const typeKey = ty => ty.col.n + '|' + ty.pat.k;
 
 // the woolly body, in a sheep's own space: feet at (0, 0), facing right, about 80 across
 const BODY = { x: -3, y: -31, rx: 29, ry: 17 };
@@ -487,9 +487,9 @@ function sprite(ty, dir) {
 
 /* ---------- saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 5, seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 6, seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('sheepjumpers');
-try { const s = JSON.parse(localStorage.getItem('sheepjumpers') || 'null'); if (s && s.v === 5) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem('sheepjumpers') || 'null'); if (s && s.v === 6) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('sheepjumpers', JSON.stringify(S)); } catch (e) {} };
 
@@ -498,13 +498,13 @@ const persp = y => .74 + 1.02 * clamp((y - CREST) / (WORLD_H - CREST), 0, 1);   
 let field = null;   // the field on screen: its plan, its painted backdrop and its sheep
 function planField() {
   rnd = mulberry(S.seed);
-  const combos = []; for (const col of COLOURS) for (const pat of PATTERNS) for (const face of FACES) combos.push({ col, pat, face }); shuffle(combos);
+  const combos = []; for (const col of COLOURS) for (const pat of PATTERNS) combos.push({ col, pat, face: FACES[0] }); shuffle(combos);
   // the hunts: no two of the same colour and pattern
   const hunts = []; for (const c of combos) { if (hunts.length >= HUNTS) break; if (!hunts.some(h => h.col === c.col && h.pat === c.pat)) hunts.push(c); }
-  const isHunt = c => hunts.some(h => sameType(h, c)), shared = (a, b) => (a.col === b.col) + (a.pat === b.pat) + (a.face === b.face);
-  // lookalikes for each hunt: the same sheep with the other face, the same pattern in another colour, the same colour in another pattern
+  const isHunt = c => hunts.some(h => sameType(h, c)), shared = (a, b) => (a.col === b.col) + (a.pat === b.pat);
+  // lookalikes for each hunt: the same pattern in another colour, the same colour in another pattern
   const decoys = [], add = c => { if (c && !isHunt(c) && !decoys.includes(c)) decoys.push(c); };
-  for (const h of hunts) { add(combos.find(c => c.col === h.col && c.pat === h.pat && c.face !== h.face)); add(combos.find(c => c.pat === h.pat && c.col !== h.col && !isHunt(c) && !decoys.includes(c))); add(combos.find(c => c.col === h.col && c.pat !== h.pat && !isHunt(c) && !decoys.includes(c))); }
+  for (const h of hunts) { add(combos.find(c => c.pat === h.pat && c.col !== h.col && !isHunt(c) && !decoys.includes(c))); add(combos.find(c => c.col === h.col && c.pat !== h.pat && !isHunt(c) && !decoys.includes(c))); }
   const fillers = combos.filter(c => !isHunt(c) && !decoys.includes(c) && hunts.every(h => shared(c, h) <= 1)).slice(0, 30);
   // the shape of the land
   const hills = { f1: R(.003, .005), p1: R(0, 6.3), a1: R(18, 34), f2: R(.007, .011), p2: R(0, 6.3), a2: R(6, 14), far: R(70, 100) };
@@ -680,7 +680,7 @@ function tapAt(x, y) {
   // not this one: the sheep round about scatter, then slowly huddle back together
   S.shoos++; S.score = Math.max(0, S.score - 5); save(); sShoo(); buzz(8); renderHud();
   scatter(x, y, 1);
-  note(`That's ${/^[AEIOU]/.test(hit.type.col.n) ? 'an' : 'a'} ${typeName(hit.type)}, ${hit.type.face.n}. Shoo! −5`);
+  note(`That's ${/^[AEIOU]/.test(hit.type.col.n) ? 'an' : 'a'} ${typeName(hit.type)}. Shoo! −5`);
 }
 // every sheep near (x, y) runs a little way out from it, waits, then wanders back to its place in the flock
 function scatter(x, y, k) {
@@ -739,11 +739,10 @@ function win() {
 /* ---------- making fields ---------- */
 let busy = false;
 const TIPS = [
-  'A match is the same jumper colour, the same pattern and the same face.',
+  'A match is the same jumper colour and the same knitted pattern.',
   'The sheep have just been sheared, so Bear and Bean knitted them jumpers to keep warm.',
   'Tap the grass by a flock and the sheep scatter, then slowly huddle back together. Who was hiding in the middle?',
   'Tapping a sheep that isn\'t a match scatters the flock too, but costs 5 points.',
-  'Some sheep have black faces and some white: check the face as well as the jumper.',
   'Tartan is criss-cross checks; Patchwork is little quilted squares.',
   'Fair Isle jumpers have bands of snowflakes, from islands far in the north of Scotland.',
   'Argyle is diamonds with thin criss-cross lines, like a cosy pair of socks.',
@@ -955,7 +954,7 @@ if (/[?&]debug\b/.test(location.search)) window.__fts = {
         g.strokeStyle = rgba(shade(c0, .45), .55); for (let k = -4; k <= 4; k++) { g.beginPath(); g.ellipse(x, y + k * r * .2, r * 1.3, r * .3, -.4, 0, 6.3); g.stroke(); }
         g.restore();
         for (const [a, d] of [[-1.05, 0], [-.75, r * .25]]) { g.save(); g.translate(x + r * .3 + d, y - r * .2); g.rotate(a); g.fillStyle = '#c9a26a'; g.fillRect(-r * .06, -r * 2.2, r * .12, r * 2.6); g.fillStyle = '#e0457b'; g.beginPath(); g.arc(0, -r * 2.25, r * .16, 0, 6.3); g.fill(); g.restore(); }
-      } else { const [x, y, k, ci, pi, fi, dir] = it; g.save(); g.translate(x, y); g.scale(k * dir, k); drawSheep(g, { col: COLOURS[ci], pat: PATTERNS[pi], face: FACES[fi] }); g.restore(); }
+      } else { const [x, y, k, ci, pi, fi, dir] = it; g.save(); g.translate(x, y); g.scale(k * dir, k); drawSheep(g, { col: COLOURS[ci], pat: PATTERNS[pi], face: FACES[0] }); g.restore(); }
     }
     return c.toDataURL('image/webp', .88);
   },
@@ -963,7 +962,7 @@ if (/[?&]debug\b/.test(location.search)) window.__fts = {
     const cw = 88, rh = 70, c = document.createElement('canvas'); c.width = cw * PATTERNS.length * 2; c.height = rh * COLOURS.length * 2 + 60; c.style.cssText = 'position:fixed;left:0;top:0;z-index:99;width:' + c.width / 2 + 'px';
     const g = c.getContext('2d'); g.scale(2, 2); g.fillStyle = '#7cb653'; g.fillRect(0, 0, c.width, c.height);
     g.font = '700 11px system-ui'; g.textAlign = 'center'; g.fillStyle = '#123'; PATTERNS.forEach((p, i) => g.fillText(p.n, i * cw + cw / 2, 14));
-    COLOURS.forEach((col, r) => PATTERNS.forEach((pat, i) => { g.save(); g.translate(i * cw + cw / 2, 20 + r * rh + rh - 6); g.scale(.95, .95); drawSheep(g, { col, pat, face: FACES[(i + r) % 2] }); g.restore(); }));
+    COLOURS.forEach((col, r) => PATTERNS.forEach((pat, i) => { g.save(); g.translate(i * cw + cw / 2, 20 + r * rh + rh - 6); g.scale(.95, .95); drawSheep(g, { col, pat, face: FACES[0] }); g.restore(); }));
     document.body.appendChild(c); return [c.width / 2, c.height / 2];
   },
 };
