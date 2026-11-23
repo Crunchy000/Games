@@ -343,7 +343,7 @@ document.addEventListener('click', e => {
 const $ = id => document.getElementById(id);
 const stage = $('stage'), cv = $('game'), ctx = cv.getContext('2d'), wantCv = $('want'), wctx = wantCv.getContext('2d');
 // the field is a wide world of its own; the screen is a camera on it
-const WORLD_W = 1500, WORLD_H = 1100, CREST = 300;   // the meadow starts below the hills at CREST
+const WORLD_W = 2100, WORLD_H = 1340, CREST = 300;   // the meadow starts below the hills at CREST
 let DPR = 1, BDPR = 1;
 /* ---------- seeded randomness ---------- */
 let rnd = Math.random;
@@ -487,14 +487,14 @@ function sprite(ty, dir) {
 
 /* ---------- saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 7, seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 9, seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('sheepjumpers');
-try { const s = JSON.parse(localStorage.getItem('sheepjumpers') || 'null'); if (s && s.v === 7) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem('sheepjumpers') || 'null'); if (s && s.v === 9) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('sheepjumpers', JSON.stringify(S)); } catch (e) {} };
 
 /* ---------- planning a field from its seed: the hunts, the flocks, who stands where ---------- */
-const persp = y => .74 + 1.02 * clamp((y - CREST) / (WORLD_H - CREST), 0, 1);   // sheep at the back are smaller
+const persp = y => 1.11 + 1.53 * clamp((y - CREST) / (WORLD_H - CREST), 0, 1);   // sheep at the back are smaller
 let field = null;   // the field on screen: its plan, its painted backdrop and its sheep
 function planField() {
   rnd = mulberry(S.seed);
@@ -510,19 +510,25 @@ function planField() {
   const hills = { f1: R(.003, .005), p1: R(0, 6.3), a1: R(18, 34), f2: R(.007, .011), p2: R(0, 6.3), a2: R(6, 14), far: R(70, 100) };
   const picnic = { x: R(.3, .7) * WORLD_W, y: CREST + (WORLD_H - CREST) * R(.32, .5) };
   // the flocks: tight bunches with a few strays between, back to front
-  const sheep = [], flocks = [], nF = RI(6, 7);
+  const sheep = [], flocks = [], nF = RI(8, 9);
   for (let f = 0; f < nF; f++) {
     let fx, fy, tries = 0;
-    do { fx = R(150, WORLD_W - 150); fy = R(CREST + 90, WORLD_H - 110); tries++; } while (tries < 60 && (flocks.some(o => Math.hypot((o.x - fx) * .8, (o.y - fy) * 1.6) < 430) || Math.hypot((fx - picnic.x) * .7, (fy - picnic.y) * 1.5) < 220));
-    flocks.push({ x: fx, y: fy, n: RI(30, 42) });
+    do { fx = R(150, WORLD_W - 150); fy = R(CREST + 90, WORLD_H - 110); tries++; } while (tries < 60 && (flocks.some(o => Math.hypot((o.x - fx) * .8, (o.y - fy) * 1.6) < 600) || Math.hypot((fx - picnic.x) * .7, (fy - picnic.y) * 1.5) < 220));
+    flocks.push({ x: fx, y: fy, n: RI(38, 52) });
   }
+  const ps = persp(picnic.y), pw = 200 * ps, ph = pw * .8;   // the picnic picture, standing on its spot
+  picnic.box = [picnic.x - pw / 2 - 8, picnic.y - ph * .78 - 8, picnic.x + pw / 2 + 8, picnic.y + ph * .22 + 8];
+  const onPicnic = (x, y, s) => x + 34 * s > picnic.box[0] && x - 34 * s < picnic.box[2] && y > picnic.box[1] && y - 56 * s < picnic.box[3];
   const tooClose = (x, y, s) => sheep.some(o => { const k = (o.s + s) / 2, ox = 62 * k - Math.abs(o.x - x), oy = 34 * k - Math.abs(o.y - y); return ox > 0 && oy > 0 && ox * oy > .25 * 62 * 34 * k * k; });   // no sheep more than a quarter behind another
   for (const F of flocks) for (let i = 0; i < F.n; i++) {
     for (let t = 0; t < 60; t++) { const y = clamp(F.y + gauss() * 88, CREST + 75, WORLD_H - 40), s = persp(y), x = clamp(F.x + gauss() * 235 * s, 50, WORLD_W - 50);
-      if (tooClose(x, y, s) || Math.hypot((x - picnic.x) * .7, (y - picnic.y) * 1.5) < 150) continue;
+      if (tooClose(x, y, s)) continue;
       sheep.push({ x, y, s, dir: rnd() < .5 ? 1 : -1 }); break; }
   }
-  for (let i = 0; i < 26; i++) { const y = R(CREST + 75, WORLD_H - 40), s = persp(y), x = R(50, WORLD_W - 50); if (!tooClose(x, y, s) && Math.hypot((x - picnic.x) * .7, (y - picnic.y) * 1.5) > 150) sheep.push({ x, y, s, dir: rnd() < .5 ? 1 : -1 }); }
+  // then fill the rest of the meadow: sheep wherever there's room, a few more of them near the flocks
+  const nearFlock = (x, y) => flocks.some(F => Math.hypot((F.x - x) * .6, (F.y - y) * 1.4) < 320);
+  for (let t = 0; t < 9000 && sheep.length < 330; t++) { const y = R(CREST + 75, WORLD_H - 40), s = persp(y), x = R(50, WORLD_W - 50);
+    if ((nearFlock(x, y) || rnd() < .55) && !tooClose(x, y, s)) sheep.push({ x, y, s, dir: rnd() < .5 ? 1 : -1 }); }
   sheep.forEach((sh, i) => { sh.id = i; sh.x0 = sh.x; sh.y0 = sh.y; sh.dir0 = sh.dir; });
   // the hunted sheep, spread out over the field
   const pool = shuffle(sheep.slice()), counts = [];
@@ -567,8 +573,8 @@ function paintBackdrop() {
   // a dry stone wall along the top of the field
   for (let x = 0; x < WORLD_W; x += 9) { const y = crest(x) + 10; g.fillStyle = rgba(shade([150, 140, 124], R(-.3, .1)).map(v => v * (1 - TIMES[todNow()].night)), 1); g.beginPath(); g.ellipse(x, y, R(5, 7), R(3, 4.5), 0, 0, 6.3); g.fill(); }
   // soft patches of light and shade, mown stripes, and tufts of grass all over
-  for (let i = 0; i < 40; i++) { const y = R(CREST, WORLD_H), x = R(0, WORLD_W), r = R(60, 160) * persp(y), gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rnd() < .5 ? 'rgba(255,255,200,.08)' : 'rgba(0,30,0,.08)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
-  { g.save(); g.lineCap = 'round'; const n = 5200; for (let i = 0; i < n; i++) { const y = CREST + (WORLD_H - CREST) * Math.pow(rnd(), .8), x = R(0, WORLD_W), s = persp(y), h = R(5, 11) * s;
+  for (let i = 0; i < 60; i++) { const y = R(CREST, WORLD_H), x = R(0, WORLD_W), r = R(60, 160) * persp(y), gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rnd() < .5 ? 'rgba(255,255,200,.08)' : 'rgba(0,30,0,.08)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  { g.save(); g.lineCap = 'round'; const n = 9000; for (let i = 0; i < n; i++) { const y = CREST + (WORLD_H - CREST) * Math.pow(rnd(), .8), x = R(0, WORLD_W), s = persp(y), h = R(5, 11) * s;
       g.strokeStyle = T.grass[RI(0, 2)]; g.globalAlpha = .75; g.lineWidth = Math.max(.7, 1.3 * s); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + R(-2, 2) * s, y - h * .6, x + R(-4, 4) * s, y - h); g.stroke(); }
     g.restore(); }
   // daisies and buttercups? no: this meadow is for sheep. Little stones and molehills instead
@@ -694,7 +700,7 @@ function scatter(x, y, k) {
     const ux = dx / (Math.hypot(dx, dy) || 1), uy = dy / (Math.hypot(dx, dy) || 1);
     let tx = cx + dx * 2.5 + ux * 46 * sh.s + (Math.random() - .5) * 24 * sh.s, ty = cy + dy * 2.2 + uy * 18 * sh.s + (Math.random() - .5) * 10 * sh.s;
     const far = 330 * sh.s, hx = tx - sh.x0, hy = ty - sh.y0, hd = Math.hypot(hx, hy); if (hd > far) { tx = sh.x0 + hx / hd * far; ty = sh.y0 + hy / hd * far; }   // never too far from its place in the flock
-    const pc = field.plan.picnic; for (let k = 0; k < 12 && Math.hypot((tx - pc.x) * .7, (ty - pc.y) * 1.5) < 150; k++) tx += (tx >= pc.x ? 1 : -1) * 22;   // and off Bear and Bean's picnic blanket
+    const pb = field.plan.picnic.box, onP = (x, y) => x + 34 * sh.s > pb[0] && x - 34 * sh.s < pb[2] && y > pb[1] && y - 56 * sh.s < pb[3];    // and off Bear and Bean's picnic blanket
     tx = clamp(tx, 40, WORLD_W - 40); ty = clamp(ty, CREST + 75, WORLD_H - 30);
     sh.anim = { ph: 'out', x0: sh.x, y0: sh.y, x1: tx, y1: ty, t: 0, wait: 3.5 + Math.random() * 2.5, sp: (15 + Math.random() * 9) * sh.s };
   }
