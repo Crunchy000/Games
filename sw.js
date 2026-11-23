@@ -7,7 +7,7 @@
    - anything else: answer from the saved copy and refresh it quietly
    - activate: delete the copies saved by older versions
    - a page can ask which version is running: postMessage('version') */
-const VERSION = 'games-47851bda850f';
+const VERSION = 'games-af93f80b5062';
 const STAMPED = 'bb-stamped';
 const FILES = [
   './',
