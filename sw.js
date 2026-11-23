@@ -7,7 +7,7 @@
    - anything else: answer from the saved copy and refresh it quietly
    - activate: delete the copies saved by older versions
    - a page can ask which version is running: postMessage('version') */
-const VERSION = 'games-b40db3cf2d1b';
+const VERSION = 'games-1c35c893ae2e';
 const STAMPED = 'bb-stamped';
 const FILES = [
   './',
@@ -15,6 +15,7 @@ const FILES = [
   './icons/apple-touch-icon.png?v=0ef76193',
   './icons/bean.png?v=2ef68eca',
   './icons/bear.png?v=406624f3',
+  './icons/card-sheep-wearing-jumpers.webp?v=b8407b98',
   './icons/favicon-32.png?v=aada1fbe',
   './icons/icon-192.png?v=01a66771',
   './icons/icon-512.png?v=2701a8de',
