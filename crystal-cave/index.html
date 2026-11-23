@@ -1057,9 +1057,44 @@ function planFloor(T) {
   });
   const counts = assignHunts(slots, hunts, decoys, fillers);
   for (const s of slots) if (s.type.shape.k === 'tumbled') { s.y = Math.max(s.y, baseY(s.x) + s.size * .55); s.cx = s.x; s.cy = s.y - s.size * .25; }   // heaps sit on the floor, never up against the wall
-  return { kind: 'floor', hw: hwFront, hunts, counts, decoys, slots, decor, items, fossils, rock, theme, mineral, pool, y0, yF, baseY, frontY, persp, tiers, faceH, lipAt, falls, pond, hole, sky, view: { x: pool.x, y: pool.y - 120 }, water: { falls, pond } };
+  const drips = []; for (let i = 0; i < 7; i++) { const y = R(y0 + 80, H - 80); drips.push({ x: R(60, W - 60), y, s: persp(y), p: rnd(), f: R(.18, .3) }); }   // drops from the roof landing in the flood
+  return { kind: 'floor', hw: hwFront, hunts, counts, decoys, slots, decor, items, fossils, rock, theme, mineral, pool, y0, yF, baseY, frontY, persp, tiers, faceH, lipAt, falls, pond, hole, sky, view: { x: pool.x, y: pool.y - 120 }, water: { falls, pond, drips } };
 }
 // a rounded boulder, lit from above
+// floor detail: sand, stains, little branching dendrites, gravel and cave popcorn, all flat and small so none of it looks like a crystal
+const WATER = [26, 132, 196], WATER_DEEP = [10, 62, 128], WATER_MILK = [150, 226, 246];   // the shallow flood on the crystal floor
+function sandPatch(g, x, y, rx, ry, col, s) {
+  const sand = mix(col, [232, 206, 158], .45);
+  g.save(); g.translate(x, y); g.scale(1, ry / rx);
+  const sg = g.createRadialGradient(0, 0, 0, 0, 0, rx); sg.addColorStop(0, rgba(sand, .55)); sg.addColorStop(.65, rgba(sand, .35)); sg.addColorStop(1, rgba(sand, 0)); g.fillStyle = sg; g.fillRect(-rx, -rx, rx * 2, rx * 2);
+  g.restore();
+  const clipE = new Path2D(); clipE.ellipse(x, y, rx * .78, ry * .72, 0, 0, 6.3); g.save(); g.clip(clipE);
+  const o = R(0, 9), tilt = R(-.15, .15);
+  for (let i = -5; i <= 5; i++) { const yy = y + i * ry * .16; for (const [dy, c] of [[1.4 * s, 'rgba(90,64,34,.2)'], [0, rgba(shade(sand, .4), .45)]]) { g.strokeStyle = c; g.lineWidth = 1.1 * s; g.beginPath();
+    for (let xx = x - rx; xx <= x + rx; xx += 5) { const v = yy + dy + Math.sin((xx - x) / (11 * s) + i * 1.7 + o) * 2.2 * s + (xx - x) * tilt; xx > x - rx ? g.lineTo(xx, v) : g.moveTo(xx, v); } g.stroke(); } }   // wind-and-water ripples
+  g.restore();
+  for (let i = 0; i < 160; i++) { const a = R(0, 6.3), d = Math.sqrt(rnd()) * .9; g.fillStyle = rnd() < .5 ? rgba(shade(sand, .35), .7) : rgba(shade(sand, -.35), .55); const q = R(.6, 1.3) * s; g.fillRect(x + Math.cos(a) * rx * d, y + Math.sin(a) * ry * d, q, q); }   // grains
+}
+function stain(g, x, y, r, col) {   // a soft blot of iron or manganese, spreading along the floor
+  for (let i = 0; i < 7; i++) { const ex = x + R(-1, 1) * r * .7, ey = y + R(-.4, .4) * r * .5, er = r * R(.35, .7), gr = g.createRadialGradient(ex, ey, 0, ex, ey, er);
+    gr.addColorStop(0, rgba(col, .16)); gr.addColorStop(1, rgba(col, 0)); g.save(); g.translate(ex, ey); g.scale(1, .45); g.translate(-ex, -ey); g.fillStyle = gr; g.fillRect(ex - er, ey - er, er * 2, er * 2); g.restore(); }
+}
+function dendrite(g, x, y, len, ang, depth, s) {   // black mineral ferns, painted flat on the stone
+  if (depth <= 0 || len < 2) return;
+  const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len * .5;
+  g.lineWidth = Math.max(.5, depth * .45 * s); g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke();
+  const n = RI(2, 3); for (let i = 0; i < n; i++) dendrite(g, x2, y2, len * R(.5, .72), ang + R(-.8, .8), depth - 1, s);
+}
+function gravel(g, x, y, r, col) {
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x + r * .25, y + r * .35, r * 1.05, r * .5, 0, 0, 6.3); g.fill();
+  const gr = g.createRadialGradient(x - r * .35, y - r * .35, 0, x, y, r); gr.addColorStop(0, rgba(shade(col, .35))); gr.addColorStop(1, rgba(shade(col, -.25)));
+  g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, r, r * .72, R(-.4, .4), 0, 6.3); g.fill();
+}
+function popcorn(g, x, y, r, col) {   // knobbly crust that grows where water seeps
+  for (let i = 0; i < 14; i++) { const a = R(0, 6.3), d = Math.sqrt(rnd()) * r, px = x + Math.cos(a) * d, py = y + Math.sin(a) * d * .5, q = R(1.2, 2.6) * r / 18;
+    g.fillStyle = rgba(shade(col, -.3), .5); g.beginPath(); g.arc(px + q * .3, py + q * .4, q, 0, 6.3); g.fill();
+    g.fillStyle = rgba(shade(col, .3), .9); g.beginPath(); g.arc(px, py, q, 0, 6.3); g.fill(); g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.arc(px - q * .35, py - q * .35, q * .35, 0, 6.3); g.fill(); }
+}
 function boulder(g, x, y, s, col) {
   g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y, s * .8, s * .2, 0, 0, 6.3); g.fill();
   const pts = [], o = R(0, 50);
@@ -1084,7 +1119,10 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
   const hwFrontOf = pl => pl.hw;
   const floorPath = (() => { const p = new Path2D(), x0 = W / 2 - hwFrontOf(plan), x1 = W / 2 + hwFrontOf(plan), top = x => Math.min(baseY(x), Math.max(frontY(x), y0)), bot = x => Math.max(frontY(x), top(x));
     for (let x = x0; x <= x1; x += 6) x > x0 ? p.lineTo(x, top(x)) : p.moveTo(x, top(x)); for (let x = x1; x >= x0; x -= 6) p.lineTo(x, bot(x)); p.closePath(); return p; })();
-  const formationOp = it => () => { rnd = mulberry(it.seed); curSlot = it.i; const n0 = glows.length; formation(g, it.x, it.y, it.ang, it.size, it.type, glows); for (let k = n0; k < glows.length; k++) glows[k][4] = it.i; curSlot = -1; };
+  const wetRing = (it, half) => { const tum = it.type.shape.k === 'tumbled', bx = it.x, by = it.y + (tum ? it.size * .02 : 0), rx = it.size * (tum ? .62 : .4), ry = rx * .28;
+    if (half) { const wg = g.createRadialGradient(bx, by, 0, bx, by, rx); wg.addColorStop(0, rgba(WATER, .5)); wg.addColorStop(1, rgba(WATER, 0)); g.save(); g.translate(bx, by); g.scale(1, .28); g.translate(-bx, -by); g.fillStyle = wg; g.fillRect(bx - rx, by - rx, rx * 2, rx * 2); g.restore(); }   // the crystal's foot, under the water
+    g.strokeStyle = `rgba(255,255,255,${half ? .42 : .22})`; g.lineWidth = Math.max(.8, it.size * .018); g.beginPath(); g.ellipse(bx, by, rx, ry, 0, half ? 0 : Math.PI, half ? Math.PI : Math.PI * 2); g.stroke(); };   // a ring where it meets the surface
+  const formationOp = it => () => { rnd = mulberry(it.seed); curSlot = it.i; wetRing(it, false); const n0 = glows.length; formation(g, it.x, it.y, it.ang, it.size, it.type, glows); for (let k = n0; k < glows.length; k++) glows[k][4] = it.i; curSlot = -1; wetRing(it, true); };
   const wanted = it => (it.kind !== 'f' || !removed.has(it.i)) && (near(it.x, it.y, it.size * 1.1) || near(it.cx, it.cy, it.size * 1.1));
   // the roof and back: just darkness
   // the back of the cave: tiers of blocky rock stepping up into the dark, a waterfall, and a skylight in the roof
@@ -1128,6 +1166,12 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
     // soft bumps of light and shade, so the floor is uneven
     for (let i = 0; i < 40; i++) { const x = R(0, W), y = R(y0, yF), r = R(60, 160) * persp(y), lit = rnd() < .5, bg = g.createRadialGradient(x, y, 0, x, y, r);
       bg.addColorStop(0, lit ? rgba(mineral.rim, .14) : 'rgba(0,0,0,.14)'); bg.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.translate(x, y); g.scale(1, .45); g.translate(-x, -y); g.fillStyle = bg; g.fillRect(x - r, y - r, r * 2, r * 2); g.restore(); }
+    // sand drifts, iron stains and dendrites, laid down before the terraces
+    for (let i = 0; i < 9; i++) { const y = R(y0 + 50, yF - 30), sc = persp(y); stain(g, R(0, W), y, R(50, 110) * sc, pick([[150, 74, 30], [176, 96, 40], [70, 52, 44]])); }
+    for (let i = 0; i < 7; i++) { const y = R(y0 + 70, yF - 40), sc = persp(y), rx = R(90, 190) * sc; sandPatch(g, R(40, W - 40), y, rx, rx * R(.3, .4), floorCol, sc); }
+    g.strokeStyle = 'rgba(40,30,26,.38)'; g.lineCap = 'round';
+    for (let i = 0; i < 6; i++) { const y = R(y0 + 60, yF - 40), sc = persp(y), x = R(30, W - 30); for (let j = 0; j < RI(3, 5); j++) dendrite(g, x, y, R(10, 18) * sc, -Math.PI / 2 + R(-1.3, 1.3), 4, sc); }
+    const lips = [];
     // rimstone terraces: scalloped lips across the floor, each holding back a shallow pool
     for (let k = 1, n = RI(5, 7); k <= n; k++) {
       const yk = lerp(y0 + 60, yF - 40, k / (n + 1)) + R(-20, 20), sc = persp(yk), o = R(0, 99), lip = [];
@@ -1137,13 +1181,38 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
       const line = new Path2D(); lip.forEach((q, i) => i ? line.lineTo(...q) : line.moveTo(...q));
       g.save(); g.translate(0, 4 * sc); g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 6 * sc; g.stroke(line); g.restore();
       g.strokeStyle = rgba(mineral.rim, .55); g.lineWidth = 2.4 * sc; g.stroke(line);
+      g.save(); g.translate(0, -3 * sc); g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1.6 * sc; g.setLineDash([18 * sc, 26 * sc]); g.lineDashOffset = R(0, 40); g.stroke(line); g.restore();   // a wet shine on the water held behind the lip
+      lips.push({ lip, sc });
     }
+    // cave pearls rolled smooth in the pools, gravel and popcorn crust
+    for (const { lip, sc } of lips) for (let c = 0; c < 3; c++) { const [lx, ly] = lip[RI(3, lip.length - 4)]; for (let j = 0; j < RI(3, 7); j++) { const px = lx + R(-14, 14) * sc, py = ly - R(4, 14) * sc, r = R(1.8, 3.4) * sc;
+      g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(px + r * .3, py + r * .5, r, r * .45, 0, 0, 6.3); g.fill();
+      const pgr = g.createRadialGradient(px - r * .4, py - r * .4, 0, px, py, r); pgr.addColorStop(0, '#fffaf0'); pgr.addColorStop(1, rgba(shade(mineral.rim, -.15))); g.fillStyle = pgr; g.beginPath(); g.arc(px, py, r, 0, 6.3); g.fill(); } }
+    for (let i = 0; i < 150; i++) { const y = R(y0 + 30, yF), sc = persp(y), x = R(0, W); for (let j = 0; j < RI(1, 4); j++) gravel(g, x + R(-12, 12) * sc, y + R(-5, 5) * sc, R(1.4, 3.6) * sc, shade(floorCol, R(-.3, .1))); }
+    for (let i = 0; i < 10; i++) { const x = R(0, W), y = Math.min(baseY(x) + R(6, 30), yF), sc = persp(y); popcorn(g, x, y, R(14, 26) * sc, mineral.rim); }
+    // a shallow flood: a thin sheet of water everywhere, deepening behind each rimstone lip
+    { const wg = g.createLinearGradient(0, y0, 0, yF); wg.addColorStop(0, rgba(WATER_DEEP, .62)); wg.addColorStop(.5, rgba(WATER, .42)); wg.addColorStop(1, rgba(WATER, .34)); g.fillStyle = wg; g.fillRect(0, 0, W, H); }   // deep blue, darker towards the back
+    g.globalCompositeOperation = 'screen';   // milky clouds drifting in the water
+    for (let i = 0; i < 26; i++) { const y = R(y0 + 30, yF), sc = persp(y), x = R(0, W), r = R(70, 170) * sc, cg = g.createRadialGradient(x, y, 0, x, y, r); cg.addColorStop(0, rgba(WATER_MILK, R(.1, .2))); cg.addColorStop(1, rgba(WATER_MILK, 0));
+      g.save(); g.translate(x, y); g.scale(1, .4); g.translate(-x, -y); g.fillStyle = cg; g.fillRect(x - r, y - r, r * 2, r * 2); g.restore(); }
+    g.globalCompositeOperation = 'source-over';
+    for (const { lip, sc } of lips) { const D = 80 * sc, ym = lip.reduce((a, q) => a + q[1], 0) / lip.length, wp = new Path2D();
+      lip.forEach((q, i) => i ? wp.lineTo(...q) : wp.moveTo(...q)); for (let i = lip.length - 1; i >= 0; i--) wp.lineTo(lip[i][0], lip[i][1] - D); wp.closePath();
+      const dg = g.createLinearGradient(0, ym - D, 0, ym + 8 * sc); dg.addColorStop(0, rgba(WATER, 0)); dg.addColorStop(1, rgba(WATER_DEEP, .45)); g.fillStyle = dg; g.fill(wp);
+      g.strokeStyle = 'rgba(255,255,255,.4)'; g.lineWidth = 1.2 * sc; for (let j = 0; j < 14; j++) { const [lx, ly] = lip[RI(1, lip.length - 2)]; g.beginPath(); g.moveTo(lx, ly + 3 * sc); g.lineTo(lx + R(-2, 2) * sc, ly + R(7, 13) * sc); g.stroke(); } }   // trickles spilling over the lip
+    // the surface: glints of light, brighter where the skylight falls
+    for (let i = 0; i < 320; i++) { const x = R(0, W), y = R(y0 + 20, yF), sc = persp(y), near = Math.max(0, 1 - Math.hypot((x - pool.x) / pool.rx, (y - pool.y) / pool.ry) / 1.6), len = R(8, 26) * sc;
+      g.strokeStyle = rgba(mix([255, 255, 255], WATER_MILK, .5), R(.08, .18) + near * .3); g.lineWidth = R(.8, 1.6) * sc; g.beginPath(); g.moveTo(x - len / 2, y); g.quadraticCurveTo(x, y - 1.5 * sc, x + len / 2, y); g.stroke(); }
+    g.globalCompositeOperation = 'screen'; g.strokeStyle = 'rgba(150,236,255,.28)';   // rippling light on the bottom, under the skylight
+    for (let i = 0; i < 90; i++) { const a = R(0, 6.3), d = Math.sqrt(rnd()) * 1.1, cx2 = pool.x + Math.cos(a) * pool.rx * d, cy2 = pool.y + Math.sin(a) * pool.ry * d, sc = persp(cy2), r = R(6, 13) * sc;
+      g.lineWidth = R(.8, 1.6) * sc; g.beginPath(); for (let j = 0; j <= 7; j++) { const b = j / 7 * 6.3, rr = r * (1 + R(-.25, .25)); j ? g.lineTo(cx2 + Math.cos(b) * rr, cy2 + Math.sin(b) * rr * .45) : g.moveTo(cx2 + Math.cos(b) * rr, cy2 + Math.sin(b) * rr * .45); } g.closePath(); g.stroke(); }
+    g.globalCompositeOperation = 'source-over';
     // glittering specks of mineral
     for (let i = 0; i < 260; i++) { const x = R(0, W), y = R(y0, H), s = persp(y); g.fillStyle = rnd() < .7 ? rgba(mineral.rim, R(.35, .8)) : 'rgba(255,255,255,.9)'; g.fillRect(x, y, R(.8, 1.8) * s, R(.8, 1.8) * s); }
     // the pool of soft light, and the dark at the back and the sides
     g.globalCompositeOperation = 'screen';
     g.save(); g.translate(pool.x, pool.y); g.scale(1, pool.ry / pool.rx);
-    const pl = g.createRadialGradient(0, 0, 0, 0, 0, pool.rx * 1.4); pl.addColorStop(0, rgba(light, .32)); pl.addColorStop(.6, rgba(light, .1)); pl.addColorStop(1, rgba(light, 0)); g.fillStyle = pl; g.fillRect(-pool.rx * 1.5, -pool.rx * 1.5, pool.rx * 3, pool.rx * 3);
+    const pl = g.createRadialGradient(0, 0, 0, 0, 0, pool.rx * 1.4); const lt = mix(light, [110, 226, 255], .65); pl.addColorStop(0, rgba(lt, .4)); pl.addColorStop(.6, rgba(lt, .12)); pl.addColorStop(1, rgba(lt, 0)); g.fillStyle = pl; g.fillRect(-pool.rx * 1.5, -pool.rx * 1.5, pool.rx * 3, pool.rx * 3);
     g.restore(); g.globalCompositeOperation = 'source-over';
     const back = g.createLinearGradient(0, y0 - 10, 0, y0 + (H - y0) * .45); back.addColorStop(0, 'rgba(8,6,12,.92)'); back.addColorStop(.35, 'rgba(8,6,12,.45)'); back.addColorStop(1, 'rgba(8,6,12,0)'); g.fillStyle = back; g.fillRect(0, 0, W, H);
     g.restore();
@@ -1151,7 +1220,7 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
     // the pond at the foot of the waterfall, and the last drop into it
     const pd = plan.pond, pg = g.createRadialGradient(pd.x, pd.y - pd.ry * .3, 0, pd.x, pd.y, pd.rx);
     g.fillStyle = rgba(shade(floorCol, -.5)); g.beginPath(); g.ellipse(pd.x, pd.y + 3, pd.rx + 6, pd.ry + 4, 0, 0, 6.3); g.fill();
-    pg.addColorStop(0, 'rgba(120,190,210,.95)'); pg.addColorStop(.7, 'rgba(40,96,120,.95)'); pg.addColorStop(1, 'rgba(20,50,70,.95)'); g.fillStyle = pg; g.beginPath(); g.ellipse(pd.x, pd.y, pd.rx, pd.ry, 0, 0, 6.3); g.fill();
+    pg.addColorStop(0, 'rgba(120,220,250,.95)'); pg.addColorStop(.6, 'rgba(26,132,196,.95)'); pg.addColorStop(1, 'rgba(10,52,112,.95)'); g.fillStyle = pg; g.beginPath(); g.ellipse(pd.x, pd.y, pd.rx, pd.ry, 0, 0, 6.3); g.fill();
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(pd.x + pd.rx * .25, pd.y - pd.ry * .35, pd.rx * .35, pd.ry * .15, 0, Math.PI * 1.1, Math.PI * 1.8); g.stroke();
     waterDrop(g, plan.falls[plan.falls.length - 1], mineral);
   });
@@ -1582,6 +1651,8 @@ function frame(now) {
     for (const f of cave.plan.water.falls) { if (!seen(f.x, f.y0) && !seen(f.x, f.y1)) continue; const len = f.y1 - f.y0;
       for (let i = 0; i < 4; i++) { const y = f.y0 + ((t * 90 + i * len / 4 + f.x) % len), sx = f.x + (i - 1.5) * f.w * .2; ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx, Math.min(f.y1, y + 10)); ctx.stroke(); } }
     const pd = cave.plan.water.pond; if (seen(pd.x, pd.y)) for (let i = 0; i < 2; i++) { const k = ((t * .5 + i * .5) % 1); ctx.strokeStyle = `rgba(255,255,255,${.45 * (1 - k)})`; ctx.beginPath(); ctx.ellipse(pd.x, pd.y, pd.rx * (.15 + k * .7), pd.ry * (.15 + k * .7), 0, 0, 6.3); ctx.stroke(); }
+    for (const d of cave.plan.water.drips || []) { if (!seen(d.x, d.y)) continue; const k = (t * d.f + d.p) % 1; if (k > .6) continue; const u = k / .6;
+      for (const lag of [0, .25]) { const v = u - lag; if (v <= 0) continue; ctx.strokeStyle = `rgba(255,255,255,${.4 * (1 - v)})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(d.x, d.y, (4 + v * 34) * d.s, (4 + v * 34) * d.s * .3, 0, 0, 6.3); ctx.stroke(); } }
   }
   if (!reduceMotion) for (const s of sparks) { if (!seen(s.x, s.y) || cave.removed.has(s.k)) continue; const v = Math.sin(t * s.f + s.p); if (v > .6) star(s.x, s.y, s.s * (v - .6) / .4 * .5, s.c, Math.min(1, (v - .6) * 2.4)); }
   ctx.globalAlpha = 1;
@@ -1629,6 +1700,10 @@ if (/[?&]debug\b/.test(location.search)) window.__cc = {
     const g = c.getContext('2d'); g.scale(2, 2); const keep = rnd, ks = sparks; rnd = mulberry(7); sparks = [];
     PALETTES.forEach((pal, r) => SHAPES.forEach((shape, k) => pal.h.split(' ').includes(shape.k) && formation(g, k * cw + cw / 2, r * chh + chh - 10, -Math.PI / 2, 60, { shape, pal, trait: only ? TRAITS.find(t => t.k === only) : TRAITS[(k + r) % TRAITS.length] }, null)));
     rnd = keep; sparks = ks; document.body.appendChild(c); return [c.width / 2, c.height / 2];
+  },
+  async bare() {   // the cave with every crystal taken away, to look at the rock and floor
+    const plan = cave.plan, all = new Set((plan.slots || plan.items.filter(i => i.kind === 'f')).map(s => s.i)), keepRnd = rnd, keepM = motes, keepS = sparks;
+    const pic = await paintCave(plan, all); rnd = keepRnd; motes = keepM; sparks = keepS; return pic.toDataURL('image/jpeg', .85);
   }, lookAt, get cam() { return { x: camX, y: camY, z: zoom, tz: targetZoom }; },
   toScreen: (x, y) => [(x - camX) * zoom, (y - camY) * zoom], settle() { zoom = targetZoom; camX = targetCamX; camY = targetCamY; },
 };
