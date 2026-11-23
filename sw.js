@@ -7,7 +7,7 @@
    - anything else: answer from the saved copy and refresh it quietly
    - activate: delete the copies saved by older versions
    - a page can ask which version is running: postMessage('version') */
-const VERSION = 'games-9ac4943d1ed5';
+const VERSION = 'games-812fca7f9e01';
 const STAMPED = 'bb-stamped';
 const FILES = [
   './',
@@ -26,6 +26,7 @@ const FILES = [
   './dot-loop/',
   './dots-and-boxes/',
   './find-a-flower/',
+  './find-the-sheep/',
   './fishy-floes/',
   './greedy-hippos/',
   './guess-five/',
@@ -47,7 +48,8 @@ const FILES = [
   './thin-ice/',
   './tile-burst/',
   './word-hive/',
-  './find-a-flower/bear-and-bean-picnic.webp?v=53b8e142'
+  './find-a-flower/bear-and-bean-picnic.webp?v=53b8e142',
+  './find-the-sheep/bear-and-bean-picnic.webp?v=53b8e142'
 ];
 
 self.addEventListener('install', event => {
