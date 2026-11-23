@@ -406,6 +406,7 @@ const PALETTES = [
   { n: 'Sulfur', c: '#f3e64a', glow: '#fff59a', alt: '#fffbd0', h: 'cluster tower' },
   { n: 'Vanadinite', c: '#d6452a', glow: '#ff7a52', alt: '#ffb08a', h: 'tower' },
   { n: 'Chevron Amethyst', c: '#8f4ed0', glow: '#e6d4ff', alt: '#f6f0ff', zoned: true, h: 'tower cluster' },
+  { n: 'LuAG', c: '#d6ee78', glow: '#7dff4a', alt: '#f4ffd0', h: 'dodeca', not: 'band two', only: 'cave', bright: true },   // made in labs, imagined here growing as a natural garnet: ring cave only
 ];
 const SHAPES = [
   { k: 'cluster', n: 'Cluster', t: 'chunky six-sided columns' },
@@ -414,6 +415,7 @@ const SHAPES = [
   { k: 'cubes', n: 'Cube Stack', t: 'nested metallic cubes' },
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },
   { k: 'tumbled', n: 'Tumbled', t: 'polished pebbles' },
+  { k: 'dodeca', n: 'Garnet', t: 'balls of diamond faces in silvery rock' },
 ];
 const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
 const MARKINGS_OFF = ['frost', 'gold'];   // switched off for now: delete from this list to bring them back
@@ -479,7 +481,7 @@ function inRock(sh, t, d) {
 
 /* ---------- crystals: every piece is drawn from its type's style (colour, second colour, marking) ---------- */
 // a style: base colour, its second colour (for two-tone), the marking, and where sparkles and glow go
-const styleOf = ty => ({ sheen: ty.pal.sheen === undefined ? .42 : ty.pal.sheen, c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k, two: ty.trait.k === 'two' || !!ty.pal.zoned, zoned: !!ty.pal.zoned });
+const styleOf = ty => ({ bright: !!ty.pal.bright, sheen: ty.pal.sheen === undefined ? .42 : ty.pal.sheen, c: hex(ty.pal.c), alt: hex(ty.pal.alt), glow: ty.pal.glow, trait: ty.trait.k, two: ty.trait.k === 'two' || !!ty.pal.zoned, zoned: !!ty.pal.zoned });
 let curSlot = -1;   // the formation being drawn, so its sparkles and glow can go with it when it's collected
 function sparkAt(x, y, s, st) { const p = rnd() * 6.3, f = R(.6, 1.6); if (st.trait !== 'frost') sparks.push({ x, y, s: clamp(s * (st.trait === 'clear' ? 1.5 : 1), 2.5, 14), c: st.glow, p, f, k: curSlot }); }
 // a jagged crack filled with gold, from a to b
@@ -626,6 +628,30 @@ function roundPoly(p, pts, r) {   // a polygon with its corners smoothed off, li
     const s0 = [b[0] + (a[0] - b[0]) * ta, b[1] + (a[1] - b[1]) * ta], s1 = [b[0] + (c[0] - b[0]) * tc, b[1] + (c[1] - b[1]) * tc];
     i ? p.lineTo(...s0) : p.moveTo(...s0); p.quadraticCurveTo(...b, ...s1);
   }
+}
+// a garnet: a rhombic dodecahedron, twelve diamond faces, turned in 3D and lit from the top left
+function dodeca(g, x, y, r, yaw, pitch, st) {
+  const col = st.c, rot = ([px, py, pz]) => { const c4 = Math.SQRT1_2, ax = px * c4 - py * c4, ay = px * c4 + py * c4, bx = ax, by = -pz, bz = ay;   // a diamond face towards us, then turned a little
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), x1 = bx * cy + bz * sy, z1 = -bx * sy + bz * cy; return [x1, by * cp - z1 * sp, by * sp + z1 * cp]; };
+  const L = [-.52, -.78, .35], faces = [];
+  for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) for (const si of [1, -1]) for (const sj of [1, -1]) {
+    const k = 3 - i - j, A = [0, 0, 0], B = [0, 0, 0], C1 = [0, 0, 0], C2 = [0, 0, 0], nr = [0, 0, 0]; A[i] = 2 * si; B[j] = 2 * sj; C1[i] = C2[i] = si; C1[j] = C2[j] = sj; C1[k] = 1; C2[k] = -1; nr[i] = si; nr[j] = sj;
+    const n = rot(nr).map(v => v / Math.SQRT2); if (n[2] <= .02) continue;
+    const pts = [A, C1, B, C2].map(rot); faces.push({ pts, n, depth: pts.reduce((a, q) => a + q[2], 0) });
+  }
+  g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(x + r * .15, y + r * .9, r * .9, r * .26, 0, 0, 6.3); g.fill();
+  faces.sort((a, b) => a.depth - b.depth);
+  for (const f of faces) { const lam = Math.max(0, -(f.n[0] * L[0] + f.n[1] * L[1]) + f.n[2] * L[2]), t = lam * 1.5 - .62;
+    g.beginPath(); f.pts.forEach(([px, py], i) => i ? g.lineTo(x + px * r / 2, y + py * r / 2) : g.moveTo(x + px * r / 2, y + py * r / 2)); g.closePath();
+    g.fillStyle = rgba(t > 0 ? mix(col, [255, 255, 255], t * .5) : mix(col, [0, 0, 0], -t * (st.bright ? .3 : .6)), .96); g.fill();
+    g.strokeStyle = `rgba(255,255,255,${.25 + lam * .3})`; g.lineWidth = Math.max(.7, r * .03); g.lineJoin = 'round'; g.stroke(); }
+}
+// a lump of mica schist, the silvery rock garnets grow in
+function schist(g, x, y, w, h) {
+  g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.ellipse(x + 3, y + h * .5, w * 1.02, h * .35, 0, 0, 6.3); g.fill();
+  const p = new Path2D(); for (let i = 0; i <= 24; i++) { const a = Math.PI + i / 24 * Math.PI, q = 1 + R(-.08, .08); i ? p.lineTo(x + Math.cos(a) * w * q, y + Math.sin(a) * h * q) : p.moveTo(x + Math.cos(a) * w * q, y + Math.sin(a) * h * q); } p.ellipse(x, y, w, h * .35, 0, 0, Math.PI); p.closePath();
+  const sg = g.createLinearGradient(0, y - h, 0, y + h * .3); sg.addColorStop(0, '#8a8a92'); sg.addColorStop(1, '#45434c'); g.fillStyle = sg; g.fill(p);
+  g.save(); g.clip(p); for (let i = 0; i < 40; i++) { g.strokeStyle = rnd() < .5 ? 'rgba(230,232,240,.7)' : 'rgba(40,40,48,.5)'; g.lineWidth = R(.8, 1.8); const px = x + R(-w, w), py = y + R(-h, h * .35), l = R(3, 8); g.beginPath(); g.moveTo(px, py); g.lineTo(px + l, py + l * .2); g.stroke(); } g.restore();   // glittering mica flakes
 }
 // a polished tumbled stone: a smooth pebble with its own pattern, a darker rim and a gloss highlight
 function pebble(g, cx, cy, rx, ry, kind, glows, glow, form) {
@@ -786,6 +812,14 @@ function formation(g, x, y, ang, size, ty, glows) {
       if (rnd() < .5) sparkAt(hx - size * .2, hy - size * .2, size * .1, st);
       break;
     }
+    case 'dodeca': {   // two or three garnets sitting in a lump of schist
+      const bx = x + dx * size * .3, by = y + dy * size * .3; schist(g, bx, by + size * .14, size * .62, size * .28);
+      const spots = rnd() < .5 ? [[-.24, -.1, .27], [.24, -.04, .31]] : [[-.3, -.12, .24], [.27, -.14, .28], [-.02, .06, .22]];
+      for (const [ox, oy, r] of spots) dodeca(g, bx + ox * size, by + oy * size, size * r, .72 + R(-.15, .15), .05 + R(-.15, .25), st);
+      if (ty.pal.bright && glows) { glows.push([bx, by - size * .05, size * 2.4, st.glow, undefined, .42]); glows.push([bx, by - size * .05, size * 1.2, st.glow, undefined, .36]); glows.push([bx, by - size * .05, size * .5, '#f4ffd0', undefined, .16]); }   // LuAG shines bright green, steadily
+      sparkAt(bx - size * .18, by - size * .28, size * .12, st);
+      return { x: bx, y: by - size * .05, r: size * .5, ty };
+    }
     case 'urchin': {
       const cx = x + dx * size * .18, cy = y + dy * size * .18; bed(g, x, y, size * .3, ang);
       for (let i = 0; i < RI(16, 26); i++) { const a = ang + R(-1.6, 1.6), len = size * R(.35, .75); prism(g, cx, cy, a, len, len * R(.035, .055), st, glows); }
@@ -805,9 +839,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 46, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 47, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 46) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 47) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -827,7 +861,7 @@ function planCave() {
   const apart = [['Ametrine', 'Bicolour Sapphire']].map(pr => pr[rnd() < .5 ? 0 : 1]);   // minerals too alike to share a cave: one of each pair sits this cave out
   // each mineral comes in just one marking in any one cave, so a clear and a banded Amethyst never meet
   const oneMark = {}; for (const pal of PALETTES) { const ok = MARKINGS.filter(t => !(pal.zoned && t.k === 'two') && !(pal.not || '').split(' ').includes(t.k)); oneMark[pal.n] = ok.length ? pick(ok).k : 'clear'; }
-  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k) && !apart.includes(pal.n)) MARKINGS.forEach(trait => { if (shape.k === 'tumbled' ? trait.k !== 'clear' : trait.k !== oneMark[pal.n]) return; if (!(pal.zoned && trait.k === 'two') && !(pal.not || '').split(' ').includes(trait.k)) combos.push({ shape, pal, trait }); /* some markings are too subtle on some minerals */ }); })); shuffle(combos);
+  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k) && !apart.includes(pal.n) && (!pal.only || pal.only === S.mode)) MARKINGS.forEach(trait => { if (shape.k === 'tumbled' ? trait.k !== 'clear' : trait.k !== oneMark[pal.n]) return; if (!(pal.zoned && trait.k === 'two') && !(pal.not || '').split(' ').includes(trait.k)) combos.push({ shape, pal, trait }); /* some markings are too subtle on some minerals */ }); })); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
   for (const c of combos.filter(c => c.shape.k === 'tumbled').slice(0, 2)) hunts.push(c);   // a couple of tumbled stones in every cave
@@ -911,6 +945,7 @@ function planCave() {
   });
   const counts = assignHunts(slots, hunts, decoys, fillers);
   for (const s of slots) if (s.type.shape.k === 'tumbled') { s.cx = s.x; s.cy = s.y - s.size * .25; }   // heaps sit on the spot they're placed
+  for (const s of slots) if (s.type.shape.k === 'dodeca') { s.cx = s.x + Math.cos(s.ang) * s.size * .3; s.cy = s.y + Math.sin(s.ang) * s.size * .3 - s.size * .05; }   // garnets sit in their lump of rock
   // three fossils pressed into the rock, just behind the rim of the middle rings
   const fossils = [];
   for (let tries = 0; fossils.length < 3 && tries < 2000; tries++) {
@@ -1276,7 +1311,7 @@ function fossil(g, f, rockCol) {
 function glowPass(g, plan, removed, near, glows, patch) {
   if (!patch) plan.glows = glows;
   g.globalCompositeOperation = 'lighter';
-  for (const [x, y, r, c, k] of plan.glows) { if (removed.has(k) || !near(x, y, r)) continue; const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rgba(hex(c), .07)); gl.addColorStop(1, rgba(hex(c), 0)); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  for (const [x, y, r, c, k, a = .07] of plan.glows) { if (removed.has(k) || !near(x, y, r)) continue; const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rgba(hex(c), a)); gl.addColorStop(1, rgba(hex(c), 0)); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
   g.globalCompositeOperation = 'source-over';
 }
 // paint a planned cave into one picture, a few milliseconds at a time so the page stays responsive; resolves when done.
@@ -1467,6 +1502,7 @@ const TIPS = [
   'Pyrite is called fool\'s gold: shiny golden cubes that grow in nature.',
   'Tumbled stones are polished pebbles: Sodalite has white veins, Bloodstone red spots, Zebra Jasper black stripes.',
   'Calcite breaks into slanted boxes called rhombs. Look through clear Optical Calcite and you see double!',
+  'LuAG glows bright green. In real life it is only made in labs; in the ring cave we imagine it growing as a natural garnet.',
   'Pyramids and obelisks are carved by hand. A natural Tower has six sides; an Obelisk has four and a pointed cap.',
   'Labradorite flashes blue and green when the light catches it, and Moonstone glows with a soft blue sheen.',
   'Septarian has bright yellow cracks, Ocean Jasper little eye-like rings, and Petrified Wood the grain of an ancient tree.',
