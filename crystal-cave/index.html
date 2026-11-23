@@ -302,7 +302,7 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>💎</div><h3>Find the crystal</h3><p>Bear and Bean are collecting one special crystal. Find every one hidden in the cave that matches it: same <b>shape, colour and markings</b>.</p></section>
     <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check all three</h3><p>A match is the same <b>mineral</b>, the same <b>shape</b> and the same <b>marking</b>. Some crystals share one of those, so look closely.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p>The cave is wide! <b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom in close. Tap the little map to jump.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: plain and glassy, with a twinkle. <b>Banded</b>: stripes across. <b>Two-tone</b>: a second colour at the tip.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🔎</div><h3>Read the markings</h3><p><b>Clear</b>: plain and glassy, with a twinkle. <b>Banded</b>: stripes across. <b>Two-tone</b>: a second colour at the tip. <b>Tumbled</b> stones are polished pebbles, each known by its own pattern.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Tap to collect</h3><p><b>Tap</b> a match to collect it. A wrong tap costs 10 points; a hint 🔍 costs 25. Fossils 🐚 hidden in the rock are a bonus.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔦</div><h3>12 hunts a cave</h3><p>More crystals to find as you go. Tap ↻ for a new cave: rings of rock, or a wide <b>crystal floor</b> in a cavern with a waterfall.</p></section>
   </div>
@@ -364,9 +364,9 @@ const shade = (c, t) => t < 0 ? mix(c, [0, 0, 0], -t) : mix(c, [255, 255, 255], 
 // every formation in a cave is one TYPE: a shape, a colour and a marking, so the same type always looks the same
 // each mineral, its colours, and the shapes it really grows in (h)
 const PALETTES = [
-  { n: 'Amethyst', c: '#9b5bd6', glow: '#b07cff', alt: '#f4c8ff', h: 'cluster tower', not: 'two' }, { n: 'Clear Quartz', c: '#c7d6e8', glow: '#cfe6ff', alt: '#6fa8ff', h: 'cluster tower fan', not: 'frost' },
+  { n: 'Amethyst', c: '#9b5bd6', glow: '#b07cff', alt: '#f4c8ff', h: 'cluster tower tumbled', not: 'two', tumble: 'amethyst' }, { n: 'Clear Quartz', c: '#c7d6e8', glow: '#cfe6ff', alt: '#6fa8ff', h: 'cluster tower fan', not: 'frost' },
   { n: 'Emerald', c: '#2fbf71', glow: '#4dffa0', alt: '#e0ff80', h: 'tower cluster' },  { n: 'Aquamarine', c: '#4cc9e6', glow: '#6fe3ff', alt: '#ffffff', h: 'tower cluster' },
-  { n: 'Rose Quartz', c: '#f095bd', glow: '#ffb0d6', alt: '#fff0f6', h: 'cluster tower' },     { n: 'Citrine', c: '#f2ae3a', glow: '#ffcf63', alt: '#ff6a2a', h: 'cluster tower' },
+  { n: 'Rose Quartz', c: '#f095bd', glow: '#ffb0d6', alt: '#fff0f6', h: 'cluster tower tumbled', tumble: 'rose' },     { n: 'Citrine', c: '#f2ae3a', glow: '#ffcf63', alt: '#ff6a2a', h: 'cluster tower' },
   { n: 'Ruby', c: '#e0405e', glow: '#ff6a86', alt: '#ffc0cc', h: 'tower cluster' },     { n: 'Sapphire', c: '#3a63e0', glow: '#6f8fff', alt: '#a8ecff', h: 'tower cluster' },
   { n: 'Smoky Quartz', c: '#8d7b6e', glow: '#c9b29c', alt: '#f1e2cf', h: 'cluster tower fan' },    { n: 'Peridot', c: '#a6d43a', glow: '#d4ff63', alt: '#fff27a', h: 'cluster tower' },
   { n: 'Orange Calcite', c: '#ff7a2e', glow: '#ffa15c', alt: '#ffe08a', h: 'blades cluster' }, { n: 'Apatite', c: '#1fa39a', glow: '#45e0d4', alt: '#ff8fb8', h: 'tower cluster', not: 'frost' },
@@ -377,6 +377,14 @@ const PALETTES = [
   // minerals that grow in two colours: always zoned from the first colour into the second
   { n: 'Watermelon Tourmaline', c: '#3a9a4c', glow: '#ff8fa6', alt: '#ff6a8e', zoned: true, h: 'tower fan' }, { n: 'Ametrine', c: '#8d4fd0', glow: '#ffcf6a', alt: '#f5b83a', zoned: true, h: 'tower cluster' },
   { n: 'Fluorite', c: '#2fae96', glow: '#b48cff', alt: '#9a66e2', zoned: true, h: 'cubes' },              { n: 'Bicolour Sapphire', c: '#2f55d8', glow: '#ffe27a', alt: '#f6d84a', zoned: true, h: 'tower cluster' },
+  // tumbled stones: polished pebbles, each known by its pattern (tumble), so they take no markings
+  { n: "Tiger's Eye", c: '#a8701e', glow: '#ffd27a', alt: '#e7b04a', h: 'tumbled', tumble: 'tiger' },        { n: 'Malachite', c: '#1f8a4a', glow: '#6fe0a0', alt: '#5cc485', h: 'tumbled', tumble: 'malachite' },
+  { n: 'Lapis Lazuli', c: '#1d3a9a', glow: '#6f8fff', alt: '#e8c24a', h: 'tumbled', tumble: 'lapis' },     { n: 'Carnelian', c: '#e0622a', glow: '#ffa06a', alt: '#ffb46a', h: 'tumbled', tumble: 'carnelian' },
+  { n: 'Labradorite', c: '#4a4e56', glow: '#6fd0ff', alt: '#3cb4ff', h: 'tumbled', tumble: 'labradorite' }, { n: 'Moonstone', c: '#e6e2da', glow: '#b8d4ff', alt: '#8cbeff', h: 'tumbled', tumble: 'moonstone' },
+  { n: 'Turquoise', c: '#3fc2b4', glow: '#7fefe2', alt: '#4a3524', h: 'tumbled', tumble: 'turquoise' },     { n: 'Snowflake Obsidian', c: '#18161c', glow: '#bdb6e0', alt: '#e1e1e6', h: 'tumbled', tumble: 'snowflake' },
+  { n: 'Sodalite', c: '#24399a', glow: '#7f9cff', alt: '#f0f4fa', h: 'tumbled', tumble: 'sodalite' },       { n: 'Bloodstone', c: '#1f4a36', glow: '#6fbf90', alt: '#c6322a', h: 'tumbled', tumble: 'bloodstone' },
+  { n: 'Unakite', c: '#5f8a52', glow: '#ffb0a0', alt: '#e98a7a', h: 'tumbled', tumble: 'unakite' },        { n: 'Blue Lace Agate', c: '#9ec4e6', glow: '#d8ecff', alt: '#ffffff', h: 'tumbled', tumble: 'lace' },
+  { n: 'Red Jasper', c: '#a83224', glow: '#ff7a5c', alt: '#3c140e', h: 'tumbled', tumble: 'jasper' },
   { n: 'Pyrite', c: '#c9a23a', glow: '#ffe08a', alt: '#fff2b8', h: 'cubes' },
   // metallic and other very distinct minerals: sheen sets how strongly the cube faces shimmer (bismuth's rainbow, galena's plain silver)
   { n: 'Bismuth', c: '#b48fc8', glow: '#ffd0ff', alt: '#9ff0ff', h: 'cubes', sheen: .9, not: 'two band' },
@@ -392,11 +400,12 @@ const SHAPES = [
   { k: 'tower', n: 'Tower', t: 'one tall column on its own' },
   { k: 'cubes', n: 'Cube Stack', t: 'nested metallic cubes' },
   { k: 'blades', n: 'Blades', t: 'flat fanned blades' },
+  { k: 'tumbled', n: 'Tumbled', t: 'polished pebbles' },
 ];
 const TRAITS = [{ k: 'clear', t: 'clear' }, { k: 'frost', t: 'frosted tips' }, { k: 'band', t: 'banded' }, { k: 'gold', t: 'gold fractures' }, { k: 'two', t: 'two-tone' }];
 const MARKINGS_OFF = ['frost', 'gold'];   // switched off for now: delete from this list to bring them back
 const MARKINGS = TRAITS.filter(t => !MARKINGS_OFF.includes(t.k));
-const typeName = ty => `${ty.pal.n} ${ty.shape.n}`, typeTraits = ty => `${ty.shape.t} · ${ty.trait.t}`;
+const typeName = ty => ty.shape.k === 'tumbled' ? `Tumbled ${ty.pal.n}` : `${ty.pal.n} ${ty.shape.n}`, typeTraits = ty => ty.shape.k === 'tumbled' ? ty.shape.t : `${ty.shape.t} · ${ty.trait.t}`;
 const ROCKS = [   // cave rock: far, mid, near tones
   ['#2a2a3d', '#1c1b2b', '#121119'], ['#33281f', '#231b16', '#15100d'], ['#2c2236', '#1d1626', '#120d18'], ['#22303a', '#172229', '#0e1519'], ['#2f2d2a', '#1f1e1c', '#131211'],
 ];
@@ -583,6 +592,45 @@ function octa(g, x, y, s, rot, st, glows) {
   if (rnd() < .5) sparkAt(...T, s * .5, st);
   if (glows && rnd() < .3) glows.push([x, y, s * 2.6, st.glow]);
 }
+// a polished tumbled stone: a smooth pebble with its own pattern, a darker rim and a gloss highlight
+function pebble(g, cx, cy, rx, ry, kind, glows, glow) {
+  const k = rx / 62, n = 32, o = R(0, 6), p = new Path2D();
+  for (let i = 0; i <= n; i++) { const a = i / n * Math.PI * 2, q = 1 + .07 * Math.sin(a * 2 + o) + .04 * Math.sin(a * 3 + o * 2), x = cx + Math.cos(a) * rx * q, y = cy + Math.sin(a) * ry * q; i ? p.lineTo(x, y) : p.moveTo(x, y); }
+  p.closePath();
+  g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(cx + 3 * k, cy + ry * .85, rx * .9, ry * .26, 0, 0, 6.3); g.fill();
+  g.save(); g.clip(p);
+  const W = rx + 6, H = ry + 6, fill = c => { g.fillStyle = c; g.fillRect(cx - W, cy - H, W * 2, H * 2); };
+  const radial = (stops, ox = -10, oy = -8) => { const gr = g.createRadialGradient(cx + ox * k, cy + oy * k, 2, cx, cy, rx); stops.forEach(([t, c]) => gr.addColorStop(t, c)); g.fillStyle = gr; g.fillRect(cx - W, cy - H, W * 2, H * 2); };
+  const dots = (col, num, r0, r1) => { g.fillStyle = col; for (let i = 0; i < num; i++) { g.beginPath(); g.ellipse(cx + R(-W, W), cy + R(-H, H), R(r0, r1) * k, R(r0, r1) * k * .8, R(0, 3), 0, 6.3); g.fill(); } };
+  const veins = (col, num, lw) => { g.strokeStyle = col; g.lineWidth = lw * k; g.lineCap = 'round'; g.lineJoin = 'round'; for (let i = 0; i < num; i++) { let x = cx + R(-W, W), y = cy + R(-H, H); g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 6; j++) { x += R(-14, 14) * k; y += R(-10, 10) * k; g.lineTo(x, y); } g.stroke(); } };
+  const waves = (cols, num, amp, freq, thick) => { for (let i = 0; i < num; i++) { const y = cy - H + (i + .5) * 2 * H / num; g.strokeStyle = cols[i % cols.length]; g.lineWidth = thick * k; g.beginPath(); for (let x = cx - W; x <= cx + W; x += 3) { const yy = y + Math.sin((x - cx) / (freq * k) + i * .7) * amp * k; x > cx - W ? g.lineTo(x, yy) : g.moveTo(x, yy); } g.stroke(); } };
+  switch (kind) {
+    case 'tiger': fill('#6b3e14'); waves(['#c8892c', '#8a5318', '#e7b04a', '#5a3410'], 14, 6, 22, 6);
+      { const gr = g.createLinearGradient(cx, cy - ry, cx, cy + ry); gr.addColorStop(.35, 'rgba(255,220,120,0)'); gr.addColorStop(.5, 'rgba(255,220,120,.55)'); gr.addColorStop(.65, 'rgba(255,220,120,0)'); g.fillStyle = gr; g.fillRect(cx - W, cy - H, W * 2, H * 2); } break;
+    case 'malachite': { const mx = cx + R(-.3, .3) * rx, my = cy + R(-.2, .2) * ry, cols = ['#0f5a32', '#2e9a5a', '#1a7442', '#5cc485']; for (let i = 12; i > 0; i--) { g.fillStyle = cols[i % 4]; g.beginPath(); const q = R(0, 6); for (let j = 0; j <= 36; j++) { const a = j / 36 * Math.PI * 2, r = i * 7 * k * (1 + .12 * Math.sin(a * 3 + q)); j ? g.lineTo(mx + Math.cos(a) * r * 1.2, my + Math.sin(a) * r * .9) : g.moveTo(mx + Math.cos(a) * r * 1.2, my + Math.sin(a) * r * .9); } g.fill(); } } break;
+    case 'lapis': fill('#1d3a9a'); dots('rgba(70,110,220,.6)', 16, 4, 10); veins('rgba(230,236,245,.5)', 2, 2.5); dots('#e8c24a', 22, 1.2, 3); break;
+    case 'rose': radial([[0, '#fde3ec'], [.6, '#f2a7c2'], [1, '#d77d9f']]); dots('rgba(255,255,255,.18)', 10, 6, 14); break;
+    case 'carnelian': radial([[0, '#ffb46a'], [.7, '#e0622a'], [1, '#a8401c']]); dots('rgba(255,220,180,.18)', 12, 6, 16); break;
+    case 'labradorite': fill('#4a4e56'); dots('rgba(30,32,38,.5)', 14, 5, 14);
+      { const gr = g.createLinearGradient(cx - rx, cy + ry, cx + rx, cy - ry); gr.addColorStop(.2, 'rgba(40,200,220,0)'); gr.addColorStop(.45, 'rgba(60,180,255,.85)'); gr.addColorStop(.6, 'rgba(90,230,180,.7)'); gr.addColorStop(.8, 'rgba(60,180,255,0)'); g.fillStyle = gr; g.fillRect(cx - W, cy - H, W * 2, H * 2); } break;
+    case 'moonstone': radial([[0, '#f6f3ee'], [1, '#cfcac2']], 0, 0);
+      { const gl = g.createRadialGradient(cx + 10 * k, cy - 6 * k, 2, cx + 10 * k, cy - 6 * k, 40 * k); gl.addColorStop(0, 'rgba(140,190,255,.85)'); gl.addColorStop(1, 'rgba(140,190,255,0)'); g.fillStyle = gl; g.fillRect(cx - W, cy - H, W * 2, H * 2); } break;
+    case 'turquoise': fill('#3fc2b4'); dots('rgba(120,230,220,.35)', 12, 6, 14); veins('#4a3524', 6, 2); break;
+    case 'snowflake': fill('#18161c'); for (let i = 0; i < 7; i++) { const x = cx + R(-.8, .8) * rx, y = cy + R(-.8, .8) * ry; g.fillStyle = 'rgba(225,225,230,.9)'; for (let j = 0; j < 6; j++) { g.beginPath(); g.ellipse(x + Math.cos(j) * 3 * k, y + Math.sin(j) * 3 * k, 3.6 * k, 1.7 * k, j, 0, 6.3); g.fill(); } } break;
+    case 'sodalite': fill('#24399a'); dots('rgba(20,30,90,.6)', 12, 6, 14); veins('rgba(240,244,250,.85)', 5, 3); break;
+    case 'bloodstone': fill('#1f4a36'); dots('rgba(10,30,20,.5)', 12, 6, 14); dots('#c6322a', 18, 1.6, 4); break;
+    case 'unakite': fill('#5f8a52'); dots('#e98a7a', 14, 6, 15); dots('#3f6a3a', 8, 4, 10); break;
+    case 'lace': fill('#9ec4e6'); waves(['rgba(255,255,255,.75)', 'rgba(120,160,210,.5)'], 16, 4, 10, 2); break;
+    case 'jasper': fill('#a83224'); veins('rgba(60,20,14,.55)', 5, 3); dots('rgba(210,90,60,.4)', 10, 5, 12); break;
+    case 'amethyst': fill('#7a4ab0'); veins('rgba(235,220,255,.55)', 5, 4); dots('rgba(60,30,100,.4)', 8, 6, 12); break;
+  }
+  const rim = g.createRadialGradient(cx - 10 * k, cy - 10 * k, ry * .4, cx, cy, rx * 1.05); rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = rim; g.fillRect(cx - W, cy - H, W * 2, H * 2);
+  g.restore();
+  g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.ellipse(cx - rx * .38, cy - ry * .48, rx * .2, ry * .12, -.5, 0, 6.3); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.ellipse(cx + rx * .3, cy + ry * .45, rx * .25, ry * .07, -.2, 0, 6.3); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = Math.max(.6, 1.2 * k); g.stroke(p);
+  if (glows && rnd() < .3) glows.push([cx, cy, rx * 2.2, glow]);
+}
 // a shadowy bed in the rock that a formation grows from
 function bed(g, x, y, r, ang) { const b = g.createRadialGradient(x, y, 0, x, y, r); b.addColorStop(0, 'rgba(0,0,0,.5)'); b.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = b; g.beginPath(); g.ellipse(x, y, r, r * .55, ang + Math.PI / 2, 0, 6.3); g.fill(); }
 // one formation of a type, growing from (x, y) in direction ang; returns where to tap it
@@ -628,6 +676,13 @@ function formation(g, x, y, ang, size, ty, glows) {
       for (const p of list) blade(g, x, y, p.a, p.len, p.w, st, glows);
       break;
     }
+    case 'tumbled': {
+      const hx = x + dx * size * .4, hy = y + dy * size * .4, n = RI(2, 3), kind = ty.pal.tumble;
+      const spots = n === 2 ? [[-.32, -.12, .34], [.28, .1, .38]] : [[-.36, -.2, .3], [.34, -.16, .3], [-.02, .14, .36]];
+      for (const [ox, oy, r] of spots) pebble(g, hx + ox * size, hy + oy * size * .7, size * r * R(.92, 1.08), size * r * .74 * R(.92, 1.08), kind, glows, ty.pal.glow);
+      if (rnd() < .5) sparkAt(hx - size * .2, hy - size * .2, size * .1, st);
+      break;
+    }
     case 'urchin': {
       const cx = x + dx * size * .18, cy = y + dy * size * .18; bed(g, x, y, size * .3, ang);
       for (let i = 0; i < RI(16, 26); i++) { const a = ang + R(-1.6, 1.6), len = size * R(.35, .75); prism(g, cx, cy, a, len, len * R(.035, .055), st, glows); }
@@ -647,9 +702,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 36, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 37, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 36) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 37) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -667,7 +722,7 @@ function planCave() {
   rnd = mulberry(S.seed); makeNoise();
   W = WORLD_W; H = WORLD_H; const scale = 1.15, MORE = 1.8, rock = pick(ROCKS).map(hex);
   const apart = [['Ametrine', 'Bicolour Sapphire']].map(pr => pr[rnd() < .5 ? 0 : 1]);   // minerals too alike to share a cave: one of each pair sits this cave out
-  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k) && !apart.includes(pal.n)) MARKINGS.forEach(trait => { if (!(pal.zoned && trait.k === 'two') && !(pal.not || '').split(' ').includes(trait.k)) combos.push({ shape, pal, trait }); /* some markings are too subtle on some minerals */ }); })); shuffle(combos);
+  const combos = []; SHAPES.forEach(shape => PALETTES.forEach(pal => { if (pal.h.split(' ').includes(shape.k) && !apart.includes(pal.n)) MARKINGS.forEach(trait => { if (shape.k === 'tumbled' && trait.k !== 'clear') return; if (!(pal.zoned && trait.k === 'two') && !(pal.not || '').split(' ').includes(trait.k)) combos.push({ shape, pal, trait }); /* some markings are too subtle on some minerals */ }); })); shuffle(combos);
   // the hunts: no two of the same shape and colour
   const hunts = [];
   for (const c of combos) { if (hunts.length >= HUNTS) break; if (!hunts.some(h => h.pal === c.pal && h.shape === c.shape)) hunts.push(c); }
@@ -680,7 +735,8 @@ function planCave() {
     add(combos.find(c => c.pal === h.pal && c.shape !== h.shape && !isHunt(c) && !decoys.includes(c)));
   }
   // everything else in the cave: kinds that share at most one feature (mineral, shape or marking) with any crystal being hunted, so there are as few lookalikes as possible
-  const shared = (a, b) => (a.pal === b.pal) + (a.shape === b.shape) + (a.trait === b.trait);
+  const mark = c => c.shape.k === 'tumbled' ? 'tumbled:' + c.pal.n : c.trait.k;   // a pebble's own pattern is its marking
+  const shared = (a, b) => (a.pal === b.pal) + (a.shape === b.shape) + (mark(a) === mark(b));
   let fillers = combos.filter(c => !isHunt(c) && hunts.every(h => shared(c, h) <= 1)).slice(0, 24);
   if (fillers.length < 8) fillers = combos.filter(c => !isHunt(c)).slice(0, 24);   // never short of kinds
   const theme = [hunts[0].pal, hunts[1].pal, hunts[2].pal];
@@ -1157,7 +1213,7 @@ function showTarget() {
   const bg = wctx.createRadialGradient(sz / 2, sz * .55, 0, sz / 2, sz * .55, sz * .7); bg.addColorStop(0, rgba(mix(hex(ty.pal.glow), [20, 16, 30], .7))); bg.addColorStop(1, '#100c18');
   wctx.fillStyle = bg; wctx.fillRect(0, 0, sz, sz);
   const keepR = rnd, keepS = sparks; rnd = mulberry(4242); sparks = [];
-  const big = ty.shape.k === 'urchin' ? .9 : .78;
+  const big = ty.shape.k === 'tumbled' ? .95 : .78;
   formation(wctx, sz / 2, sz * .9, -Math.PI / 2, sz * big, ty, null);
   rnd = keepR; sparks = keepS;
   $('tray').classList.remove('fresh'); void $('tray').offsetWidth; $('tray').classList.add('fresh');
@@ -1190,7 +1246,7 @@ function tapAt(x, y) {
   }
   if (hit.hunt !== undefined && hit.hunt < S.hunt - 1) { note('Already in the bag'); return; }
   S.misses++; S.score = Math.max(0, S.score - 10); save(); renderHud(); sMiss(); buzz(20);
-  note(`That's ${/^[AEIOU]/.test(hit.type.pal.n) ? 'an' : 'a'} ${typeName(hit.type)}, ${hit.type.trait.t}`);
+  note(hit.type.shape.k === 'tumbled' ? `That's a ${typeName(hit.type)}` : `That's ${/^[AEIOU]/.test(hit.type.pal.n) ? 'an' : 'a'} ${typeName(hit.type)}, ${hit.type.trait.t}`);
 }
 function takeAway(s) {
   cave.removed.add(s.i);
@@ -1225,6 +1281,8 @@ const TIPS = [
   'Watermelon Tourmaline really is green at the bottom and pink at the top.',
   'Ametrine is amethyst and citrine in one crystal: purple, then gold.',
   'Pyrite is called fool\'s gold: shiny golden cubes that grow in nature.',
+  'Tumbled stones are polished pebbles: Lapis has gold flecks, Sodalite white veins, Bloodstone red spots.',
+  'Labradorite flashes blue and green when the light catches it, and Moonstone glows with a soft blue sheen.',
   'Galena is the silver cousin of pyrite, and bismuth crystals shimmer with every colour of the rainbow.',
   'Selenite is a glassy white form of gypsum. Some caves have selenite crystals taller than a house.',
   'Every crystal here grows only in the shapes it forms in real life.',
