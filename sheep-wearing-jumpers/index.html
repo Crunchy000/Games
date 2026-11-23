@@ -288,7 +288,7 @@ document.addEventListener('click', e => {
       <button class="ib pk-home" id="bSound" aria-label="Sound"></button>
     </div>
   </header>
-  <div class="info"><div><small>Hunt</small><span id="rnd">1/12</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="A new field">↻</button></div>
+  <div class="info"><div><small>Hunt</small><span id="rnd">1/63</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="A new field">↻</button></div>
   <div class="main">
   <div id="stage" aria-label="The meadow. Pinch to zoom, drag to look around, tap a matching sheep to find it, or the grass by a flock to scatter it.">
     <canvas id="game"></canvas>
@@ -315,7 +315,7 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>🧶</div><h3>The patterns</h3><p><b>Stripy</b>, <b>Zigzag</b>, <b>Argyle</b> diamonds, <b>Spotty</b>, <b>Hearts</b>, <b>Starry</b>, <b>Fair Isle</b> snowflakes, <b>Tartan</b> checks and <b>Patchwork</b> quilt squares.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Scatter the flock</h3><p>The sheep huddle in flocks. <b>Tap the grass</b> by a flock and they scatter wide for a few seconds, then slowly huddle back together, so you can see who's hiding in the middle. Tap a match to find it. Tapping a sheep that isn't a match scatters them too, but costs 5 points.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p><b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom. Tap the little map to jump. A hint 🔍 costs 25; four-leaf clovers 🍀 under the flocks are a bonus.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🌙</div><h3>12 hunts a field</h3><p>A new jumper to find each time, and the day moves on every three hunts. Tap ↻ for a new field.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🌙</div><h3>63 sheep a field</h3><p>Find every sheep in the field, one at a time, and watch the day move from morning to starlight as the field empties. Tap ↻ for a new field.</p></section>
   </div>
   <div class="row2"><button class="btn pk-btn" data-close>Let's look</button></div>
 </div></div>
@@ -486,10 +486,10 @@ function sprite(ty, dir) {
 }
 
 /* ---------- saving ---------- */
-const HUNTS = 12, huntSize = h => 1;   // every jumper is worn by one sheep, so each hunt is for that one
-let S = { v: 11, seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
+const HUNTS = COLOURS.length * PATTERNS.length, huntSize = h => 1;   // every sheep wears a different jumper, and you find them all, one at a time
+let S = { v: 12, seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('sheepjumpers');
-try { const s = JSON.parse(localStorage.getItem('sheepjumpers') || 'null'); if (s && s.v === 11) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem('sheepjumpers') || 'null'); if (s && s.v === 12) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('sheepjumpers', JSON.stringify(S)); } catch (e) {} };
 
@@ -546,7 +546,7 @@ const TIMES = [
   { n: '🌆 Dusk', sky: ['#1a2348', '#55407a', '#c47a80'], far: '#424468', mid: '#34504a', grass: ['#4f7c52', '#3a6342', '#284c30'], tree: '#223a34', night: .2, sun: [.8, .97, 'rgba(255,214,186,.8)'] },
   { n: '🌙 Starlight', sky: ['#081024', '#13254a', '#294a6c'], far: '#203250', mid: '#1c3a3e', grass: ['#3a6a52', '#2a5240', '#1c3d2e'], tree: '#12262a', night: .34, sun: [.25, .4, 'rgba(245,248,255,.92)'] },
 ];
-const todNow = () => Math.min(TIMES.length - 1, Math.floor((S.hunt - 1) / 3));
+const PER_TIME = Math.ceil(HUNTS / TIMES.length), todNow = () => Math.min(TIMES.length - 1, Math.floor((S.hunt - 1) / PER_TIME));   // morning to starlight over the whole field
 const av = f => f + (window.AV && AV[f] ? '?v=' + AV[f] : '');
 const picnicImg = new Image(); picnicImg.onload = () => { if (field) paintBackdrop(); }; picnicImg.src = av('bear-and-bean-picnic.webp');
 function paintBackdrop() {
@@ -753,7 +753,7 @@ const TIPS = [
   'Four-leaf clovers 🍀 hide under the flocks: 75 points each.',
   'Pinch or tap ＋ to zoom in close. Tap the little map to jump about.',
   'Stuck? 🔍 shows you where one is, for 25 points.',
-  'The day moves on every three hunts. Sheep sleep standing up, sometimes!',
+  'Find every sheep, one at a time. The day moves on as the field empties. Sheep sleep standing up, sometimes!',
 ];
 const loadingEl = $('loading');
 function makeField(fresh) {
@@ -777,7 +777,7 @@ $('bNewX').onclick = $('bNewNo').onclick = () => $('ovNew').classList.remove('sh
 $('bHint').onclick = hint;
 $('bNext').onclick = () => { $('ovWin').classList.remove('show'); makeField(true).then(() => target() && note('Find: ' + typeName(target()))); };
 $('bHelp').onclick = () => $('ovHelp').classList.add('show');
-$('bTime').onclick = () => note('The day moves on every three hunts');
+$('bTime').onclick = () => note('The day moves on as you find the sheep');
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { $('ovHelp').classList.remove('show'); S.seenHelp = true; save(); }));
 $('ovHelp').addEventListener('pointerdown', e => { if (e.target === $('ovHelp')) { $('ovHelp').classList.remove('show'); S.seenHelp = true; save(); } });
 $('ovNew').addEventListener('pointerdown', e => { if (e.target === $('ovNew')) $('ovNew').classList.remove('show'); });
