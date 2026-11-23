@@ -805,9 +805,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 44, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 45, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 44) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 45) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -1003,9 +1003,9 @@ function planFloor(T) {
   const lipAt = (k, x) => { const T = tiers[k], b = T.blocks.find(b => x >= b[0] && x < b[1]) || T.blocks[T.blocks.length - 1]; return T.base + lerp(b[2], b[3], (x - b[0]) / (b[1] - b[0])); };
   // a waterfall stepping down the tiers into a pond at the back of the floor
   const hx = W * R(.3, .7), wx = hx < W / 2 ? W * R(.62, .74) : W * R(.26, .38);   // the waterfall well clear of the skylight, and of the controls at the edges
-  const pond = { x: wx, y: y0 + R(34, 44), rx: R(110, 140), ry: R(28, 36) };
+  const pond = { x: wx, y: y0 + R(34, 44) + 8, rx: R(110, 140) * 1.3, ry: R(28, 36) * 1.2 };
   const falls = [];
-  for (let k = nT - 1; k >= 0; k--) falls.push({ x: wx + R(-4, 4), y0: k === nT - 1 ? lipAt(k, wx) - tiers[k].d - 18 : lipAt(k, wx) - tiers[k].d * .55, y1: k ? lipAt(k - 1, wx) - tiers[k - 1].d * .45 : pond.y - 4, w: lerp(16, 30, 1 - k / nT) });
+  for (let k = nT - 1; k >= 0; k--) falls.push({ x: wx + R(-4, 4), y0: k === nT - 1 ? lipAt(k, wx) - tiers[k].d - 18 : lipAt(k, wx) - tiers[k].d * .55, y1: k ? lipAt(k - 1, wx) - tiers[k - 1].d * .45 : pond.y - 4, w: lerp(28, 50, 1 - k / nT) });
   const inPond = inPondLater = (x, y, m = 0) => ((x - pond.x) / (pond.rx + m)) ** 2 + ((y - pond.y) / (pond.ry + m * .4)) ** 2 < 1;
   // a skylight in the roof, and the pool of light it throws on the floor
   const hole = { x: hx, y: R(30, 42), rx: R(90, 120), ry: R(26, 34), off: R(0, 100) };
@@ -1107,9 +1107,10 @@ function boulder(g, x, y, s, col) {
 function waterDrop(g, f, mineral) {
   const { x, y0: a, y1: b, w } = f, p = new Path2D();
   p.moveTo(x - w * .4, a); p.quadraticCurveTo(x - w * .55, (a + b) / 2, x - w * .5, b); p.lineTo(x + w * .5, b); p.quadraticCurveTo(x + w * .55, (a + b) / 2, x + w * .4, a); p.closePath();
-  const gr = g.createLinearGradient(x - w / 2, 0, x + w / 2, 0); gr.addColorStop(0, 'rgba(190,225,240,.35)'); gr.addColorStop(.5, 'rgba(235,248,255,.75)'); gr.addColorStop(1, 'rgba(190,225,240,.35)'); g.fillStyle = gr; g.fill(p);
-  g.save(); g.clip(p); g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.2; for (let i = 0; i < 6; i++) { const sx = x + R(-.4, .4) * w; g.beginPath(); g.moveTo(sx, a + R(0, 10)); g.lineTo(sx + R(-2, 2), b); g.stroke(); } g.restore();
-  for (let i = 0; i < 9; i++) { g.fillStyle = `rgba(255,255,255,${R(.45, .85)})`; g.beginPath(); g.ellipse(x + R(-.8, .8) * w, b + R(-3, 4), R(4, 9), R(2, 4), 0, 0, 6.3); g.fill(); }
+  const gr = g.createLinearGradient(x - w / 2, 0, x + w / 2, 0); gr.addColorStop(0, 'rgba(160,214,238,.6)'); gr.addColorStop(.25, 'rgba(225,244,255,.88)'); gr.addColorStop(.5, 'rgba(245,252,255,.95)'); gr.addColorStop(.75, 'rgba(225,244,255,.88)'); gr.addColorStop(1, 'rgba(160,214,238,.6)'); g.fillStyle = gr; g.fill(p);
+  g.save(); g.clip(p); for (let i = 0; i < 16; i++) { const sx = x + R(-.45, .45) * w; g.strokeStyle = rnd() < .5 ? 'rgba(255,255,255,.7)' : 'rgba(120,180,215,.45)'; g.lineWidth = R(1, 2.6); g.beginPath(); g.moveTo(sx, a + R(0, 10)); g.lineTo(sx + R(-2, 2), b); g.stroke(); } g.restore();   // ropes of water
+  for (let i = 0; i < 18; i++) { g.fillStyle = `rgba(255,255,255,${R(.5, .9)})`; g.beginPath(); g.ellipse(x + R(-.9, .9) * w, b + R(-5, 5), R(5, 12), R(2.5, 5), 0, 0, 6.3); g.fill(); }   // foam where it lands
+  for (let i = 0; i < 14; i++) { g.fillStyle = `rgba(235,248,255,${R(.25, .55)})`; g.beginPath(); g.arc(x + R(-1.3, 1.3) * w, b - R(4, 22), R(1, 2.4), 0, 6.3); g.fill(); }   // spray
 }
 // the painting steps for the crystal floor (patch-aware: near() says what's in the area being repainted)
 function floorOps(g, plan, removed, near, ops, glows, patch) {
@@ -1219,9 +1220,14 @@ function floorOps(g, plan, removed, near, ops, glows, patch) {
     for (const f of plan.fossils) fossil(g, f, floorCol);
     // the pond at the foot of the waterfall, and the last drop into it
     const pd = plan.pond, pg = g.createRadialGradient(pd.x, pd.y - pd.ry * .3, 0, pd.x, pd.y, pd.rx);
-    g.fillStyle = rgba(shade(floorCol, -.5)); g.beginPath(); g.ellipse(pd.x, pd.y + 3, pd.rx + 6, pd.ry + 4, 0, 0, 6.3); g.fill();
-    pg.addColorStop(0, 'rgba(120,220,250,.95)'); pg.addColorStop(.6, 'rgba(26,132,196,.95)'); pg.addColorStop(1, 'rgba(10,52,112,.95)'); g.fillStyle = pg; g.beginPath(); g.ellipse(pd.x, pd.y, pd.rx, pd.ry, 0, 0, 6.3); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(pd.x + pd.rx * .25, pd.y - pd.ry * .35, pd.rx * .35, pd.ry * .15, 0, Math.PI * 1.1, Math.PI * 1.8); g.stroke();
+    { g.save(); g.translate(pd.x, pd.y); g.scale(1, pd.ry / pd.rx);   // still and glassy, its edge melting softly into the flood
+      const eg = g.createRadialGradient(0, 0, pd.rx * .8, 0, 0, pd.rx * 1.25); eg.addColorStop(0, 'rgba(8,40,90,.55)'); eg.addColorStop(1, 'rgba(8,40,90,0)'); g.fillStyle = eg; g.fillRect(-pd.rx * 1.3, -pd.rx * 1.3, pd.rx * 2.6, pd.rx * 2.6);
+      pg.addColorStop(0, 'rgba(70,170,220,.9)'); pg.addColorStop(.4, 'rgba(26,124,192,.92)'); pg.addColorStop(.8, 'rgba(12,74,140,.9)'); pg.addColorStop(.94, 'rgba(10,56,116,.7)'); pg.addColorStop(1, 'rgba(10,56,116,0)'); g.restore();
+      g.fillStyle = pg; g.beginPath(); g.ellipse(pd.x, pd.y, pd.rx, pd.ry, 0, 0, 6.3); g.fill();
+      const sh = g.createLinearGradient(pd.x - pd.rx, pd.y - pd.ry, pd.x + pd.rx * .2, pd.y); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(.55, 'rgba(255,255,255,.22)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = sh; g.beginPath(); g.ellipse(pd.x - pd.rx * .3, pd.y - pd.ry * .35, pd.rx * .45, pd.ry * .2, -.05, 0, 6.3); g.fill(); }   // a long smooth sheen
+    { const f = plan.falls[plan.falls.length - 1], mg = g.createRadialGradient(f.x, f.y1, 0, f.x, f.y1, f.w * 2.4); mg.addColorStop(0, 'rgba(235,250,255,.55)'); mg.addColorStop(1, 'rgba(235,250,255,0)');
+      g.save(); g.translate(f.x, f.y1); g.scale(1, .45); g.translate(-f.x, -f.y1); g.fillStyle = mg; g.fillRect(f.x - f.w * 2.5, f.y1 - f.w * 2.5, f.w * 5, f.w * 5); g.restore(); }   // white water churning where the fall lands
     waterDrop(g, plan.falls[plan.falls.length - 1], mineral);
   });
   // everything on the floor, back to front, a little dimmer the farther back it is
@@ -1647,9 +1653,9 @@ function frame(now) {
     ctx.globalAlpha = m.a * (.6 + .4 * Math.sin(t * 1.3 + m.p)); ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(mx, my, m.r, 0, 6.3); ctx.fill();
   }
   if (cave.plan.water && !reduceMotion) {   // water streaking down the falls, and rings spreading on the pond
-    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2;
     for (const f of cave.plan.water.falls) { if (!seen(f.x, f.y0) && !seen(f.x, f.y1)) continue; const len = f.y1 - f.y0;
-      for (let i = 0; i < 4; i++) { const y = f.y0 + ((t * 90 + i * len / 4 + f.x) % len), sx = f.x + (i - 1.5) * f.w * .2; ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx, Math.min(f.y1, y + 10)); ctx.stroke(); } }
+      for (let i = 0; i < 8; i++) { const y = f.y0 + ((t * 130 + i * len / 8 * 2.7 + f.x) % len), sx = f.x + (i / 7 - .5) * f.w * .75; ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx, Math.min(f.y1, y + 16)); ctx.stroke(); } }
     const pd = cave.plan.water.pond; if (seen(pd.x, pd.y)) for (let i = 0; i < 2; i++) { const k = ((t * .5 + i * .5) % 1); ctx.strokeStyle = `rgba(255,255,255,${.45 * (1 - k)})`; ctx.beginPath(); ctx.ellipse(pd.x, pd.y, pd.rx * (.15 + k * .7), pd.ry * (.15 + k * .7), 0, 0, 6.3); ctx.stroke(); }
     for (const d of cave.plan.water.drips || []) { if (!seen(d.x, d.y)) continue; const k = (t * d.f + d.p) % 1; if (k > .6) continue; const u = k / .6;
       for (const lag of [0, .25]) { const v = u - lag; if (v <= 0) continue; ctx.strokeStyle = `rgba(255,255,255,${.4 * (1 - v)})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(d.x, d.y, (4 + v * 34) * d.s, (4 + v * 34) * d.s * .3, 0, 0, 6.3); ctx.stroke(); } }
