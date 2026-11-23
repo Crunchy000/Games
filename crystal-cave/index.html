@@ -609,7 +609,7 @@ function octa(g, x, y, s, rot, st, glows) {
 function pebble(g, cx, cy, rx, ry, kind, glows, glow, form) {
   const k = rx / 62, n = 32, o = R(0, 6), p = new Path2D();
   if (form === 'wand') {   // a long rounded stick, lying at a slight angle
-    const a = R(-.45, .45), L = rx * 1.15, w = ry * .42, ca = Math.cos(a), sa = Math.sin(a);
+    const a = R(-.3, .3), L = rx * 1.15, w = ry * .42, ca = Math.cos(a), sa = Math.sin(a);
     for (let i = 0; i <= 40; i++) { const t = i / 40 * Math.PI * 2, ex = Math.cos(t), ey = Math.sin(t), lx = (Math.abs(ex) > .3 ? Math.sign(ex) * (L - w) + ex * w : ex * (L - w) / .3) , ly = ey * w; i ? p.lineTo(cx + lx * ca - ly * sa, cy + lx * sa + ly * ca) : p.moveTo(cx + lx * ca - ly * sa, cy + lx * sa + ly * ca); }
   } else if (form === 'dome') {   // a cabochon: a smooth dome on a flat base
     p.ellipse(cx, cy + ry * .3, rx, ry * 1.2, 0, Math.PI, 0); p.ellipse(cx, cy + ry * .3, rx, ry * .22, 0, 0, Math.PI);
@@ -622,7 +622,9 @@ function pebble(g, cx, cy, rx, ry, kind, glows, glow, form) {
   if (form === 'slice' || form === 'halfegg') { g.fillStyle = form === 'slice' ? '#3e2412' : '#4e4a46'; g.beginPath(); g.ellipse(cx, cy + ry * .22, rx * 1.02, ry * 1.02, 0, 0, Math.PI * 2); g.fill(); }
   if (form === 'heart' || form === 'donut') { g.save(); g.translate(0, ry * .2); g.fillStyle = form === 'heart' ? '#a8506f' : '#1c5e3a'; g.fill(p, 'evenodd'); g.translate(0, -ry * .1); g.fillStyle = form === 'heart' ? '#c46a8c' : '#25744a'; g.fill(p, 'evenodd'); g.restore(); }   // the side of a puffy heart or a thick ring
   if (form === 'donut') { p.moveTo(cx + rx * .36, cy); p.ellipse(cx, cy, rx * .36, ry * .36, 0, 0, Math.PI * 2); }   // the hole through a carved donut
-  g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(cx + 3 * k, cy + ry * .85, rx * .9, ry * .26, 0, 0, 6.3); g.fill();
+  if (form === 'wand') { g.save(); g.translate(2 * k, ry * .3); g.fillStyle = 'rgba(0,0,0,.38)'; g.fill(p); g.restore(); }   // a wand's shadow follows it, just below
+  else if (form === 'dome') { g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.ellipse(cx + 2 * k, cy + ry * .55, rx * 1.02, ry * .26, 0, 0, 6.3); g.fill(); }   // right under the dome's flat base
+  else { g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(cx + 3 * k, cy + ry * .85, rx * .9, ry * .26, 0, 0, 6.3); g.fill(); }
   g.save(); g.clip(p, 'evenodd');
   const W = rx + 6, H = ry + 6, fill = c => { g.fillStyle = c; g.fillRect(cx - W, cy - H, W * 2, H * 2); };
   const radial = (stops, ox = -10, oy = -8) => { const gr = g.createRadialGradient(cx + ox * k, cy + oy * k, 2, cx, cy, rx); stops.forEach(([t, c]) => gr.addColorStop(t, c)); g.fillStyle = gr; g.fillRect(cx - W, cy - H, W * 2, H * 2); };
@@ -735,7 +737,7 @@ function formation(g, x, y, ang, size, ty, glows) {
       break;
     }
     case 'tumbled': {
-      const hx = x + dx * size * .4, hy = y + dy * size * .4, n = RI(2, 3), kind = ty.pal.tumble;
+      const hx = x, hy = y - size * .25, n = RI(2, 3), kind = ty.pal.tumble;
       const spots = n === 2 ? [[-.32, -.12, .34], [.28, .1, .38]] : [[-.36, -.2, .3], [.34, -.16, .3], [-.02, .14, .36]];
       for (const [ox, oy, r] of spots) pebble(g, hx + ox * size, hy + oy * size * .7, size * r * R(.92, 1.08), size * r * ({ donut: .62, slice: .55, halfegg: .7, wand: .74, dome: .6 }[ty.pal.form] || .74) * R(.92, 1.08), kind, glows, ty.pal.glow, ty.pal.form);
       if (rnd() < .5) sparkAt(hx - size * .2, hy - size * .2, size * .1, st);
@@ -760,9 +762,9 @@ function stalactite(g, x, y, len, w, col) {
 
 /* ---------- the game: hunts, taps, hints, fossils, saving ---------- */
 const HUNTS = 12, huntSize = h => 3 + Math.floor((h - 1) / 3);   // 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6
-let S = { v: 42, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 43, mode: 'floor', seed: 0, hunt: 1, found: [], fossils: [], score: 0, best: 0, caves: 0, misses: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('crystalcave');
-try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 42) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
+try { const s = JSON.parse(localStorage.getItem('crystalcave') || 'null'); if (s && s.v === 43) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}   // caves from the first version don't carry over
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('crystalcave', JSON.stringify(S)); } catch (e) {} };
 
@@ -865,6 +867,7 @@ function planCave() {
     s.spare = !s.centre && onScreen && s.hidden <= .5 && s.r >= 11;       // a fallback if a cave runs short
   });
   const counts = assignHunts(slots, hunts, decoys, fillers);
+  for (const s of slots) if (s.type.shape.k === 'tumbled') { s.cx = s.x; s.cy = s.y - s.size * .25; }   // heaps sit on the spot they're placed
   // three fossils pressed into the rock, just behind the rim of the middle rings
   const fossils = [];
   for (let tries = 0; fossils.length < 3 && tries < 2000; tries++) {
@@ -1010,6 +1013,7 @@ function planFloor(T) {
     s.spare = onScreen && s.hidden <= .5 && s.r >= 11;
   });
   const counts = assignHunts(slots, hunts, decoys, fillers);
+  for (const s of slots) if (s.type.shape.k === 'tumbled') { s.y = Math.max(s.y, baseY(s.x) + s.size * .55); s.cx = s.x; s.cy = s.y - s.size * .25; }   // heaps sit on the floor, never up against the wall
   return { kind: 'floor', hw: hwFront, hunts, counts, decoys, slots, decor, items, fossils, rock, theme, mineral, pool, y0, yF, baseY, frontY, persp, tiers, faceH, lipAt, falls, pond, hole, sky, view: { x: pool.x, y: pool.y - 120 }, water: { falls, pond } };
 }
 // a rounded boulder, lit from above
