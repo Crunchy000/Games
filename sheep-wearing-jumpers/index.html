@@ -676,7 +676,7 @@ function tapAt(x, y) {
     if (S.found.length >= targetsNow().length) {
       S.score += 150; save(); renderHud();
       if (S.hunt >= HUNTS) { note("That's the whole field! +150"); setTimeout(win, 900); }
-      else { note("Found it! +250"); setTimeout(nextHunt, 1100); }
+      else nextHunt('Found it! +250 · ');   // straight on to the next one while this one skips away
     } else { save(); renderHud(); }
     return;
   }
@@ -721,10 +721,10 @@ function scatter(x, y, k) {
   sortSheep();
   return group.length;
 }
-function nextHunt() {
+function nextHunt(said = '') {
   S.hunt++; S.found = []; hintSheep = null; save(); sortSheep();
   if (todNow() !== field.tod) paintBackdrop();
-  showTarget(); note('Now find: ' + typeName(target()));
+  showTarget(); note(said + 'Next: ' + typeName(target()));
 }
 function hint() {
   if (!field || busy) return; audio();
