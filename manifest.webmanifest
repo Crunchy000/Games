@@ -3,9 +3,15 @@
   "name": "The Bear & Bean Games",
   "short_name": "Bear & Bean",
   "description": "The Bear & Bean Games: wholesome mini-games that work offline. Totally free, with no ads, no purchases, no tracking and no nonsense.",
+  "lang": "en-GB",
+  "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait",
   "background_color": "#2b2018",
   "theme_color": "#0b0816",
@@ -33,5 +39,125 @@
     "games",
     "entertainment",
     "kids"
+  ],
+  "launch_handler": {
+    "client_mode": [
+      "focus-existing",
+      "auto"
+    ]
+  },
+  "handle_links": "preferred",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Sheep Wearing Jumpers",
+      "short_name": "Sheep",
+      "description": "Find every sheep in a knitted jumper",
+      "url": "./sheep-wearing-jumpers/",
+      "icons": [
+        {
+          "src": "icons/shortcut-sheep-wearing-jumpers.png?v=04d89d20",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Crystal Cave",
+      "short_name": "Crystal Cave",
+      "description": "A glittering hidden-crystal hunt",
+      "url": "./crystal-cave/",
+      "icons": [
+        {
+          "src": "icons/shortcut-crystal-cave.png?v=15c36fd2",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Find a Flower",
+      "short_name": "Find",
+      "description": "A hidden-flower hunt in a meadow",
+      "url": "./find-a-flower/",
+      "icons": [
+        {
+          "src": "icons/shortcut-find-a-flower.png?v=1cb1ec9d",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Guess Five",
+      "short_name": "Guess Five",
+      "description": "The daily five-letter word",
+      "url": "./guess-five/",
+      "icons": [
+        {
+          "src": "icons/shortcut-guess-five.png?v=55567a5a",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/home-narrow.webp",
+      "sizes": "1080x1920",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "All the Bear & Bean games, free and offline"
+    },
+    {
+      "src": "screenshots/sheep-wearing-jumpers-narrow.webp",
+      "sizes": "1080x1920",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Sheep Wearing Jumpers: find every sheep, one at a time"
+    },
+    {
+      "src": "screenshots/crystal-cave-narrow.webp",
+      "sizes": "1080x1920",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Crystal Cave: a glittering hidden-crystal hunt"
+    },
+    {
+      "src": "screenshots/find-a-flower-narrow.webp",
+      "sizes": "1080x1920",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Find a Flower: spot the matching blooms"
+    },
+    {
+      "src": "screenshots/word-hive-narrow.webp",
+      "sizes": "1080x1920",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Word Hive: make words from seven letters"
+    },
+    {
+      "src": "screenshots/guess-five-narrow.webp",
+      "sizes": "1080x1920",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Guess Five: the daily five-letter word"
+    },
+    {
+      "src": "screenshots/home-wide.webp",
+      "sizes": "1280x800",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "All the Bear & Bean games, free and offline"
+    },
+    {
+      "src": "screenshots/sheep-wearing-jumpers-wide.webp",
+      "sizes": "1280x800",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Sheep Wearing Jumpers on a bigger screen"
+    }
   ]
 }
