@@ -948,9 +948,9 @@ function frame(now) {
     if (a.ph === 'out') { const u = Math.min(1, a.t / .75), e = 1 - (1 - u) * (1 - u); sh.x = lerp(a.x0, a.x1, e); sh.y = lerp(a.y0, a.y1, e); a.hop = reduceMotion ? 0 : Math.abs(Math.sin(u * Math.PI * 3)) * 7 * sh.s; if (u >= 1) { a.ph = 'wait'; a.t = 0; a.hop = 0; } }
     else if (a.ph === 'wait') { if (a.t > a.wait) { a.ph = 'home'; a.t = 0; } }
     else { const dx = sh.x0 - sh.x, dy = sh.y0 - sh.y, d = Math.hypot(dx, dy), step = a.sp * Math.min(1, a.t / .8) * dt;   // amble back, easing into a walk
-      if (d <= step || d < .5) { sh.x = sh.x0; sh.y = sh.y0; sh.dir = sh.dir0; sh.anim = null; }
+      if (d <= step || d < .5) { sh.x = sh.x0; sh.y = sh.y0; sh.s = persp(sh.y0); sh.dir = sh.dir0; sh.anim = null; }
       else { sh.x += dx / d * step; sh.y += dy / d * step; if (Math.abs(dx) > 2) sh.dir = dx > 0 ? 1 : -1; a.hop = reduceMotion ? 0 : Math.abs(Math.sin(a.t * 7)) * 1.6 * sh.s; } } }
-  if (moving) sortSheep();
+  if (moving) { for (const sh of order) if (sh.anim) sh.s = persp(sh.y); sortSheep(); }   // nearer is bigger, wherever a sheep runs to
   for (const sh of order) { if (!seen(sh.x, sh.y)) continue; drawOne(sh, sh.x, sh.y, sh.anim ? sh.anim.hop || 0 : 0); }
   // found sheep skip away with a happy bounce, fading
   for (const L of leaving) { L.t += dt; const sh = L.sh, u = L.t / .9; drawOne(sh, L.x + sh.dir * u * 40 * sh.s, L.y, Math.abs(Math.sin(u * Math.PI * 2.5)) * 16 * sh.s, Math.max(0, 1 - u)); }
