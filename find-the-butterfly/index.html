@@ -728,7 +728,7 @@ function paintBackdrop() {
     if (picnicImg.complete && picnicImg.naturalWidth) { const h = w * picnicImg.naturalHeight / picnicImg.naturalWidth; g.drawImage(picnicImg, p.x - w / 2, p.y - h * .78, w, h); }
     else { g.fillStyle = '#d4504a'; g.beginPath(); g.ellipse(p.x, p.y, w * .45, w * .14, 0, 0, 6.3); g.fill(); } }
   if (T.night) { g.fillStyle = `rgba(14,20,50,${T.night})`; g.fillRect(0, 0, WORLD_W, WORLD_H); }
-  field.pic = c; field.tod = todNow();
+  field.pic = c; field.tod = todNow(); watch(c);
   paintMiniArt();
 }
 
@@ -909,7 +909,7 @@ const TIPS = [
 const loadingEl = $('loading');
 function makeField(fresh) {
   if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.clovers = []; S.score = 0; S.shoos = 0; S.hints = 0; save(); }
-  BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(4.6e6 / (WORLD_W * WORLD_H)));
+  BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(3.6e6 / (WORLD_W * WORLD_H))) * shrink; healTries = 0;
   busy = true; $('tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)]; $('loadMsg').textContent = wild() ? 'Sowing the wildflowers…' : 'Growing the rainforest…'; loadingEl.classList.add('show');
   return new Promise(res => setTimeout(() => {
     let plan;
@@ -919,7 +919,7 @@ function makeField(fresh) {
     field = { plan, pic: null }; leaving = []; hintSheep = null;
     try { paintBackdrop(); } catch (e) { (window.__ftsErr = window.__ftsErr || []).push(String(e && e.stack || e).slice(0, 300)); }
     sortSheep(); centreCamera(); busy = false;
-    setTimeout(() => { loadingEl.classList.remove('show'); showTarget(); res(); }, 350);
+    setTimeout(() => { loadingEl.classList.remove('show'); showTarget(); res(); setTimeout(() => heal(), 1200); }, 350);
   }, 30));
 }
 function chooseNew(fromWin) {
@@ -1109,6 +1109,39 @@ function frame(now) {
 applyTheme(); renderSound(); layout(); renderHud();
 const firstHelp = firstVisit && !S.seenHelp;
 if (firstHelp) $('ovHelp').classList.add('show');
+/* ---------- a phone can throw away the pictures we paint off screen (in the background, or short of memory): spot it and paint them again ---------- */
+let shrink = 1, healTries = 0, healing = false;
+const lostCtx = g => { try { return !!(g && g.isContextLost && g.isContextLost()); } catch (e) { return false; } };
+function artMissing() {
+  if (!field || !field.pic) return false;
+  if (!field.pic.width) return true;
+  const g = field.pic.getContext('2d'); if (!g || lostCtx(g)) return true;
+  try { return g.getImageData(4, 4, 1, 1).data[3] === 0; } catch (e) { return false; }   // the top corner of the sky is never see-through
+}
+function watch(c) { if (c && !c.dataset.watched) { c.dataset.watched = 1; c.addEventListener('contextrestored', () => heal(true)); } }
+function heal(force) {
+  if (healing || busy || !field || document.hidden) return;
+  const art = artMissing();
+  if (!force && !art && !lostCtx(wctx) && !lostCtx(mctx) && !lostCtx(ctx)) return;
+  healing = true;
+  try {
+    sprites.clear();
+    if (art || force) {
+      if (art && healTries++ > 0) shrink = Math.max(.55, shrink * .8);   // it failed again: paint it smaller, so it fits
+      BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(3.6e6 / (WORLD_W * WORLD_H))) * shrink;
+      if (field.pic) field.pic.width = field.pic.height = 0; field.pic = null;
+      paintBackdrop();
+    } else paintMiniArt();
+    showTarget();
+  } catch (e) { (window.__ftsErr = window.__ftsErr || []).push('heal: ' + String(e && e.stack || e).slice(0, 300)); }
+  healing = false;
+  if (artMissing() && healTries < 4) setTimeout(() => heal(), 900);
+}
+[cv, wantCv, mini].forEach(watch);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => heal(), 250); });
+addEventListener('pageshow', () => setTimeout(() => heal(), 250));
+addEventListener('focus', () => setTimeout(() => heal(), 250));
+setInterval(() => { if (!document.hidden && field && field.pic && (!field.pic.width || lostCtx(field.pic.getContext('2d')) || lostCtx(wctx))) heal(); }, 4000);
 requestAnimationFrame(() => { layout(); makeField(!S.seed); });
 requestAnimationFrame(frame);
 if (/[?&]debug\b/.test(location.search)) window.__fts = {
@@ -1132,6 +1165,8 @@ if (/[?&]debug\b/.test(location.search)) window.__fts = {
     }
     return c.toDataURL('image/webp', .88);
   },
+  lose() { field.pic.getContext('2d').clearRect(0, 0, field.pic.width, field.pic.height); wctx.clearRect(0, 0, wantCv.width, wantCv.height); for (const s of sprites.values()) s.width = s.width; },
+  heal,
   sheet() {   // every pattern in every colour, with both faces, to judge how they look side by side
     const cw = 88, rh = 70, c = document.createElement('canvas'); c.width = cw * PATTERNS.length * 2; c.height = rh * (COLOURS.length + 1) * 2 + 60; c.style.cssText = 'position:fixed;left:0;top:0;z-index:99;width:' + c.width / 2 + 'px';
     const g = c.getContext('2d'); g.scale(2, 2); g.fillStyle = '#7cb653'; g.fillRect(0, 0, c.width, c.height);

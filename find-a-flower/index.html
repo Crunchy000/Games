@@ -3109,6 +3109,13 @@ function freshMeadow() {
 if (window.ResizeObserver) new ResizeObserver(() => layout()).observe(stage);
 // if the phone runs short of graphics memory it can take canvases away; when it gives them back, bake the meadow again
 canvas.addEventListener('contextrestored', () => { if (worldW) rebake(); });
+// the baked meadow lives off screen, and a phone can throw it away too (in the background, or short of memory): spot it and bake it again
+{ let tries = 0;
+  const lost = () => { const c = backdropCanvas; if (!worldW || !c.width) return false; const g = c.getContext('2d'); try { if (g.isContextLost && g.isContextLost()) return true; for (const [fx, fy] of [[.5, .5], [.2, .8], [.8, .3]]) if (g.getImageData(c.width * fx | 0, c.height * fy | 0, 1, 1).data[3]) return false; return true; } catch (e) { return false; } };
+  const heal = () => { if (document.hidden || !lost()) { tries = 0; return; } if (tries++ < 4) rebake(); };
+  backdropCanvas.addEventListener('contextrestored', () => { if (worldW) rebake(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(heal, 250); });
+  addEventListener('pageshow', () => setTimeout(heal, 250)); addEventListener('focus', () => setTimeout(heal, 250)); }
 
 applyTheme(); renderSound();
 requestAnimationFrame(loop);

@@ -1544,6 +1544,7 @@ function makeCave(fresh) {
     S.fossils = S.fossils.filter(i => i < plan.fossils.length);
     paintMiniArt(); centreCamera();
     loadingEl.classList.remove('show'); showTarget();
+    pic.addEventListener('contextrestored', () => heal(true)); setTimeout(() => heal(), 1200);
   });
 }
 // a new cave: choose the ring cave or the crystal floor
@@ -1729,9 +1730,29 @@ function frame(now) {
 applyTheme(); renderSound(); layout(); renderHud();
 const firstHelp = firstVisit && !S.seenHelp;
 if (firstHelp) $('ovHelp').classList.add('show');
+/* ---------- a phone can throw away the cave we painted off screen (in the background, or short of memory): spot it and paint it again ---------- */
+let healTries = 0;
+const lostCtx = g => { try { return !!(g && g.isContextLost && g.isContextLost()); } catch (e) { return false; } };
+function caveMissing() {
+  if (!cave || !cave.pic) return false;
+  const p = cave.pic; if (!p.width) return true;
+  const g = p.getContext('2d'); if (!g || lostCtx(g)) return true;
+  try { for (const [fx, fy] of [[.5, .5], [.3, .75], [.7, .6]]) if (g.getImageData(p.width * fx | 0, p.height * fy | 0, 1, 1).data[3]) return false; return true; } catch (e) { return false; }   // the rock is never see-through
+}
+function heal(force) {
+  if (busyGen || !cave || document.hidden) return;
+  if (force || caveMissing()) { if (healTries++ < 4) makeCave(false); }
+  else { healTries = 0; if (lostCtx(wctx)) showTarget(); if (lostCtx(mctx)) paintMiniArt(); }
+}
+for (const c of [cv, wantCv, mini]) c.addEventListener('contextrestored', () => heal());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => heal(), 250); });
+addEventListener('pageshow', () => setTimeout(() => heal(), 250));
+addEventListener('focus', () => setTimeout(() => heal(), 250));
+setInterval(() => { if (!document.hidden && cave && cave.pic && (!cave.pic.width || lostCtx(cave.pic.getContext('2d')))) heal(); }, 4000);
 requestAnimationFrame(() => { layout(); makeCave(!S.seed); });
 requestAnimationFrame(frame);
 if (/[?&]debug\b/.test(location.search)) window.__cc = {
+  heal, lose() { cave.pic.getContext('2d').clearRect(0, 0, cave.pic.width, cave.pic.height); },
   get S() { return S; }, get cave() { return cave; }, get targets() { return targetsNow(); }, tapAt, makeCave, nextHunt, hint, get busy() { return busyGen; },
   draw(g, x, y, size, name, shapeK, traitK) {   // one crystal of a named kind, for side-by-side checks
     const keep = rnd, ks = sparks; rnd = mulberry(11); sparks = [];
