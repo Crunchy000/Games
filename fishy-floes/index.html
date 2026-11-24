@@ -38,7 +38,7 @@
                     radial-gradient(800px 500px at 100% 110%, rgba(255,95,162,.12), transparent 60%),
                     linear-gradient(170deg, var(--bg1), var(--bg2));
          font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
-  main { width:min(94vw,480px); padding:14px 0 22px; }
+  main { width:min(96vw,620px); padding:12px 0 14px; }
   header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
   h1 { margin:0; font-size:1.5rem; font-weight:900; letter-spacing:-.01em; }
   h1 .ice { color:var(--accent); }
@@ -72,6 +72,11 @@
   #status { min-height:1.5em; text-align:center; font-weight:800; font-size:1.04rem; margin:4px 0 0; }
   #status .p0 { color:var(--p0); } #status .p1 { color:var(--p1); }
   #left { text-align:center; color:var(--mute); font-size:.8rem; font-weight:600; margin:2px 0 8px; min-height:1.2em; }
+  .subrow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:2px 0 8px; min-height:30px; }
+  .subrow #left { margin:0; text-align:left; }
+  .mini-btn { flex:none; border:0; border-radius:999px; padding:6px 12px; font:inherit; font-weight:800; font-size:.82rem; cursor:pointer; background:var(--card); color:var(--ink); box-shadow:inset 0 0 0 1px var(--card-b), 0 2px 6px rgba(0,0,0,.12); white-space:nowrap; }
+  .mini-btn:active { transform:translateY(1px); }
+  .ov .hint { margin:6px 0 10px; }
   .board-wrap { width:min(100%, var(--bw, 100%)); margin-left:auto; margin-right:auto; box-sizing:border-box; }
   .board-wrap { border-radius:22px; background:var(--card); border:1px solid var(--card-b); box-shadow:0 20px 50px rgba(0,0,0,.3); padding:6px; }
   #board { display:block; width:100%; touch-action:none; cursor:pointer; user-select:none; -webkit-user-select:none; border-radius:16px; }
@@ -273,15 +278,10 @@ document.addEventListener('click', e => {
   </div>
 
   <div id="status" role="status" aria-live="polite"></div>
-  <div id="left"></div>
+  <div class="subrow"><div id="left"></div><button class="mini-btn" id="newGame" aria-label="New game">↻ New game</button></div>
 
   <div class="board-wrap"><canvas id="board" aria-label="Ice floes with fish, and Bear's and Bean's penguins"></canvas></div>
 
-  <div class="actions">
-    <button class="pk-btn" id="newGame">New game</button>
-    <button class="pk-btn pk-alt" id="resetWins">Reset wins</button>
-  </div>
-  <p class="hint">Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -798,7 +798,7 @@ document.addEventListener('click', e => {
   document.querySelectorAll('#segSize button').forEach(b => b.onclick = () => { if (b.dataset.v === size) return; guarded(() => { size = b.dataset.v; segs(); newGame(true); }, b.textContent); });
   document.querySelectorAll('#segMode button').forEach(b => b.onclick = () => { if (b.dataset.v === mode) return; guarded(() => { mode = b.dataset.v; segs(); newGame(true); }, b.textContent); });
   $('newGame').onclick = () => guarded(() => newGame(false), 'New game');
-  $('resetWins').onclick = () => { wins = [0, 0]; persist(); render(); };
+  document.addEventListener('click', e => { if (e.target.closest('#resetWins')) (() => { wins = [0, 0]; persist(); render(); })(); });
   $('undo').onclick = undo;
   $('sound').onclick = () => { muted = !muted; BB.muted = muted; persist(); $('sound').textContent = muted ? '🔇' : '🔊'; $('sound').setAttribute('aria-label', muted ? 'Sound off' : 'Sound on'); tone(660, .08, 'triangle'); };
   for (const q of [0, 1]) {
@@ -825,7 +825,8 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>🏝️</div><h3>Stuck or alone</h3><p>A penguin with nowhere to go climbs out with its floe. One with an <b>island all to itself</b> scoops up the most fish it could get there.</p></section>
     <section class="pk-step"><div class=pk-step-art>🐟</div><h3>Most fish wins</h3><p>One penguin each on the small board, three on the big one, starting on fair, random floes. Play a friend or the computer.</p></section>
   </div>
-  <div class="row2"><button class="btn pk-btn" data-close>Let's play</button></div>
+  <p class="hint">Tap a name to rename · Who starts swaps every game</p>
+  <div class="row2"><button class="btn pk-btn pk-alt" id="resetWins">Reset wins</button><button class="btn pk-btn" data-close>Let's play</button></div>
 </div></div>
 <script>
 (() => {   // how to play: shown on a first visit, and from the ? button
@@ -893,6 +894,7 @@ document.addEventListener('click', e => {
   }
   addEventListener('resize', () => { if (!own) requestAnimationFrame(() => fit()); });
   addEventListener('load', () => fit(true));
+  const rw = document.getElementById('resetWins'); if (rw) rw.addEventListener('click', () => { rw.textContent = 'Wins reset ✓'; setTimeout(() => rw.textContent = 'Reset wins', 1500); });
   document.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.closest('.board-wrap')) setTimeout(() => fit(true), 30); });
   requestAnimationFrame(() => fit(true));
 })();

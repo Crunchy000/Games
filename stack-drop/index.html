@@ -571,8 +571,6 @@ function badge(x, y, n, on) {
 
 let last = performance.now();
 function frame(now) { const dt = Math.min(.033, Math.max(0, (now - last) / 1000)); last = now; if (L) update(BB.asking ? 0 : dt); else time += dt; draw(); requestAnimationFrame(frame); }
-// leaving now would lose the game in progress (the shared kit asks first)
-BB.leaveRisk = () => state === 'play';
 addEventListener('resize', resize); resize();
 L = makeLevel(maxLevel); camY = -H * .32; by = -60; state = 'ready';
 if (/[?&]debug\b/.test(location.search)) window.__sd = { get state() { return state; }, get cur() { return cur; }, get count() { return L.count; }, get by() { return by; }, get vy() { return vy; }, get fire() { return fire; }, get score() { return score; }, frontDark: () => cur < L.count ? segAtFront(cur) : 0, nextDark: () => cur + 1 < L.count ? segAtFront(cur + 1) : 0, startLevel, get holding() { return holding; } };

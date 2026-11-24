@@ -44,7 +44,7 @@
                     radial-gradient(900px 600px at 100% 110%, color-mix(in srgb, var(--p1) 24%, transparent), transparent 60%),
                     linear-gradient(160deg, var(--bg1), var(--bg2));
          font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
-  main { width:min(94vw,460px); padding:20px 0 26px; }
+  main { width:min(96vw,600px); padding:14px 0 14px; }
   header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   h1 { margin:0; font-size:1.55rem; font-weight:900; letter-spacing:-.02em; }
   h1 .a { color:var(--p0); } h1 .b { color:var(--p1); }
@@ -86,6 +86,11 @@
   #status .p0 { color:var(--p0); } #status .p1 { color:var(--p1); }
   #left { text-align:center; color:var(--mute); font-size:.8rem; font-weight:600; margin-bottom:10px; min-height:1.2em; }
 
+  .subrow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:2px 0 8px; min-height:30px; }
+  .subrow #left { margin:0; text-align:left; }
+  .mini-btn { flex:none; border:0; border-radius:999px; padding:6px 12px; font:inherit; font-weight:800; font-size:.82rem; cursor:pointer; background:var(--card); color:var(--ink); box-shadow:inset 0 0 0 1px var(--card-b), 0 2px 6px rgba(0,0,0,.12); white-space:nowrap; }
+  .mini-btn:active { transform:translateY(1px); }
+  .ov .hint { margin:6px 0 10px; }
   .board-wrap { width:min(100%, var(--bw, 100%)); margin-left:auto; margin-right:auto; box-sizing:border-box; }
   .board-wrap { border-radius:24px; background:var(--card); border:1px solid var(--card-b); box-shadow:0 20px 50px rgba(0,0,0,.25); backdrop-filter:blur(10px); padding:6px; }
   #board { display:block; width:100%; height:auto; touch-action:none; cursor:pointer; user-select:none; -webkit-user-select:none; }
@@ -303,15 +308,10 @@ document.addEventListener('click', e => {
   </div>
 
   <div id="status" role="status" aria-live="polite"></div>
-  <div id="left"></div>
+  <div class="subrow"><div id="left"></div><button class="mini-btn" id="newGame" aria-label="New game">↻ New game</button></div>
 
   <div class="board-wrap"><svg id="board" aria-label="Dots and boxes board"></svg></div>
 
-  <div class="actions">
-    <button class="btn primary pk-btn" id="newGame">New game</button>
-    <button class="btn ghost-btn pk-btn pk-alt" id="resetWins">Reset wins</button>
-  </div>
-  <p class="hint">Tap a name to rename · Who starts swaps every game</p>
 </main>
 
 <script>
@@ -515,7 +515,7 @@ document.addEventListener('click', e => {
   document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { if (+b.dataset.size !== n || hist.length) setSize(+b.dataset.size); }));
   $('newGame').addEventListener('click', newGame);
   $('undo').addEventListener('click', undo);
-  $('resetWins').addEventListener('click', () => { wins = [0, 0]; save(); render(); });
+  document.addEventListener('click', e => { if (e.target.closest('#resetWins')) (() => { wins = [0, 0]; save(); render(); })(); });
   const setSoundIcon = () => { $('sound').textContent = muted ? '🔇' : '🔊'; $('sound').setAttribute('aria-label', muted ? 'Sound off' : 'Sound on'); };
   $('sound').addEventListener('click', () => { muted = !muted; BB.muted = muted; save(); setSoundIcon(); if (!muted) tone(660, .1, 'triangle', .06); });
   addEventListener('keydown', ev => {
@@ -555,7 +555,8 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>📦</div><h3>Close a box</h3><p>Draw the fourth side of a box to claim it with your paw print or bean, and <b>go again</b>.</p></section>
     <section class="pk-step"><div class=pk-step-art>🏆</div><h3>Most boxes wins</h3><p>When every line is drawn, whoever has claimed the most boxes wins. Try not to draw the third side of a box!</p></section>
   </div>
-  <div class="row2"><button class="btn pk-btn" data-close>Let's play</button></div>
+  <p class="hint">Tap a name to rename · Who starts swaps every game</p>
+  <div class="row2"><button class="btn pk-btn pk-alt" id="resetWins">Reset wins</button><button class="btn pk-btn" data-close>Let's play</button></div>
 </div></div>
 <script>
 (() => {   // how to play: shown on a first visit, and from the ? button
@@ -623,6 +624,7 @@ document.addEventListener('click', e => {
   }
   addEventListener('resize', () => { if (!own) requestAnimationFrame(() => fit()); });
   addEventListener('load', () => fit(true));
+  const rw = document.getElementById('resetWins'); if (rw) rw.addEventListener('click', () => { rw.textContent = 'Wins reset ✓'; setTimeout(() => rw.textContent = 'Reset wins', 1500); });
   document.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.closest('.board-wrap')) setTimeout(() => fit(true), 30); });
   requestAnimationFrame(() => fit(true));
 })();
