@@ -372,7 +372,7 @@ const COLOURS = [   // base fleece, the pattern's main yarn, and a third yarn
   { n: 'Snowy', c: '#f2ece0', ink: '#d0304a', alt: '#2a5aa8' },
 ];
 const PATTERNS = [
-  { k: 'stripes', n: 'Stripy', t: 'stripes across' },
+  { k: 'stripes', n: 'Stripy', t: 'bold up-and-down stripes' },
   { k: 'zigzag', n: 'Zigzag', t: 'zigzag rows' },
   { k: 'argyle', n: 'Argyle', t: 'diamonds and criss-cross lines' },
   { k: 'spots', n: 'Spotty', t: 'polka dots' },
@@ -401,7 +401,7 @@ function paintPattern(g, ty) {
   const c = hex(ty.col.c), ink = ty.col.ink, alt = ty.col.alt, x0 = BODY.x - BODY.rx - 8, x1 = BODY.x + BODY.rx + 8, y0 = BODY.y - BODY.ry - 8, y1 = BODY.y + BODY.ry + 8, W = x1 - x0, H = y1 - y0;
   g.fillStyle = ty.col.c; g.fillRect(x0, y0, W, H);
   switch (ty.pat.k) {
-    case 'stripes': for (let y = y0, i = 0; y < y1; y += 6, i++) if (i % 2) { g.fillStyle = i % 4 === 1 ? ink : alt; g.fillRect(x0, y, W, 3.6); } break;
+    case 'stripes': for (let x = x0, i = 0; x < x1; x += 9, i++) { g.fillStyle = i % 2 ? alt : ink; g.fillRect(x, y0, 4.6, H); g.fillStyle = i % 2 ? ink : alt; g.fillRect(x + 6.6, y0, 1, H); } break;   // bold up-and-down stripes in two colours, with a pinstripe between
     case 'zigzag': g.lineWidth = 2.6; g.lineJoin = 'miter'; for (let y = y0 + 4, i = 0; y < y1 + 6; y += 8.5, i++) { g.strokeStyle = i % 2 ? alt : ink; g.beginPath(); for (let x = x0, k = 0; x <= x1 + 6; x += 5, k++) g.lineTo(x, y + (k % 2 ? 3.4 : -3.4)); g.stroke(); } break;
     case 'argyle': { const dw = 11, dh = 14;
       for (let j = 0; j * dh / 2 < H + dh; j++) for (let i = 0; i * dw < W + dw; i++) { const cx = x0 + i * dw + (j % 2 ? dw / 2 : 0), cy = y0 + j * dh / 2; g.fillStyle = (i + j) % 2 ? alt : rgba(shade(c, .2)); g.beginPath(); g.moveTo(cx, cy - dh / 2); g.lineTo(cx + dw / 2, cy); g.lineTo(cx, cy + dh / 2); g.lineTo(cx - dw / 2, cy); g.closePath(); g.fill(); }
