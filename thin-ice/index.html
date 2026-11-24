@@ -69,7 +69,7 @@
   .sc.active.p0 { border-color:var(--p0); box-shadow:0 0 0 1px var(--p0), 0 8px 26px var(--p0-glow); transform:translateY(-2px); }
   .sc.active.p1 { border-color:var(--p1); box-shadow:0 0 0 1px var(--p1), 0 8px 26px var(--p1-glow); transform:translateY(-2px); }
 
-  #status { min-height:1.5em; text-align:center; font-weight:800; font-size:1.04rem; margin:4px 0 0; }
+  #status { height:1.5em; line-height:1.5em; text-align:center; font-weight:800; font-size:clamp(.86rem, 4.3vw, 1.04rem); margin:4px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #status .p0 { color:var(--p0); } #status .p1 { color:var(--p1); }
   #left { text-align:center; color:var(--mute); font-size:.8rem; font-weight:600; margin:2px 0 8px; min-height:1.2em; }
 
@@ -789,12 +789,13 @@ document.addEventListener('click', e => {
   let own = false, lastW = 0, lastH = 0;
   const kick = () => { own = true; dispatchEvent(new Event('resize')); own = false; };   // let the game re-measure its board
   function fit(force) {
-    if (!force && innerWidth === lastW && innerHeight === lastH) return; lastW = innerWidth; lastH = innerHeight;
+    // a phone's address bar sliding in and out changes the height a little: only refit for a real change, so the board doesn't pump
+    if (!force && innerWidth === lastW && Math.abs(innerHeight - lastH) < 90 && document.scrollingElement.scrollHeight <= innerHeight + 1) return; lastW = innerWidth; lastH = innerHeight;
     root.style.setProperty('--bw', '100%'); kick();
     for (let i = 0; i < 4; i++) {
       const over = document.scrollingElement.scrollHeight - innerHeight; if (over <= 1) break;
       const w = wrap.offsetWidth, h = Math.max(1, wrap.offsetHeight);
-      root.style.setProperty('--bw', Math.max(220, Math.floor(w - over * w / h) - 4) + 'px'); kick();
+      root.style.setProperty('--bw', Math.max(220, Math.floor(w - over * w / h) - 8) + 'px'); kick();
     }
   }
   addEventListener('resize', () => { if (!own) requestAnimationFrame(() => fit()); });

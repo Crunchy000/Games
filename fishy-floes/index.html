@@ -69,7 +69,7 @@
   .sc.active.p1 { border-color:var(--p1); box-shadow:0 0 0 1px var(--p1), 0 8px 26px var(--p1-glow); transform:translateY(-2px); }
   .plus { position:absolute; right:12px; top:8px; font-weight:900; font-size:1.05rem; animation:up .9s ease forwards; pointer-events:none; }
   @keyframes up { to { transform:translateY(-22px); opacity:0; } }
-  #status { min-height:1.5em; text-align:center; font-weight:800; font-size:1.04rem; margin:4px 0 0; }
+  #status { height:1.5em; line-height:1.5em; text-align:center; font-weight:800; font-size:clamp(.86rem, 4.3vw, 1.04rem); margin:4px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #status .p0 { color:var(--p0); } #status .p1 { color:var(--p1); }
   #left { text-align:center; color:var(--mute); font-size:.8rem; font-weight:600; margin:2px 0 8px; min-height:1.2em; }
   .subrow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:2px 0 8px; min-height:30px; }
@@ -520,6 +520,7 @@ document.addEventListener('click', e => {
   function move(k, to) {
     hist.push(snapshot());
     const pn = st.pens[k], from = pn.t, t = st.tiles[from], q = pn.p;
+    st.last = (st.last || [-1, -1]).slice(); st.last[q] = k;
     // slide over, then the floe left behind sinks and its fish are kept
     const dist = Math.hypot(st.tiles[to].x - t.x, (st.tiles[to].r - t.r) * 1.73) / 2, dur = Math.min(520, 180 + dist * 85);
     anims.push({ type: 'slide', k, from, to, t0: performance.now(), dur });
@@ -534,7 +535,10 @@ document.addEventListener('click', e => {
   function autoSelect() {
     if (st.phase !== 'move' || isCpu(st.turn)) { sel = -1; return; }
     const mine = st.pens.map((pn, k) => k).filter(k => st.pens[k].p === st.turn && st.pens[k].t >= 0 && movesFrom(st.pens[k].t).length);
-    if (!mine.includes(sel)) sel = mine.length ? mine[Math.floor(Math.random() * mine.length)] : -1;
+    if (mine.includes(sel)) return;
+    // each side's penguins take turns in the order they were placed: the next one after the last to move (skipping any that are stuck)
+    const team = st.pens.map((pn, k) => k).filter(k => st.pens[k].p === st.turn), last = (st.last || [-1, -1])[st.turn], at = team.indexOf(last);
+    sel = -1; for (let n = 1; n <= team.length; n++) { const k = team[(at + n + team.length) % team.length]; if (mine.includes(k)) { sel = k; break; } }
   }
   function afterTurn() { autoSelect(); persist(); render(); draw(); maybeCpu(); }
   function undo() {
@@ -766,7 +770,7 @@ document.addEventListener('click', e => {
     const nm = q => `<span class="p${q}">${esc(names[q])}</span>`;
     if (st.phase === 'over') { const w = winner(); $('status').innerHTML = w < 0 ? 'A draw! Fish for everyone 🐟' : `${nm(w)} wins! 🎉`; }
     else if (isCpu(st.turn)) $('status').innerHTML = `${nm(1)} is thinking…`;
-    else if (st.phase === 'place') $('status').innerHTML = `${nm(st.turn)}: place a penguin on a one-fish floe`;
+    else if (st.phase === 'place') $('status').innerHTML = `${nm(st.turn)}: place a penguin on a 1-fish floe`;
     else $('status').innerHTML = sel >= 0 ? `${nm(st.turn)}: tap a glowing floe` : `${nm(st.turn)}'s turn · pick a penguin`;
     const left = st.tiles.filter(t => !t.gone).length;
     $('left').textContent = st.phase === 'over' ? `${st.fish[0]} fish to ${st.fish[1]}` + (st.fish[0] === st.fish[1] ? ` · floes ${st.floes[0]} to ${st.floes[1]}` : '') + ' · Tap New game for a rematch'
@@ -886,12 +890,13 @@ document.addEventListener('click', e => {
   let own = false, lastW = 0, lastH = 0;
   const kick = () => { own = true; dispatchEvent(new Event('resize')); own = false; };   // let the game re-measure its board
   function fit(force) {
-    if (!force && innerWidth === lastW && innerHeight === lastH) return; lastW = innerWidth; lastH = innerHeight;
+    // a phone's address bar sliding in and out changes the height a little: only refit for a real change, so the board doesn't pump
+    if (!force && innerWidth === lastW && Math.abs(innerHeight - lastH) < 90 && document.scrollingElement.scrollHeight <= innerHeight + 1) return; lastW = innerWidth; lastH = innerHeight;
     root.style.setProperty('--bw', '100%'); kick();
     for (let i = 0; i < 4; i++) {
       const over = document.scrollingElement.scrollHeight - innerHeight; if (over <= 1) break;
       const w = wrap.offsetWidth, h = Math.max(1, wrap.offsetHeight);
-      root.style.setProperty('--bw', Math.max(220, Math.floor(w - over * w / h) - 4) + 'px'); kick();
+      root.style.setProperty('--bw', Math.max(220, Math.floor(w - over * w / h) - 8) + 'px'); kick();
     }
   }
   addEventListener('resize', () => { if (!own) requestAnimationFrame(() => fit()); });
