@@ -73,7 +73,7 @@
   #status .p0 { color:var(--p0); } #status .p1 { color:var(--p1); }
   #left { text-align:center; color:var(--mute); font-size:.8rem; font-weight:600; margin:2px 0 8px; min-height:1.2em; }
   .board-wrap { border-radius:22px; background:var(--card); border:1px solid var(--card-b); box-shadow:0 20px 50px rgba(0,0,0,.3); padding:6px; }
-  #board { display:block; width:100%; touch-action:none; cursor:pointer; user-select:none; -webkit-user-select:none; border-radius:16px; }
+  #board { display:block; width:100%; touch-action:none; cursor:pointer; user-select:none; -webkit-user-select:none; }   /* its rounded corners are drawn on the canvas: Firefox on Android flickers clipping a canvas that redraws every frame */
   .actions { display:flex; gap:10px; margin-top:12px; }
   .actions .pk-btn { flex:1; }
   .actions .pk-alt { flex:.6; }
@@ -590,7 +590,7 @@ document.addEventListener('click', e => {
   const cv = $('board'), g = cv.getContext('2d');
   let W = 400, H = 360, R = 20, ox = 0, oy = 0, dpr = 1;
   function layout() {
-    dpr = Math.min(3, devicePixelRatio || 1);
+    dpr = Math.min(/firefox/i.test(navigator.userAgent) ? 2 : 3, devicePixelRatio || 1);   // Firefox redraws a smaller canvas more smoothly
     const rows = SIZES[size].rows, wide = Math.max(...rows) * 2;   // doubled columns
     W = cv.parentElement.clientWidth - 12; const hexW = W / (wide / 2 + .5);
     R = hexW / Math.sqrt(3); const gap = R * .06;
@@ -691,6 +691,7 @@ document.addEventListener('click', e => {
 
   function draw(now = performance.now()) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    g.save(); { const r = 16; g.beginPath(); g.moveTo(r, 0); g.arcTo(W, 0, W, H, r); g.arcTo(W, H, 0, H, r); g.arcTo(0, H, 0, 0, r); g.arcTo(0, 0, W, 0, r); g.closePath(); g.clip(); }   // the rounded corners
     // the sea, with a few soft swells
     const sea = g.createLinearGradient(0, 0, 0, H); sea.addColorStop(0, '#1d5a8a'); sea.addColorStop(1, '#123c63'); g.fillStyle = sea; g.fillRect(0, 0, W, H);
     g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 2;
@@ -719,6 +720,7 @@ document.addEventListener('click', e => {
       g.beginPath(); g.ellipse(x, y + R * .34, R * .52, R * .2, 0, 0, 7); g.fill(); g.stroke();
       drawPen(x, y + R * .34, R * 1.62, now / 1000 + k, pn.p, stuck);
     });
+    g.restore();
     anims = anims.filter(a => now - a.t0 < a.dur + 30);
   }
   function frame(now) { requestAnimationFrame(frame); draw(now); }
