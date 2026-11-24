@@ -462,7 +462,7 @@ document.addEventListener('click', e => {
     SC = cw / W; const dpr = Math.min(devicePixelRatio || 1, 3);
     cv.width = Math.round(cw * dpr); cv.height = Math.round(H * SC * dpr);
     cv.style.height = (H * SC) + 'px';
-    g.setTransform(SC * dpr, 0, 0, SC * dpr, 0, 0);
+    g.setTransform(SC * dpr, 0, 0, SC * dpr, 0, 0); dirty = true;
   }
   const tx = c => ox + c * s, ty = r => oy + r * s * K;
   function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -559,7 +559,7 @@ document.addEventListener('click', e => {
     g.restore();
   }
 
-  let time = 0, lastT = 0;
+  let time = 0, lastT = 0, dirty = true, lastHover = -2;   // the board is only redrawn when something changes or moves
   function frame(now) {
     const dt = Math.min(.05, (now - lastT) / 1000 || 0); lastT = now; time += dt;
     for (const f of falling) f.t += dt;
@@ -568,7 +568,9 @@ document.addEventListener('click', e => {
     for (const r of rings) r.t += dt; rings = rings.filter(r => r.t < 1.4);
     if (pip.state === 'fall') { pip.t += dt; if (pip.t > .75) { pip.state = 'swim'; pip.t = 0; rings.push({ x: tx(P() % n) + s / 2, y: ty((P() / n) | 0) + s * K / 2 + 8, t: 0, big: 1 }); } }
     else pip.t += dt;
-    draw();
+    const moving = falling.length || rings.length || pip.state === 'fall' || (pip.state === 'swim' && pip.t < .75);
+    if (hover !== lastHover) { lastHover = hover; dirty = true; }
+    if (dirty || moving) { dirty = false; draw(); }
     requestAnimationFrame(frame);
   }
 
@@ -589,7 +591,7 @@ document.addEventListener('click', e => {
     g.save(); rr(wx, wy, ww, wh, 10); g.clip();
     g.strokeStyle = 'rgba(190,230,255,.10)'; g.lineWidth = 1.4;
     for (let k = 0; k < 14; k++) {
-      const px = (k * 71 + time * 6) % (ww + 40) + wx - 20, py = wy + ((k * 37) % wh);
+      const px = (k * 71) % (ww + 40) + wx - 20, py = wy + ((k * 37) % wh);
       g.beginPath(); g.ellipse(px, py, 14, 3, 0, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
     }
     for (const r of rings) {
@@ -615,7 +617,7 @@ document.addEventListener('click', e => {
     }
     // Pip
     const pr = (p / n) | 0, pc = p % n, px = tx(pc) + s / 2, py = ty(pr) + s * K * .62, psz = Math.min(52, s * 1.1);
-    if (pip.state === 'stand') drawPip(px, py, psz, time, danger, false);
+    if (pip.state === 'stand') drawPip(px, py, psz, .4, danger, false);
     else if (pip.state === 'fall') {
       const q = Math.max(0, pip.t) / .75;
       g.save(); g.globalAlpha = 1 - q * .9; drawPip(px, py + q * q * 26, psz * (1 - q * .2), time, true, false); g.restore();
@@ -626,7 +628,7 @@ document.addEventListener('click', e => {
     // gentle snowfall
     g.fillStyle = 'rgba(255,255,255,.55)';
     for (const f of flakes) {
-      const y = (f.y + time * f.v) % (H + 10) - 5, x = f.x + Math.sin(time * .8 + f.ph) * 6;
+      const y = f.y % (H + 10) - 5, x = f.x + Math.sin(f.ph) * 6;
       g.beginPath(); g.arc(x, y, f.r, 0, 7); g.fill();
     }
   }
@@ -634,6 +636,7 @@ document.addEventListener('click', e => {
   /* ---------- UI ---------- */
   const esc = t => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   function render() {
+    dirty = true;
     for (const q of [0, 1]) {
       $('w' + q).innerHTML = `${wins[q]}<small>win${wins[q] === 1 ? '' : 's'}</small>`;
       $('card' + q).classList.toggle('active', !over && turn === q);
@@ -715,6 +718,8 @@ document.addEventListener('click', e => {
     centre: i => { const b = cv.getBoundingClientRect(); return [b.left + (tx(i % n) + s / 2) * SC, b.top + (ty((i / n) | 0) + s * K / 2) * SC]; } };
 
   setSoundIcon(); segs(); if (!resumeGame()) newGame(); requestAnimationFrame(frame);
+  // a phone may throw the picture away in the background: draw it again on return
+  document.addEventListener('visibilitychange', () => { dirty = true; }); addEventListener('pageshow', () => { dirty = true; }); cv.addEventListener('contextrestored', () => { dirty = true; });
 })();
 </script>
 <div class="ov" id="ovHelp"><div class="card pk-card">
