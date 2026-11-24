@@ -10,7 +10,7 @@
    - offline: with no connection, pages come from the saved copy, and a page that was never saved falls back to the home page
    - background sync ('bb-save'): finishes saving anything the offline copy is missing, once the connection is back
    - periodic sync ('bb-refresh', about daily, installed app only): checks for a new version and tops up the saved copy */
-const VERSION = 'games-9b5c1c69e780';
+const VERSION = 'games-0fd832c1d920';
 const STAMPED = 'bb-stamped';
 const FILES = [
   './',

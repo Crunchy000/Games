@@ -73,10 +73,12 @@
   #status .p0 { color:var(--p0); } #status .p1 { color:var(--p1); }
   #left { text-align:center; color:var(--mute); font-size:.8rem; font-weight:600; margin:2px 0 8px; min-height:1.2em; }
 
+  .board-wrap { width:min(100%, var(--bw, 100%)); margin-left:auto; margin-right:auto; box-sizing:border-box; }
   .board-wrap { border-radius:22px; background:var(--card); border:1px solid var(--card-b); box-shadow:0 20px 50px rgba(0,0,0,.3); padding:6px; }
   #board { display:block; width:100%; touch-action:none; cursor:pointer; user-select:none; -webkit-user-select:none; border-radius:16px; }
 
   .actions { display:flex; gap:10px; margin-top:12px; }
+  .actions .btn, .actions .pk-btn { white-space:nowrap; }
   .btn { flex:1; border:0; border-radius:14px; padding:13px; font-weight:800; font-size:1rem; cursor:pointer; transition:transform .12s; }
   .btn:active { transform:scale(.97); }
   .primary { background:linear-gradient(135deg, var(--p0), #ffe08a 50%, var(--p1)); color:#1a1020; }
@@ -776,6 +778,27 @@ document.addEventListener('click', e => {
 (() => { const pick = el => { try { const l = JSON.parse(el.dataset.lines || '[]'); if (l.length) el.querySelector('span').textContent = l[Math.floor(Math.random() * l.length)]; } catch (e) {} };
   const go = () => { const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.isIntersecting && pick(e.target))) : null; document.querySelectorAll('.pk-says').forEach(el => { pick(el); if (io) io.observe(el); }); };
   document.readyState === 'loading' ? addEventListener('DOMContentLoaded', go) : go(); })();
+</script>
+<script id="fit-board">
+// keep the whole game on screen on shorter phones: if the page would have to scroll, shrink the board until the buttons fit
+(() => {
+  const wrap = document.querySelector('.board-wrap'), root = document.documentElement; if (!wrap) return;
+  let own = false, lastW = 0, lastH = 0;
+  const kick = () => { own = true; dispatchEvent(new Event('resize')); own = false; };   // let the game re-measure its board
+  function fit(force) {
+    if (!force && innerWidth === lastW && innerHeight === lastH) return; lastW = innerWidth; lastH = innerHeight;
+    root.style.setProperty('--bw', '100%'); kick();
+    for (let i = 0; i < 4; i++) {
+      const over = document.scrollingElement.scrollHeight - innerHeight; if (over <= 1) break;
+      const w = wrap.offsetWidth, h = Math.max(1, wrap.offsetHeight);
+      root.style.setProperty('--bw', Math.max(220, Math.floor(w - over * w / h) - 4) + 'px'); kick();
+    }
+  }
+  addEventListener('resize', () => { if (!own) requestAnimationFrame(() => fit()); });
+  addEventListener('load', () => fit(true));
+  document.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.closest('.board-wrap')) setTimeout(() => fit(true), 30); });
+  requestAnimationFrame(() => fit(true));
+})();
 </script>
 </body>
 </html>
