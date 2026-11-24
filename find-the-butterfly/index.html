@@ -315,7 +315,7 @@ document.addEventListener('click', e => {
     <section class="pk-step"><div class=pk-step-art>🎨</div><h3>The patterns</h3><p><b>Eyespot</b>, <b>Spotty</b>, <b>Tiger</b> stripes, <b>Veined</b>, <b>Checked</b>, <b>Two-tone</b>, <b>Edged</b>, <b>Hearts</b> and <b>Starry</b>.</p></section>
     <section class="pk-step"><div class=pk-step-art>👆</div><h3>Make them fly</h3><p>Butterflies cluster on knapweed and flowering bushes. <b>Tap</b> by a cluster and they take off, land nearby for a few seconds, then flutter back, so you can see who was hiding. Tap a match to find it. Tapping a butterfly that isn't a match sends them flying too, but costs 5 points.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p><b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom. Tap the little map to jump. A hint 🔍 costs 25; ladybirds 🐞 among the clusters are a bonus.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🌅</div><h3>90 butterflies to find</h3><p>Find every butterfly, one at a time, and watch the day move from morning to golden hour as you find them. Tap ↻ to choose the wildflower meadow or the tropical rainforest.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🌅</div><h3>90 butterflies to find</h3><p>Find every butterfly, one at a time, and watch the day move from morning to golden hour as you find them. Tap ↻ to choose the wildflower meadow or the tropical rainforest, where six rare species hide too: the Blue Morpho, Glasswing, Emerald Birdwing, Owl Butterfly, Zebra Longwing and Swallowtail.</p></section>
   </div>
   <div class="row2"><button class="btn pk-btn" data-close>Let's look</button></div>
 </div></div>
@@ -387,7 +387,7 @@ const PATTERNS = [
   { k: 'banded', n: 'Banded', t: 'a bright band across the wings' },
 ];
 const FACES = [{ k: 'one', n: '' }];
-const typeName = ty => `${ty.col.n} ${ty.pat.n} Butterfly`, typeTraits = ty => ty.pat.t;
+const typeName = ty => ty.pat.full || `${ty.col.n} ${ty.pat.n} Butterfly`, typeTraits = ty => ty.pat.t;
 const sameType = (a, b) => a.col === b.col && a.pat === b.pat;
 const typeKey = ty => ty.col.n + '|' + ty.pat.k;
 
@@ -398,6 +398,26 @@ const WING = (() => {   // the right-hand pair: fore wing and hind wing (the lef
   const hind = new Path2D(); hind.moveTo(2, -23); hind.bezierCurveTo(14, -25, 27, -23, 28, -15); hind.bezierCurveTo(28, -7, 20, -1, 13, -2); hind.bezierCurveTo(7, -3, 3, -10, 2, -16); hind.closePath();
   return { fore, hind };
 })();
+// other wing shapes: long narrow fore wings, and back wings with tails
+const LONG = (() => {
+  const fore = new Path2D(); fore.moveTo(2, -28); fore.bezierCurveTo(8, -43, 28, -51, 40, -47); fore.bezierCurveTo(42, -42, 38, -36, 32, -32); fore.bezierCurveTo(22, -26, 10, -24, 2, -24); fore.closePath();
+  const hind = new Path2D(); hind.moveTo(2, -23); hind.bezierCurveTo(12, -25, 24, -24, 25, -17); hind.bezierCurveTo(25, -10, 18, -5, 12, -5); hind.bezierCurveTo(7, -6, 3, -11, 2, -16); hind.closePath();
+  return { fore, hind };
+})();
+const TAILS = (() => {
+  const hind = new Path2D(); hind.moveTo(2, -23); hind.bezierCurveTo(14, -26, 28, -24, 29, -15); hind.bezierCurveTo(29, -9, 24, -5, 21, -3); hind.lineTo(20, 6); hind.quadraticCurveTo(18, 8.5, 16, 6); hind.lineTo(15, -1); hind.bezierCurveTo(9, -2, 3, -9, 2, -16); hind.closePath();
+  return { fore: WING.fore, hind };
+})();
+const wingsOf = ty => ty.pat.wing || WING;
+// butterflies found only in the rainforest, one of each
+const TROPICAL = [
+  { col: { n: 'Blue', c: '#2a86f0', ink: '#0e1a30', alt: '#a8e8ff' }, pat: { k: 'morpho', n: 'Morpho', full: 'Blue Morpho', t: 'shimmering blue, edged in black' } },
+  { col: { n: 'Clear', c: '#dce8ec', ink: '#2a2226', alt: '#f07a3a' }, pat: { k: 'glass', n: 'Glasswing', full: 'Glasswing', t: 'see-through wings with orange tips', wing: LONG } },
+  { col: { n: 'Emerald', c: '#22c878', ink: '#121214', alt: '#f6d63a' }, pat: { k: 'birdwing', n: 'Birdwing', full: 'Emerald Birdwing', t: 'black velvet with emerald and gold', wing: LONG } },
+  { col: { n: 'Brown', c: '#a08060', ink: '#2a1e14', alt: '#f4e2b0' }, pat: { k: 'owl', n: 'Owl', full: 'Owl Butterfly', t: 'a big owl eye on each back wing' } },
+  { col: { n: 'Zebra', c: '#f4dc5a', ink: '#17141a', alt: '#f4dc5a' }, pat: { k: 'zebra', n: 'Longwing', full: 'Zebra Longwing', t: 'long black wings with yellow stripes', wing: LONG } },
+  { col: { n: 'Yellow', c: '#f6d040', ink: '#1a1614', alt: '#4a86e8' }, pat: { k: 'swallow', n: 'Swallowtail', full: 'Swallowtail', t: 'yellow and black, with tails', wing: TAILS } },
+];
 function heart(g, x, y, s) { g.beginPath(); g.moveTo(x, y + s * .9); g.bezierCurveTo(x - s * 1.4, y - s * .1, x - s * .6, y - s * 1.1, x, y - s * .35); g.bezierCurveTo(x + s * .6, y - s * 1.1, x + s * 1.4, y - s * .1, x, y + s * .9); g.fill(); }
 function starShape(g, x, y, s) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? s * .45 : s; i ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.fill(); }
 // the pattern on one wing (in the right-hand wing's space), clipped to it already
@@ -419,6 +439,30 @@ function paintWing(g, ty, fore) {
     case 'banded': { g.fillStyle = rgba(shade(c, -.58)); g.fillRect(0, -56, 42, 58);   // deep-coloured wings with one bright band, like a red admiral
       const band = new Path2D(); if (fore) { band.moveTo(12, -51); band.quadraticCurveTo(25, -45, 32, -33); band.lineTo(23, -28); band.quadraticCurveTo(17, -39, 5, -43); band.closePath(); } else { band.moveTo(3, -5); band.quadraticCurveTo(14, 0, 26, -7); band.lineTo(28, -15); band.quadraticCurveTo(14, -9, 3, -12); band.closePath(); }
       g.fillStyle = ty.col.c; g.fill(band); g.fillStyle = '#fff'; for (const [x, y] of fore ? [[31, -45], [27, -48], [33, -40]] : []) { g.beginPath(); g.arc(x, y, 1.3, 0, 6.3); g.fill(); } break; }
+    case 'morpho': { const mg = g.createRadialGradient(8, -26, 2, 10, -28, 34); mg.addColorStop(0, '#0e4ab0'); mg.addColorStop(.45, ty.col.c); mg.addColorStop(.75, alt); mg.addColorStop(1, ty.col.c); g.fillStyle = mg; g.fillRect(0, -56, 42, 58);
+      g.strokeStyle = ink; g.lineWidth = fore ? 10 : 8; g.stroke(fore ? WING.fore : WING.hind); g.fillStyle = '#fff'; for (const [x, y] of fore ? [[32, -44], [34, -38], [30, -48]] : [[25, -12], [21, -6]]) { g.beginPath(); g.arc(x, y, 1.2, 0, 6.3); g.fill(); } break; }
+    case 'glass': { const W = wingsOf(ty); g.clearRect(0, -56, 42, 58); g.fillStyle = 'rgba(225,240,245,.3)'; g.fillRect(0, -56, 42, 58);
+      g.strokeStyle = rgba(hex(ink), .7); g.lineWidth = .9; for (let i = 0; i < 5; i++) { const a = (fore ? -2.3 : -.8) + i * (fore ? .3 : .34); g.beginPath(); g.moveTo(3, -24); g.lineTo(3 + Math.cos(a) * 40, -24 + Math.sin(a) * 40); g.stroke(); }
+      if (fore) { g.fillStyle = alt; g.beginPath(); g.ellipse(36, -45, 7, 4, -.4, 0, 6.3); g.fill(); }
+      g.strokeStyle = ink; g.lineWidth = 4; g.stroke(fore ? W.fore : W.hind); break; }
+    case 'birdwing': { g.fillStyle = ink; g.fillRect(0, -56, 42, 58);
+      if (fore) { g.strokeStyle = ty.col.c; g.lineCap = 'round'; for (const [x0, y0, x1, y1] of [[6, -32, 34, -45], [8, -27, 30, -36]]) { g.lineWidth = 3.4; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); } }
+      else { g.fillStyle = ty.col.c; g.beginPath(); g.ellipse(14, -15, 10, 8, 0, 0, 6.3); g.fill(); g.fillStyle = alt; g.beginPath(); g.arc(9, -19, 3.4, 0, 6.3); g.fill(); g.fillStyle = ink; for (const [x, y] of [[18, -10], [21, -16]]) { g.beginPath(); g.arc(x, y, 2, 0, 6.3); g.fill(); } }
+      break; }
+    case 'owl': { g.strokeStyle = rgba(shade(c, -.3), .6); g.lineWidth = .8; for (let y = -54; y < 2; y += 3.4) { g.beginPath(); for (let x = 0; x <= 42; x += 3) g.lineTo(x, y + Math.sin(x * .5 + y) * 1.2); g.stroke(); }
+      if (fore) { g.fillStyle = rgba(hex(alt), .85); g.beginPath(); g.moveTo(10, -42); g.quadraticCurveTo(22, -40, 30, -30); g.lineTo(26, -28); g.quadraticCurveTo(18, -36, 8, -38); g.closePath(); g.fill(); }
+      else { for (const [rr, col] of [[8.5, alt], [7, ink], [4.6, '#d8a040'], [2.6, ink]]) { g.fillStyle = col; g.beginPath(); g.arc(17, -12, rr, 0, 6.3); g.fill(); } g.fillStyle = '#fff'; g.beginPath(); g.arc(15.6, -13.6, 1.1, 0, 6.3); g.fill(); }
+      break; }
+    case 'zebra': { g.fillStyle = ink; g.fillRect(0, -56, 42, 58); g.strokeStyle = ty.col.c; g.lineCap = 'round';
+      if (fore) for (const [x0, y0, x1, y1, w] of [[6, -30, 36, -46, 3], [10, -26, 30, -34, 2.6], [22, -45, 30, -48, 2.2]]) { g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+      else { g.lineWidth = 2.6; g.beginPath(); g.moveTo(4, -20); g.lineTo(22, -18); g.stroke(); g.fillStyle = ty.col.c; for (const x of [8, 13, 18]) { g.beginPath(); g.arc(x, -9, 1.1, 0, 6.3); g.fill(); } }
+      break; }
+    case 'swallow': { const W = wingsOf(ty); g.fillStyle = ink;
+      if (fore) { for (const [x, w] of [[9, 3], [16, 3.4], [23, 2.6]]) { g.save(); g.translate(x, -38); g.rotate(.32); g.fillRect(-w / 2, -16, w, 26); g.restore(); } }
+      g.strokeStyle = ink; g.lineWidth = 7; g.stroke(fore ? W.fore : W.hind);
+      g.fillStyle = '#f6e07a'; for (const [x, y] of fore ? [[33, -44], [34, -37], [31, -30], [25, -48]] : [[26, -13], [23, -6]]) { g.beginPath(); g.ellipse(x, y, 1.8, 1.1, 0, 0, 6.3); g.fill(); }
+      if (!fore) { g.fillStyle = alt; for (const [x, y] of [[20, -10], [24, -15]]) { g.beginPath(); g.arc(x, y, 1.6, 0, 6.3); g.fill(); } g.fillStyle = '#e8603a'; g.beginPath(); g.arc(16, -4, 2, 0, 6.3); g.fill(); }
+      break; }
     case 'stars': g.fillStyle = ink; for (const [x, y, r] of fore ? [[13, -33, 3.4], [24, -42, 3.8], [29, -32, 3]] : [[11, -15, 3.2], [20, -12, 3.4]]) starShape(g, x, y, r); g.fillStyle = alt; for (const [x, y, r] of fore ? [[19, -27, 2.2]] : [[16, -5, 2]]) starShape(g, x, y, r); break;
   }
   // a soft sheen from the top left, and darker near the body
@@ -428,7 +472,7 @@ function drawSheep(g, ty) {   // (one butterfly: the name is kept from the sheep
   g.fillStyle = 'rgba(0,0,0,.16)'; g.beginPath(); g.ellipse(2, 2, 30, 5, 0, 0, 6.3); g.fill();   // its shadow on the leaves below
   for (const side of [-1, 1]) {
     g.save(); g.scale(side, 1);
-    for (const [path, fore] of [[WING.hind, false], [WING.fore, true]]) {
+    const W = wingsOf(ty); for (const [path, fore] of [[W.hind, false], [W.fore, true]]) {
       g.save(); g.clip(path); paintWing(g, ty, fore); g.restore();
       g.strokeStyle = rgba(hex(ty.col.ink), .75); g.lineWidth = 1.1; g.stroke(path);
     }
@@ -451,11 +495,13 @@ function sprite(ty, dir) {
 }
 
 /* ---------- saving ---------- */
-const HUNTS = COLOURS.length * PATTERNS.length, huntSize = h => 1;   // every sheep wears a different jumper, and you find them all, one at a time
-let S = { v: 2, mode: 'meadow', seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
+const BASE_HUNTS = COLOURS.length * PATTERNS.length, huntSize = h => 1;
+let HUNTS = BASE_HUNTS;   // one of every colour and pattern, plus the rainforest's own species there
+let S = { v: 2, tx: 1, mode: 'meadow', seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('findthebutterfly');
 try { const s = JSON.parse(localStorage.getItem('findthebutterfly') || 'null'); if (s && s.v === 2) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
-if (S.mode !== 'tropical') S.mode = 'meadow';
+if (S.mode !== 'tropical') S.mode = 'meadow'; else if (!S.tx) S.seed = 0;   // a rainforest from before its own species: start a new one
+S.tx = 1;
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('findthebutterfly', JSON.stringify(S)); } catch (e) {} };
 
@@ -471,8 +517,8 @@ function keepIn(x, y, s) {
 const persp = y => .64 + .96 * clamp((y - CREST) / (WORLD_H - CREST), 0, 1);   // sheep at the back are smaller
 let field = null;   // the field on screen: its plan, its painted backdrop and its sheep
 function planField() {
-  rnd = mulberry(S.seed);
-  const combos = []; for (const col of COLOURS) for (const pat of PATTERNS) combos.push({ col, pat, face: FACES[0] }); shuffle(combos);
+  rnd = mulberry(S.seed); HUNTS = BASE_HUNTS + (wild() ? 0 : TROPICAL.length);
+  const combos = []; for (const col of COLOURS) for (const pat of PATTERNS) combos.push({ col, pat, face: FACES[0] }); if (!wild()) for (const t of TROPICAL) combos.push({ ...t, face: FACES[0] }); shuffle(combos);
   // the hunts: no two of the same colour and pattern
   const hunts = []; for (const c of combos) { if (hunts.length >= HUNTS) break; if (!hunts.some(h => h.col === c.col && h.pat === c.pat)) hunts.push(c); }
   // every other jumper is worn by just one sheep
@@ -523,7 +569,7 @@ const TIMES = [
   { n: '🌅 Golden hour', sky: ['#3f5585', '#d17d68', '#ffd590'], far: '#86738a', mid: '#7a7840', grass: ['#93a24a', '#6f8a33', '#4c6a22'], tree: '#525a28', night: .06, sun: [.75, .85, 'rgba(255,230,170,.95)'] },
 ];
 const snowy = () => false, timesNow = () => TIMES;
-const PER_TIME = Math.ceil(HUNTS / TIMES.length), todNow = () => Math.min(TIMES.length - 1, Math.floor((S.hunt - 1) / PER_TIME));   // the day moves on as the butterflies are found
+const todNow = () => Math.min(TIMES.length - 1, Math.floor((S.hunt - 1) / Math.ceil(HUNTS / TIMES.length)));   // the day moves on as the butterflies are found
 const av = f => f + (window.AV && AV[f] ? '?v=' + AV[f] : '');
 const picnicImg = new Image(); picnicImg.onload = () => { if (field) paintBackdrop(); }; picnicImg.src = av('bear-and-bean-picnic.webp');
 const BLOOMS = ['#9a5ad6', '#b47ae8', '#e070b0', '#f4f0f8', '#7a4ac0'];   // butterfly-bush flowers: purples, pinks and white
@@ -789,7 +835,7 @@ function tapAt(x, y) {
   // not this one: the sheep round about scatter, then slowly huddle back together
   S.shoos++; S.score = Math.max(0, S.score - 5); save(); sShoo(); buzz(8); renderHud();
   scatter(x, y, 1);
-  note(`That's ${/^[AEIOU]/.test(hit.type.col.n) ? 'an' : 'a'} ${typeName(hit.type)}. Off they flutter! −5`);
+  note(`That's ${/^[AEIOU]/.test(typeName(hit.type)) ? 'an' : 'a'} ${typeName(hit.type)}. Off they flutter! −5`);
 }
 // every sheep near (x, y) runs a little way out from it, waits, then wanders back to its place in the flock
 function scatter(x, y, k) {
@@ -1087,10 +1133,11 @@ if (/[?&]debug\b/.test(location.search)) window.__fts = {
     return c.toDataURL('image/webp', .88);
   },
   sheet() {   // every pattern in every colour, with both faces, to judge how they look side by side
-    const cw = 88, rh = 70, c = document.createElement('canvas'); c.width = cw * PATTERNS.length * 2; c.height = rh * COLOURS.length * 2 + 60; c.style.cssText = 'position:fixed;left:0;top:0;z-index:99;width:' + c.width / 2 + 'px';
+    const cw = 88, rh = 70, c = document.createElement('canvas'); c.width = cw * PATTERNS.length * 2; c.height = rh * (COLOURS.length + 1) * 2 + 60; c.style.cssText = 'position:fixed;left:0;top:0;z-index:99;width:' + c.width / 2 + 'px';
     const g = c.getContext('2d'); g.scale(2, 2); g.fillStyle = '#7cb653'; g.fillRect(0, 0, c.width, c.height);
     g.font = '700 11px system-ui'; g.textAlign = 'center'; g.fillStyle = '#123'; PATTERNS.forEach((p, i) => g.fillText(p.n, i * cw + cw / 2, 14));
     COLOURS.forEach((col, r) => PATTERNS.forEach((pat, i) => { g.save(); g.translate(i * cw + cw / 2, 20 + r * rh + rh - 6); g.scale(.95, .95); drawSheep(g, { col, pat, face: FACES[0] }); g.restore(); }));
+    TROPICAL.forEach((t, i) => { g.save(); g.translate(i * cw + cw / 2, 20 + COLOURS.length * rh + rh - 6); g.scale(.95, .95); drawSheep(g, { ...t, face: FACES[0] }); g.restore(); });
     document.body.appendChild(c); return [c.width / 2, c.height / 2];
   },
 };
