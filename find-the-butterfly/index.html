@@ -24,7 +24,7 @@
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
 }</script>
 <title>Find the Butterfly</title>
-<meta name="description" content="A cosy hidden-butterfly hunt in a cottage garden or a wildflower meadow. Find every butterfly, one at a time, by the colour and pattern of its wings: eyespots, tiger stripes, chequerboards, hearts and more. Tap by a cluster and they flutter off, then drift back to settle. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
+<meta name="description" content="A cosy hidden-butterfly hunt in a wildflower meadow or a tropical rainforest. Find every butterfly, one at a time, by the colour and pattern of its wings: eyespots, tiger stripes, chequerboards, hearts and more. Tap by a cluster and they flutter off, then drift back to settle. Free to play, works offline, no ads or tracking. From The Bear &amp; Bean Games.">
 <link rel="canonical" href="https://www.bearandbean.uk/find-the-butterfly/">
 <style>
   :root { --bg:#eef1e2; --ink:#2e3326; --muted:#7a8470; --panel:#dde4cc; --card:#fbfcf5; --accent:#8a52d0; }
@@ -288,11 +288,11 @@ document.addEventListener('click', e => {
       <button class="ib pk-home" id="bSound" aria-label="Sound"></button>
     </div>
   </header>
-  <div class="info"><div><small>Hunt</small><span id="rnd">1/90</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="A new garden">↻</button></div>
+  <div class="info"><div><small>Hunt</small><span id="rnd">1/90</span></div><div><small>Score</small><span id="score">0</span></div><div class="got" id="got">0/3</div><button class="tool sm pk-chip" id="bHint" aria-label="Hint, costs 25 points">🔍</button><button class="tool sm pk-chip" id="bNew" aria-label="Choose where to look next">↻</button></div>
   <div class="main">
   <div id="stage" aria-label="The meadow. Pinch to zoom, drag to look around, tap a matching butterfly to find it, or near a cluster to make them fly.">
     <canvas id="game"></canvas>
-    <canvas id="mini" aria-label="Map of the whole garden: tap or drag to look there"></canvas>
+    <canvas id="mini" aria-label="Map of the whole scene: tap or drag to look there"></canvas>
     <div class="zoom"><button class="tool pk-chip" id="bIn" aria-label="Zoom in">＋</button><button class="tool pk-chip" id="bOut" aria-label="Zoom out">－</button></div>
     <div class="note" id="note" role="status" aria-live="polite"></div>
     <div id="loading" class="show" role="status"><div><svg viewBox="-20 -20 40 40" aria-hidden="true"><g class="spin"><circle cx="0" cy="-11" r="6" fill="#e0457b"/><circle cx="9.5" cy="-5.5" r="6" fill="#f5882c"/><circle cx="9.5" cy="5.5" r="6" fill="#f4c832"/><circle cx="0" cy="11" r="6" fill="#5ccc9c"/><circle cx="-9.5" cy="5.5" r="6" fill="#4aa1e6"/><circle cx="-9.5" cy="-5.5" r="6" fill="#a47ee0"/></g><circle r="5" fill="#2b2326"/><circle cx="-1.8" cy="-1" r="1.1" fill="#fff"/><circle cx="1.8" cy="-1" r="1.1" fill="#fff"/></svg><span id="loadMsg">Planting the butterfly bushes…</span><small id="tip"></small></div></div>
@@ -310,12 +310,12 @@ document.addEventListener('click', e => {
   <button class="ib x" data-close aria-label="Close">✕</button>
   <h2>Find the Butterfly</h2>
   <div class="pk-steps">
-    <section class="pk-step"><div class=pk-step-art>🦋</div><h3>Find the butterfly</h3><p>Every butterfly in the garden has its own wings. Bear and Bean are looking for one special butterfly: find it among the flowers.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🦋</div><h3>Find the butterfly</h3><p>Every butterfly here has its own wings. Bear and Bean are looking for one special butterfly: find it among the flowers.</p></section>
     <section class="pk-step"><div class=pk-step-art>👀</div><h3>Check both</h3><p>The right one has the same wing <b>colour</b> and the same <b>pattern</b>. Lots of butterflies share one of those, so look closely.</p></section>
     <section class="pk-step"><div class=pk-step-art>🎨</div><h3>The patterns</h3><p><b>Eyespot</b>, <b>Spotty</b>, <b>Tiger</b> stripes, <b>Veined</b>, <b>Checked</b>, <b>Two-tone</b>, <b>Edged</b>, <b>Hearts</b> and <b>Starry</b>.</p></section>
-    <section class="pk-step"><div class=pk-step-art>👆</div><h3>Make them fly</h3><p>Butterflies cluster on the flowering bushes and the knapweed. <b>Tap</b> by a cluster and they take off, land nearby for a few seconds, then flutter back, so you can see who was hiding. Tap a match to find it. Tapping a butterfly that isn't a match sends them flying too, but costs 5 points.</p></section>
+    <section class="pk-step"><div class=pk-step-art>👆</div><h3>Make them fly</h3><p>Butterflies cluster on knapweed and flowering bushes. <b>Tap</b> by a cluster and they take off, land nearby for a few seconds, then flutter back, so you can see who was hiding. Tap a match to find it. Tapping a butterfly that isn't a match sends them flying too, but costs 5 points.</p></section>
     <section class="pk-step"><div class=pk-step-art>🔍</div><h3>Look around</h3><p><b>Drag</b> to look around, and <b>pinch</b> or tap <b>＋</b> to zoom. Tap the little map to jump. A hint 🔍 costs 25; ladybirds 🐞 among the clusters are a bonus.</p></section>
-    <section class="pk-step"><div class=pk-step-art>🌅</div><h3>90 butterflies to find</h3><p>Find every butterfly, one at a time, and watch the day move from morning to golden hour as the garden empties. Tap ↻ to choose the cottage garden or the wildflower meadow.</p></section>
+    <section class="pk-step"><div class=pk-step-art>🌅</div><h3>90 butterflies to find</h3><p>Find every butterfly, one at a time, and watch the day move from morning to golden hour as you find them. Tap ↻ to choose the wildflower meadow or the tropical rainforest.</p></section>
   </div>
   <div class="row2"><button class="btn pk-btn" data-close>Let's look</button></div>
 </div></div>
@@ -325,8 +325,9 @@ document.addEventListener('click', e => {
   <h2>Where next?</h2>
   <p>Where shall Bear and Bean look for butterflies next?</p>
   <div class="modes">
-    <button class="mode" data-mode="garden"><span class="pic"><svg viewBox="0 0 160 120" aria-hidden="true"><defs><linearGradient id="bgS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ea6e6"/><stop offset="1" stop-color="#e3f2f4"/></linearGradient></defs><rect width="160" height="120" fill="url(#bgS)"/><circle cx="30" cy="20" r="8" fill="#fffbe6"/><path d="M0 44Q40 32 80 40T160 36V64H0Z" fill="#9cc6a8"/><path d="M104 40h22v-8h-22z" fill="#f3e8d0"/><path d="M100 33Q115 18 130 33z" fill="#a7702e"/><path d="M0 50Q50 42 100 48T160 46V120H0Z" fill="#6fae4c"/><g fill="#4f7f3a"><circle cx="8" cy="48" r="6"/><circle cx="20" cy="47" r="6"/><circle cx="32" cy="46" r="6"/><circle cx="44" cy="46" r="6"/><circle cx="56" cy="46" r="6"/><circle cx="68" cy="46" r="6"/><circle cx="80" cy="47" r="6"/><circle cx="92" cy="47" r="6"/><circle cx="140" cy="45" r="6"/><circle cx="152" cy="45" r="6"/></g><path d="M0 52H160" stroke="#fbfaf4" stroke-width="2"/><path d="M0 56H160" stroke="#fbfaf4" stroke-width="2"/><path d="M70 120Q64 90 80 74T84 52H94Q96 70 92 82T102 120Z" fill="#dccdaa"/><ellipse cx="130" cy="92" rx="22" ry="7" fill="#4a8eb4"/><ellipse cx="124" cy="91" rx="5" ry="2" fill="#4f9a48"/><g fill="#4f7f3a"><circle cx="24" cy="92" r="16"/><circle cx="42" cy="96" r="14"/><circle cx="12" cy="104" r="13"/></g><g stroke-width="3" stroke-linecap="round"><path d="M20 80V70M30 82V71M40 86V76M14 92V82" stroke="#8a6ac8"/><path d="M26 82V73M46 88V79" stroke="#f4f0e6"/></g><g stroke-width="2.4" stroke-linecap="round"><path d="M150 76V60M144 80V66" stroke="#d86aa8"/></g><g transform="translate(30 66) scale(0.9)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#f6a23a" stroke="#3a2410" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#f6a23a" stroke="#3a2410" stroke-width="1.6"/><path d="M0 -6V6" stroke="#3a2410" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(54 84) scale(0.75)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#4aa8e8" stroke="#13263e" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#4aa8e8" stroke="#13263e" stroke-width="1.6"/><path d="M0 -6V6" stroke="#13263e" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(118 70) scale(0.8)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#e0457b" stroke="#3a1020" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#e0457b" stroke="#3a1020" stroke-width="1.6"/><path d="M0 -6V6" stroke="#3a1020" stroke-width="2.4" stroke-linecap="round"/></g></svg></span><span class="now">Playing now</span><b>Cottage garden</b><small>Lavender, foxgloves and a lily pond</small></button>
+    
     <button class="mode" data-mode="meadow"><span class="pic"><svg viewBox="0 0 160 120" aria-hidden="true"><defs><linearGradient id="bmS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ea6e6"/><stop offset="1" stop-color="#e3f2f4"/></linearGradient></defs><rect width="160" height="120" fill="url(#bmS)"/><circle cx="30" cy="20" r="8" fill="#fffbe6"/><path d="M0 44Q40 32 80 40T160 36V64H0Z" fill="#9cc6a8"/><g fill="#4f7f3a"><circle cx="20" cy="40" r="6"/><circle cx="60" cy="37" r="7"/><circle cx="118" cy="36" r="6"/></g><rect x="88" y="38" width="7" height="6" fill="#d8b862"/><path d="M0 48Q50 40 100 46T160 44V120H0Z" fill="#79b552"/><path d="M0 50Q60 44 160 48" stroke="#7a6048" stroke-width="1.4" fill="none"/><path d="M58 120Q66 90 74 70T78 50H84Q84 70 80 90T76 120Z" fill="#c4d98a" opacity=".7"/><g stroke="#5f9a3c" stroke-width="1.2" stroke-linecap="round"><path d="M10 120L8 100M18 120L20 98M100 120L98 96M130 120L134 98M146 120L144 100M40 120L42 102"/></g><g fill="#e0302a"><circle cx="12" cy="98" r="2.6"/><circle cx="22" cy="104" r="2.4"/><circle cx="106" cy="104" r="2.6"/><circle cx="140" cy="96" r="2.2"/><circle cx="48" cy="72" r="1.6"/><circle cx="120" cy="68" r="1.6"/></g><g fill="#fbfbf4"><circle cx="34" cy="108" r="2.4"/><circle cx="128" cy="110" r="2.4"/><circle cx="96" cy="80" r="1.8"/><circle cx="18" cy="80" r="1.8"/></g><g fill="#4a72e0"><circle cx="44" cy="96" r="2"/><circle cx="150" cy="106" r="2"/><circle cx="112" cy="86" r="1.8"/></g><g fill="#c060c8"><circle cx="28" cy="72" r="3.4"/><circle cx="36" cy="66" r="3.2"/><circle cx="20" cy="66" r="3"/><circle cx="126" cy="80" r="3.4"/><circle cx="134" cy="74" r="3.2"/><circle cx="118" cy="76" r="3"/></g><g stroke="#4f7a36" stroke-width="1.3"><path d="M28 75V90M36 69V88M20 69V88M126 83V98M134 77V96M118 79V96"/></g><g transform="translate(32 58) scale(0.85)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#9a6ae0" stroke="#24163c" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#9a6ae0" stroke="#24163c" stroke-width="1.6"/><path d="M0 -6V6" stroke="#24163c" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(126 64) scale(0.8)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#f6d63a" stroke="#3a2e08" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#f6d63a" stroke="#3a2e08" stroke-width="1.6"/><path d="M0 -6V6" stroke="#3a2e08" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(78 96) scale(0.95)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#2fc4b6" stroke="#0d2e2b" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#2fc4b6" stroke="#0d2e2b" stroke-width="1.6"/><path d="M0 -6V6" stroke="#0d2e2b" stroke-width="2.4" stroke-linecap="round"/></g></svg></span><span class="now">Playing now</span><b>Wildflower meadow</b><small>Poppies, cornflowers and long summer grass</small></button>
+    <button class="mode" data-mode="tropical"><span class="pic"><svg viewBox="0 0 160 120" aria-hidden="true"><defs><linearGradient id="btS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4aa0e0"/><stop offset="1" stop-color="#e6f6f0"/></linearGradient></defs><rect width="160" height="120" fill="url(#btS)"/><circle cx="130" cy="18" r="8" fill="#fffbe6"/><path d="M0 50L30 40L58 12L86 38L110 30L132 20L160 40V60H0Z" fill="#8aaab4"/><rect y="30" width="160" height="22" fill="#fff" opacity=".35"/><g fill="#2f6e48"><circle cx="8" cy="50" r="9"/><circle cx="24" cy="48" r="10"/><circle cx="42" cy="50" r="9"/><circle cx="60" cy="48" r="10"/><circle cx="78" cy="50" r="9"/><circle cx="96" cy="48" r="10"/><circle cx="114" cy="50" r="9"/><circle cx="132" cy="48" r="10"/><circle cx="150" cy="50" r="9"/></g><path d="M0 54Q50 48 100 52T160 50V120H0Z" fill="#4f9a4c"/><path d="M40 72Q41.2 48.0 46 32" stroke="#8a6a44" stroke-width="3" fill="none"/><g stroke="#3f8a3a" stroke-width="3.2" fill="none" stroke-linecap="round"><path d="M46 32Q35.2 24 28 38" /><path d="M46 32Q37.6 24 32 30" /><path d="M46 32Q42.4 24 40 26" /><path d="M46 32Q49.6 24 52 26" /><path d="M46 32Q54.4 24 60 30" /><path d="M46 32Q56.8 24 64 38" /><path d="M46 32Q40.0 24 36 42" /><path d="M46 32Q52.0 24 56 42" /></g><path d="M124 70Q122.4 49.6 116 36" stroke="#8a6a44" stroke-width="3" fill="none"/><g stroke="#3f8a3a" stroke-width="3.2" fill="none" stroke-linecap="round"><path d="M116 36Q105.2 28 98 42" /><path d="M116 36Q107.6 28 102 34" /><path d="M116 36Q112.4 28 110 30" /><path d="M116 36Q119.6 28 122 30" /><path d="M116 36Q124.4 28 130 34" /><path d="M116 36Q126.8 28 134 42" /><path d="M116 36Q110.0 28 106 46" /><path d="M116 36Q122.0 28 126 46" /></g><ellipse cx="108" cy="96" rx="22" ry="7" fill="#2fb8b0"/><ellipse cx="102" cy="94" rx="7" ry="1.6" fill="#9af0e6"/><g fill="#2f7a3e"><ellipse cx="34" cy="96" rx="22" ry="14"/><ellipse cx="18" cy="104" rx="14" ry="10"/></g><ellipse cx="26" cy="85.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="28.1" cy="87.4" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="27.3" cy="89.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="24.7" cy="89.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="23.9" cy="87.4" rx="2.6" ry="2" fill="#e8303a"/><circle cx="26" cy="88" r="1" fill="#7a1020"/><ellipse cx="38" cy="83.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="40.1" cy="85.4" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="39.3" cy="87.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="36.7" cy="87.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="35.9" cy="85.4" rx="2.6" ry="2" fill="#e8303a"/><circle cx="38" cy="86" r="1" fill="#7a1020"/><ellipse cx="44" cy="91.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="46.1" cy="93.4" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="45.3" cy="95.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="42.7" cy="95.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="41.9" cy="93.4" rx="2.6" ry="2" fill="#e8303a"/><circle cx="44" cy="94" r="1" fill="#7a1020"/><ellipse cx="18" cy="95.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="20.1" cy="97.4" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="19.3" cy="99.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="16.7" cy="99.8" rx="2.6" ry="2" fill="#e8303a"/><ellipse cx="15.9" cy="97.4" rx="2.6" ry="2" fill="#e8303a"/><circle cx="18" cy="98" r="1" fill="#7a1020"/><g fill="#5aa84a"><path d="M160 120Q140 90 126 76Q146 86 160 100Z"/><path d="M0 120Q16 96 6 74Q-4 90 0 120Z"/></g><g transform="translate(66 70) scale(0.85)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#f7943a" stroke="#3a2410" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#f7943a" stroke="#3a2410" stroke-width="1.6"/><path d="M0 -6V6" stroke="#3a2410" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(30 74) scale(0.7)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#4aa8e8" stroke="#13263e" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#4aa8e8" stroke="#13263e" stroke-width="1.6"/><path d="M0 -6V6" stroke="#13263e" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(84 92) scale(0.85)"><path d="M0 0C-4 -14 -20 -16 -20 -6C-20 0 -10 2 0 0ZM0 0C4 -14 20 -16 20 -6C20 0 10 2 0 0Z" fill="#f6d63a" stroke="#3a2e08" stroke-width="1.6"/><path d="M0 0C-3 6 -14 10 -13 3C-12 -1 -5 0 0 0ZM0 0C3 6 14 10 13 3C12 -1 5 0 0 0Z" fill="#f6d63a" stroke="#3a2e08" stroke-width="1.6"/><path d="M0 -6V6" stroke="#3a2e08" stroke-width="2.4" stroke-linecap="round"/></g></svg></span><span class="now">Playing now</span><b>Tropical rainforest</b><small>Palms, hibiscus, misty peaks and a jungle pool</small></button>
   </div>
   <p class="warn" id="newWarn">This one isn't finished: starting a new one will lose it.</p>
 </div></div>
@@ -451,9 +452,10 @@ function sprite(ty, dir) {
 
 /* ---------- saving ---------- */
 const HUNTS = COLOURS.length * PATTERNS.length, huntSize = h => 1;   // every sheep wears a different jumper, and you find them all, one at a time
-let S = { v: 2, mode: 'garden', seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
+let S = { v: 2, mode: 'meadow', seed: 0, hunt: 1, found: [], clovers: [], score: 0, best: 0, fields: 0, shoos: 0, hints: 0, seenHelp: false, muted: false };
 const firstVisit = !localStorage.getItem('findthebutterfly');
 try { const s = JSON.parse(localStorage.getItem('findthebutterfly') || 'null'); if (s && s.v === 2) S = Object.assign(S, s); else if (s) S.seenHelp = !!s.seenHelp; } catch (e) {}
+if (S.mode !== 'tropical') S.mode = 'meadow';
 if (BB.muted === null) BB.muted = S.muted; else S.muted = BB.muted;   // sound is shared by every game
 const save = () => { try { localStorage.setItem('findthebutterfly', JSON.stringify(S)); } catch (e) {} };
 
@@ -510,36 +512,22 @@ function planField() {
   const time = { tod: 0 };
   const clear = (x, y, r) => !flocks.some(F => Math.hypot((F.x - x) * .55, (F.y - y) * 1.3) < 190 + r) && Math.hypot((x - picnic.x) * .6, (y - picnic.y) * 1.4) > 170 + r;
   let pond = null; for (let t = 0; t < 200 && !pond; t++) { const x = R(160, WORLD_W - 160), y = R(CREST + 260, WORLD_H - 120); if (clear(x, y, 60)) pond = { x, y, rx: 120 * persp(y), ry: 36 * persp(y) }; }
-  let bath = null; for (let t = 0; t < 200 && !bath; t++) { const x = R(120, WORLD_W - 120), y = R(CREST + 160, WORLD_H - 140); if (clear(x, y, 20) && (!pond || Math.hypot(x - pond.x, y - pond.y) > 260)) bath = { x, y }; }
-  const path = { x0: R(.35, .65) * WORLD_W, x1: R(.25, .75) * WORLD_W, b1: R(-260, 260), b2: R(-260, 260) }, cottage = { x: R(.15, .85) * WORLD_W, s: R(.9, 1.1) };
-  return { hunts, counts, sheep, flocks, hills, picnic, clovers, pond, bath, path, cottage, view: { x: WORLD_W / 2, y: (CREST + WORLD_H) / 2 + 40 }, time };
+  const path = { x0: R(.35, .65) * WORLD_W, x1: R(.25, .75) * WORLD_W, b1: R(-260, 260), b2: R(-260, 260) };
+  return { hunts, counts, sheep, flocks, hills, picnic, clovers, pond, path, view: { x: WORLD_W / 2, y: (CREST + WORLD_H) / 2 + 40 }, time };
 }
 
-/* ---------- the backdrop: sky, hills, a hedge, the garden lawn, butterfly bushes and Bear and Bean's picnic, painted once per time of day ---------- */
+/* ---------- the backdrop: a wildflower meadow or a tropical rainforest, with Bear and Bean's picnic, painted once per time of day ---------- */
 const TIMES = [
   { n: '☀️ Morning', sky: ['#5ea6e6', '#bfe2f8', '#eaf6e4'], far: '#8fb6a4', mid: '#6fa05c', grass: ['#7cb653', '#5d9a3c', '#3f7a2c'], tree: '#4f7f3a', night: 0, sun: [.2, .55, 'rgba(255,252,230,.95)'] },
   { n: '🌤️ Afternoon', sky: ['#3f8fe0', '#a9d6f6', '#eef8e6'], far: '#88b4a0', mid: '#68a056', grass: ['#84bd58', '#629f3f', '#41802e'], tree: '#4a7c37', night: 0, sun: [.5, .3, 'rgba(255,253,236,.98)'] },
   { n: '🌅 Golden hour', sky: ['#3f5585', '#d17d68', '#ffd590'], far: '#86738a', mid: '#7a7840', grass: ['#93a24a', '#6f8a33', '#4c6a22'], tree: '#525a28', night: .06, sun: [.75, .85, 'rgba(255,230,170,.95)'] },
 ];
 const snowy = () => false, timesNow = () => TIMES;
-const PER_TIME = Math.ceil(HUNTS / TIMES.length), todNow = () => Math.min(TIMES.length - 1, Math.floor((S.hunt - 1) / PER_TIME));   // the day moves on as the garden empties
+const PER_TIME = Math.ceil(HUNTS / TIMES.length), todNow = () => Math.min(TIMES.length - 1, Math.floor((S.hunt - 1) / PER_TIME));   // the day moves on as the butterflies are found
 const av = f => f + (window.AV && AV[f] ? '?v=' + AV[f] : '');
 const picnicImg = new Image(); picnicImg.onload = () => { if (field) paintBackdrop(); }; picnicImg.src = av('bear-and-bean-picnic.webp');
 const BLOOMS = ['#9a5ad6', '#b47ae8', '#e070b0', '#f4f0f8', '#7a4ac0'];   // butterfly-bush flowers: purples, pinks and white
 // a butterfly bush: a rounded mound of leaves with cones of tiny flowers poking up
-function bush(g, x, y, w, s) {
-  g.fillStyle = 'rgba(0,30,0,.22)'; g.beginPath(); g.ellipse(x + 4 * s, y + 2 * s, w * .56, w * .12, 0, 0, 6.3); g.fill();
-  const mound = (cx, cy, r, t) => { const gr = g.createRadialGradient(cx - r * .3, cy - r * .45, r * .1, cx, cy, r); gr.addColorStop(0, rgba(shade([92, 150, 70], .18 + t))); gr.addColorStop(.7, rgba(shade([70, 124, 56], t))); gr.addColorStop(1, rgba(shade([46, 92, 42], t))); g.fillStyle = gr; g.beginPath(); g.ellipse(cx, cy, r, r * .8, 0, 0, 6.3); g.fill(); };
-  for (let k = 0; k < 9; k++) { const t = k / 8; mound(x + R(-.42, .42) * w, y - lerp(.34, .08, t) * w + R(-.04, .04) * w, R(.17, .25) * w, lerp(-.12, .05, t)); }
-  g.fillStyle = 'rgba(200,240,160,.35)'; for (let k = 0; k < 40; k++) { const bx = x + R(-.42, .42) * w, by = y - R(.08, .48) * w; g.beginPath(); g.ellipse(bx, by, 3.2 * s, 1.5 * s, R(-.9, .9), 0, 6.3); g.fill(); }   // leaves catching the light
-  const col = hex(pick(BLOOMS));
-  const spikes = []; for (let k = 0; k < 16; k++) spikes.push([x + R(-.44, .44) * w, y - R(.22, .52) * w, R(18, 30) * s, R(-.4, .4)]);
-  spikes.sort((a, b) => a[1] - b[1]);
-  for (const [bx, by, h, lean] of spikes) { g.save(); g.translate(bx, by); g.rotate(lean);
-    g.strokeStyle = '#4a7a3a'; g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(0, 4 * s); g.lineTo(0, -h * .2); g.stroke();
-    for (let j = 0; j < 12; j++) { const t = j / 11, yy = -t * h, rr = (1 - t * .75) * 3.6 * s; g.fillStyle = rgba(shade(col, R(-.22, .28))); g.beginPath(); g.arc(R(-.7, .7) * rr, yy, rr, 0, 6.3); g.fill(); }
-    g.restore(); }
-}
 // a clump of meadow flowers where butterflies gather: knapweed and thistles on tall stems
 function clump(g, x, y, w, s) {
   g.fillStyle = 'rgba(0,30,0,.08)'; g.beginPath(); g.ellipse(x + 3 * s, y + 2 * s, w * .45, w * .07, 0, 0, 6.3); g.fill();
@@ -554,20 +542,56 @@ function clump(g, x, y, w, s) {
     else { g.fillStyle = '#6a4a3a'; g.beginPath(); g.arc(hx, hy + 1.8 * s, 3 * s, 0, 6.3); g.fill(); g.fillStyle = rgba(shade(hex('#c060c8'), R(-.15, .15))); for (let j = 0; j < 9; j++) { const a = j / 9 * 6.3; g.beginPath(); g.ellipse(hx + Math.cos(a) * 3.8 * s, hy - 1 * s + Math.sin(a) * 2.6 * s, 2.9 * s, 1.4 * s, a, 0, 6.3); g.fill(); } }
   }
 }
-// tall border flowers for the cottage garden
-function foxglove(g, x, y, h, s, col) {
-  g.strokeStyle = '#4f7a36'; g.lineWidth = 1.6 * s; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - h); g.stroke();
-  g.fillStyle = '#5c8c42'; for (const d of [-1, 1]) { g.beginPath(); g.ellipse(x + d * 5 * s, y - 4 * s, 6 * s, 2.2 * s, d * .5, 0, 6.3); g.fill(); }
-  const c = hex(col); for (let j = 0; j < 10; j++) { const t = j / 9, yy = y - h * (.35 + t * .62), side = j % 2 ? 1 : -1, r = (1 - t * .6) * 3 * s; g.fillStyle = rgba(shade(c, -.1 + t * .3)); g.beginPath(); g.ellipse(x + side * r * .6, yy, r, r * 1.3, side * .3, 0, 6.3); g.fill(); }
+// a coconut palm: a leaning ringed trunk and drooping feathery fronds
+function palm(g, x, y, h, s, lean) {
+  const tx = x + lean * h, ty = y - h, mx = x + lean * h * .2, my = y - h * .6, at = t => { const u = 1 - t; return [u * u * x + 2 * u * t * mx + t * t * tx, u * u * y + 2 * u * t * my + t * t * ty]; };
+  g.lineCap = 'round'; g.strokeStyle = '#8a6a44'; g.lineWidth = 6 * s; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(mx, my, tx, ty); g.stroke();
+  g.strokeStyle = 'rgba(60,40,20,.45)'; g.lineWidth = 1 * s; for (let t = .06; t < .95; t += .06) { const [px, py] = at(t); g.beginPath(); g.moveTo(px - 3 * s, py); g.lineTo(px + 3 * s, py + 1 * s); g.stroke(); }
+  for (let k = 0; k < 8; k++) {
+    const a = -Math.PI / 2 + (k - 3.5) * .42 + R(-.1, .1), len = R(34, 46) * s, droop = Math.abs(k - 3.5) / 3.5 * .9 + .25;
+    const ex = tx + Math.cos(a) * len, ey = ty + Math.sin(a) * len * .55 + droop * len * .9, cx = tx + Math.cos(a) * len * .55, cy = ty + Math.sin(a) * len * .7 - 6 * s;
+    g.strokeStyle = rgba(shade(hex('#3f8a3a'), R(-.15, .1))); g.lineWidth = 1.6 * s; g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(cx, cy, ex, ey); g.stroke();
+    g.lineWidth = 1.3 * s; for (let t = .12; t < 1; t += .08) { const u = 1 - t, px = u * u * tx + 2 * u * t * cx + t * t * ex, py = u * u * ty + 2 * u * t * cy + t * t * ey, dx = 2 * u * (cx - tx) + 2 * t * (ex - cx), dy = 2 * u * (cy - ty) + 2 * t * (ey - cy), dl = Math.hypot(dx, dy) || 1, l = (1 - t * .6) * 9 * s;
+      for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(px, py); g.lineTo(px - dy / dl * sd * l + dx / dl * 2 * s, py + dx / dl * sd * l * .5 + 4 * s); g.stroke(); } }
+  }
+  g.fillStyle = '#6a4a26'; for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(tx + (k - 1) * 3.4 * s, ty + 3 * s + (k % 2) * 2 * s, 2.8 * s, 0, 6.3); g.fill(); }
 }
-function hollyhock(g, x, y, h, s, col) {
-  g.strokeStyle = '#4f7a36'; g.lineWidth = 2 * s; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - h); g.stroke();
-  const c = hex(col); for (let j = 0; j < 6; j++) { const t = j / 5, yy = y - h * (.3 + t * .66), r = (1 - t * .55) * 4.6 * s, xx = x + (j % 2 ? 1 : -1) * 2 * s; g.fillStyle = rgba(shade(c, t * .2)); g.beginPath(); g.arc(xx, yy, r, 0, 6.3); g.fill(); g.fillStyle = '#f7e07a'; g.beginPath(); g.arc(xx, yy, r * .3, 0, 6.3); g.fill(); }
+// a big banana leaf, lighter on its top half, with fine veins
+function bigLeaf(g, x, y, ang, len, s, col) {
+  const c = hex(col), w = len * .2; g.save(); g.translate(x, y); g.rotate(ang);
+  g.fillStyle = rgba(c); g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(len * .25, -w * 1.2, len * .8, -w * 1.1, len, 0); g.bezierCurveTo(len * .8, w, len * .25, w * 1.1, 0, 0); g.fill();
+  g.fillStyle = rgba(shade(c, .1)); g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(len * .25, -w * 1.2, len * .8, -w * 1.1, len, 0); g.closePath(); g.fill();
+  g.strokeStyle = rgba(shade(c, -.15)); g.lineWidth = .8 * s; for (let t = .1; t < .9; t += .06) { const bx = len * t, hw = w * Math.sin(Math.PI * t) * .95; g.beginPath(); g.moveTo(bx, 0); g.lineTo(bx + 7 * s, -hw); g.moveTo(bx, 0); g.lineTo(bx + 7 * s, hw * .9); g.stroke(); }
+  g.strokeStyle = rgba(shade(c, .35)); g.lineWidth = 1.6 * s; g.beginPath(); g.moveTo(0, 0); g.lineTo(len * .97, 0); g.stroke();
+  g.restore();
 }
-function lavender(g, x, y, w, s) {   // a soft row of lavender
-  for (let k = 0; k < Math.round(w / (5 * s)); k++) { const bx = x - w / 2 + k * 5 * s + R(-1, 1) * s, h = R(12, 18) * s; g.strokeStyle = '#7a9a6a'; g.lineWidth = 1 * s; g.beginPath(); g.moveTo(bx, y); g.lineTo(bx + R(-2, 2) * s, y - h); g.stroke(); g.fillStyle = rgba(shade(hex('#8a6ac8'), R(-.15, .15))); g.beginPath(); g.ellipse(bx, y - h, 1.7 * s, 4.5 * s, 0, 0, 6.3); g.fill(); }
+// a fern frond
+function frond(g, x, y, ang, len, s, col) {
+  g.save(); g.translate(x, y); g.rotate(ang); g.strokeStyle = col; g.lineCap = 'round';
+  g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(len * .5, -len * .12, len, len * .08); g.stroke();
+  g.lineWidth = 1.1 * s; for (let t = .1; t < .95; t += .07) { const px = len * t, py = 2 * (1 - t) * t * -len * .12 + t * t * len * .08, l = (1 - t * .7) * len * .16; g.beginPath(); g.moveTo(px + l * .3, py - l); g.lineTo(px, py); g.lineTo(px + l * .3, py + l); g.stroke(); }
+  g.restore();
 }
-const wild = () => S.mode === 'meadow';   // the wildflower meadow; otherwise the cottage garden
+// a glossy flowering shrub where the butterflies gather: hibiscus, or heliconia's red and yellow claws
+function tropicBush(g, x, y, w, s) {
+  g.fillStyle = 'rgba(0,30,10,.18)'; g.beginPath(); g.ellipse(x + 4 * s, y + 2 * s, w * .5, w * .1, 0, 0, 6.3); g.fill();
+  const h = w * .42, leaves = [];
+  g.fillStyle = '#1f5a32'; g.beginPath(); g.ellipse(x, y, w * .47, h * .95, 0, Math.PI, 0); g.closePath(); g.fill();
+  for (let k = 0; k < 90; k++) { const u = R(-1, 1); leaves.push([x + u * w * .48, y - R(0, Math.sqrt(1 - u * u)) * h, R(0, 6.3)]); }
+  leaves.sort((a, b) => a[1] - b[1]);
+  for (const [lx, ly, a] of leaves) { const c = shade(hex('#2f7a3e'), R(-.25, .14)), l = R(15, 22) * s; g.fillStyle = rgba(c); g.beginPath(); g.ellipse(lx, ly, l, l * .42, a, 0, 6.3); g.fill();
+    g.strokeStyle = rgba(shade(c, .25)); g.lineWidth = .7 * s; g.beginPath(); g.moveTo(lx - Math.cos(a) * l * .8, ly - Math.sin(a) * l * .8); g.lineTo(lx + Math.cos(a) * l * .8, ly + Math.sin(a) * l * .8); g.stroke(); }
+  if (rnd() < .35) {
+    for (let k = 0; k < 5; k++) { const hx = x + R(-.35, .35) * w, hy = y - h * R(.6, 1.05); g.strokeStyle = '#3d6a2a'; g.lineWidth = 1.6 * s; g.beginPath(); g.moveTo(hx, hy - 6 * s); g.lineTo(hx, hy + 30 * s); g.stroke();
+      for (let j = 0; j < 5; j++) { const sd = j % 2 ? 1 : -1, by = hy + j * 6 * s; g.fillStyle = '#e0302a'; g.beginPath(); g.moveTo(hx, by); g.quadraticCurveTo(hx + sd * 10 * s, by - 1 * s, hx + sd * 9 * s, by + 5 * s); g.lineTo(hx, by + 4 * s); g.closePath(); g.fill();
+        g.fillStyle = '#f6c83a'; g.beginPath(); g.arc(hx + sd * 8.6 * s, by + 4 * s, 1.5 * s, 0, 6.3); g.fill(); } } }
+  else { const cc = hex(pick(['#e8303a', '#f26a9a', '#f7943a', '#f6d63a', '#f4f0e6']));
+    for (let k = 0; k < 9; k++) { const u = R(-.9, .9), fx = x + u * w * .45, fy = y - Math.sqrt(1 - u * u) * h * R(.5, 1.05), r = R(5, 7) * s;
+      for (let j = 0; j < 5; j++) { const a = j / 5 * 6.3 + .3; g.fillStyle = rgba(shade(cc, R(-.08, .08))); g.beginPath(); g.ellipse(fx + Math.cos(a) * r * .6, fy + Math.sin(a) * r * .5, r * .65, r * .48, a, 0, 6.3); g.fill(); }
+      g.fillStyle = rgba(shade(cc, -.45)); g.beginPath(); g.arc(fx, fy, r * .28, 0, 6.3); g.fill();
+      g.strokeStyle = '#f6e07a'; g.lineWidth = 1 * s; g.beginPath(); g.moveTo(fx, fy); g.lineTo(fx + r * .5, fy - r * .7); g.stroke(); g.fillStyle = '#f6d63a'; g.beginPath(); g.arc(fx + r * .5, fy - r * .7, 1.2 * s, 0, 6.3); g.fill(); } }
+}
+const wild = () => S.mode !== 'tropical';   // the wildflower meadow; otherwise the tropical rainforest
 function paintBackdrop() {
   const plan = field.plan, T = TIMES[todNow()], c = field.pic || document.createElement('canvas'), meadow = wild();
   c.width = Math.round(WORLD_W * BDPR); c.height = Math.round(WORLD_H * BDPR);
@@ -578,14 +602,25 @@ function paintBackdrop() {
     g.fillStyle = col; g.beginPath(); g.arc(x, y, 24, 0, 6.3); g.fill(); }
   for (let i = 0; i < 5; i++) { const x = R(0, WORLD_W), y = R(40, CREST - 110), s = R(.7, 1.3); g.fillStyle = 'rgba(255,255,255,.75)'; for (let j = 0; j < 5; j++) { g.beginPath(); g.ellipse(x + (j - 2) * 22 * s, y + (j % 2 ? -8 : 2) * s, 26 * s, 15 * s, 0, 0, 6.3); g.fill(); } }
   const ridge = (lift, a, f, p, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(0, CREST + 80); for (let x = 0; x <= WORLD_W; x += 10) g.lineTo(x, crest(x) - lift - Math.sin(x * f + p) * a); g.lineTo(WORLD_W, CREST + 80); g.closePath(); g.fill(); };
-  ridge(hills.far, 26, .0035, R(0, 6), T.far);
-  ridge(34, 14, .006, R(0, 6), T.mid);
-  // trees on the hill: blossom in the garden, big round oaks over the meadow
-  for (let x = R(0, 60); x < WORLD_W; x += R(40, 120)) { const y = crest(x) - 34 - Math.sin(x * .006) * 6, s = R(.7, 1.3) * (meadow ? 1.3 : 1), blossom = !meadow && rnd() < .35;
-    g.fillStyle = '#5a4030'; g.fillRect(x - 1.5 * s, y - 8 * s, 3 * s, 9 * s);
-    for (let j = 0; j < 3; j++) { g.fillStyle = blossom ? rgba(shade(hex('#f4b6c8'), R(-.1, .15))) : rgba(shade(hex(T.tree), R(-.12, .08))); g.beginPath(); g.arc(x + (j - 1) * 9 * s, y - 10 * s - (j === 1 ? 6 * s : 0), 10 * s, 0, 6.3); g.fill(); } }
+  if (meadow) {
+    ridge(hills.far, 26, .0035, R(0, 6), T.far);
+    ridge(34, 14, .006, R(0, 6), T.mid);
+    for (let x = R(0, 60); x < WORLD_W; x += R(40, 120)) { const y = crest(x) - 34 - Math.sin(x * .006) * 6, s = R(.7, 1.3) * 1.3;   // big round oaks on the hill
+      g.fillStyle = '#5a4030'; g.fillRect(x - 1.5 * s, y - 8 * s, 3 * s, 9 * s);
+      for (let j = 0; j < 3; j++) { g.fillStyle = rgba(shade(hex(T.tree), R(-.12, .08))); g.beginPath(); g.arc(x + (j - 1) * 9 * s, y - 10 * s - (j === 1 ? 6 * s : 0), 10 * s, 0, 6.3); g.fill(); } }
+  } else {
+    const peaks = []; for (let i = 0; i < 3; i++) peaks.push([(i + R(.2, .8)) / 3 * WORLD_W, R(70, 120), R(90, 160)]);
+    const far = x => crest(x) - hills.far - 20 - peaks.reduce((a, [px, h, w]) => a + h * Math.exp(-(((x - px) / w) ** 2)), 0) - Math.sin(x * .01) * 6;
+    const pc = mix(hex(T.far), [110, 150, 170], .3);
+    g.fillStyle = rgba(pc); g.beginPath(); g.moveTo(0, CREST + 80); for (let x = 0; x <= WORLD_W; x += 8) g.lineTo(x, far(x)); g.lineTo(WORLD_W, CREST + 80); g.closePath(); g.fill();
+    g.strokeStyle = rgba(shade(pc, -.08)); g.lineWidth = 1.5; for (const [px, h, w] of peaks) for (const k of [-1.5, -.6, .4, 1.3]) { const top = far(px); g.beginPath(); g.moveTo(px + k * 4, top + 10); g.quadraticCurveTo(px + k * w * .2, top + h * .5, px + k * w * .4, top + h); g.stroke(); }
+    for (const [px] of peaks) { const top = far(px); g.fillStyle = 'rgba(255,255,255,.7)'; for (let j = 0; j < 4; j++) { g.beginPath(); g.ellipse(px + (j - 1.5) * 26, top + 22 + (j % 2) * 6, 34, 9, 0, 0, 6.3); g.fill(); } }   // a cloud caught on each peak
+    const mist = g.createLinearGradient(0, CREST - 130, 0, CREST); mist.addColorStop(0, 'rgba(255,255,255,0)'); mist.addColorStop(1, 'rgba(255,255,255,.6)'); g.fillStyle = mist; g.fillRect(0, CREST - 130, WORLD_W, 140);
+    for (let x = -10; x < WORLD_W + 20; x += R(10, 18)) { const y = crest(x) - 30 - Math.sin(x * .006) * 8; g.fillStyle = rgba(shade(mix(hex(T.tree), [30, 90, 60], .3), R(-.18, .1))); g.beginPath(); g.arc(x, y - R(0, 14), R(14, 24), 0, 6.3); g.fill(); }
+    for (let x = R(0, 120); x < WORLD_W; x += R(110, 220)) palm(g, x, crest(x) - 30, R(60, 90), R(.6, .8), R(-.25, .25));
+  }
   // the ground, lighter where it's nearer
-  const mg = g.createLinearGradient(0, CREST - 30, 0, WORLD_H); mg.addColorStop(0, T.grass[0]); mg.addColorStop(.5, T.grass[1]); mg.addColorStop(1, T.grass[2]);
+  const gcol = i => meadow ? T.grass[i] : rgba(mix(hex(T.grass[i]), [24, 104, 64], .4)), mg = g.createLinearGradient(0, CREST - 30, 0, WORLD_H); mg.addColorStop(0, gcol(0)); mg.addColorStop(.5, gcol(1)); mg.addColorStop(1, gcol(2));
   g.fillStyle = mg; g.beginPath(); g.moveTo(0, WORLD_H); for (let x = 0; x <= WORLD_W; x += 10) g.lineTo(x, crest(x)); g.lineTo(WORLD_W, WORLD_H); g.closePath(); g.fill();
   if (meadow) {
     // a post-and-rail fence far off, half lost in the grass
@@ -594,27 +629,11 @@ function paintBackdrop() {
     for (let i = 0; i < 5; i++) { const x = R(40, WORLD_W - 40), y = crest(x) - 30 - R(0, 6), k = R(.8, 1.1);   // hay bales in the next field
       g.fillStyle = 'rgba(40,60,20,.25)'; g.beginPath(); g.ellipse(x + 3, y + 7 * k, 12 * k, 3 * k, 0, 0, 6.3); g.fill();
       g.fillStyle = '#d8b862'; g.fillRect(x - 9 * k, y - 8 * k, 14 * k, 15 * k); g.fillStyle = '#e8cc7a'; g.beginPath(); g.ellipse(x + 5 * k, y - .5 * k, 5 * k, 7.5 * k, 0, 0, 6.3); g.fill(); g.strokeStyle = '#b8984a'; g.lineWidth = .8; g.beginPath(); g.ellipse(x + 5 * k, y - .5 * k, 2.5 * k, 4 * k, 0, 0, 6.3); g.stroke(); }
-  } else {
-    // the cottage peeping over the hedge
-    { const cx = plan.cottage.x, cy = crest(cx) + 2, k = plan.cottage.s;
-      g.fillStyle = '#f3e8d0'; g.fillRect(cx - 34 * k, cy - 34 * k, 68 * k, 32 * k);
-      g.fillStyle = '#a7702e'; g.beginPath(); g.moveTo(cx - 42 * k, cy - 30 * k); g.quadraticCurveTo(cx - 30 * k, cy - 62 * k, cx, cy - 64 * k); g.quadraticCurveTo(cx + 30 * k, cy - 62 * k, cx + 42 * k, cy - 30 * k); g.closePath(); g.fill();   // thatch
-      g.strokeStyle = 'rgba(80,50,20,.35)'; g.lineWidth = 1; for (let i = -3; i <= 3; i++) { g.beginPath(); g.moveTo(cx + i * 10 * k, cy - 60 * k + Math.abs(i) * 3 * k); g.lineTo(cx + i * 13 * k, cy - 31 * k); g.stroke(); }
-      g.fillStyle = '#b8864a'; g.fillRect(cx + 16 * k, cy - 70 * k, 7 * k, 14 * k);
-      g.fillStyle = '#3e5a7a'; for (const wx of [-22, 12]) g.fillRect(cx + wx * k, cy - 24 * k, 10 * k, 9 * k);
-      g.fillStyle = '#6a3a2a'; g.fillRect(cx - 5 * k, cy - 20 * k, 10 * k, 18 * k); }
-    // a hedge along the top of the garden, then a white picket fence with roses climbing it
-    for (let x = -10; x < WORLD_W + 10; x += 11) { const y = crest(x) + 8; g.fillStyle = rgba(shade(hex(T.tree), R(-.2, .15))); g.beginPath(); g.arc(x, y - R(6, 12), R(9, 13), 0, 6.3); g.fill(); }
-    g.strokeStyle = '#f4f2ea'; g.lineWidth = 1.6; for (const dy of [12, 19]) { g.beginPath(); for (let x = 0; x <= WORLD_W; x += 10) { const y = crest(x) + dy; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
-    g.fillStyle = '#fbfaf4'; for (let x = 3; x < WORLD_W; x += 8) { const y = crest(x) + 24; g.beginPath(); g.moveTo(x - 2.4, y); g.lineTo(x - 2.4, y - 15); g.lineTo(x, y - 18); g.lineTo(x + 2.4, y - 15); g.lineTo(x + 2.4, y); g.closePath(); g.fill(); }
-    for (let i = 0; i < 90; i++) { const x = R(0, WORLD_W), y = crest(x) + R(4, 20); g.fillStyle = rgba(shade([80, 130, 60], R(-.2, .1))); g.beginPath(); g.arc(x, y, R(2.5, 4), 0, 6.3); g.fill(); g.fillStyle = rnd() < .5 ? '#e86a8a' : '#f6c0d0'; g.beginPath(); g.arc(x + R(-2, 2), y - 1, 2.2, 0, 6.3); g.fill(); }
-    // a striped lawn, freshly mown
-    for (let i = 0; i < 14; i++) { const y0 = CREST + 30 + i * (WORLD_H - CREST) / 14; g.fillStyle = i % 2 ? 'rgba(255,255,220,.05)' : 'rgba(0,40,0,.04)'; g.fillRect(0, y0, WORLD_W, (WORLD_H - CREST) / 14); }
   }
   for (let i = 0; i < 60; i++) { const y = R(CREST, WORLD_H), x = R(0, WORLD_W), r = R(60, 160) * persp(y), gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rnd() < .5 ? 'rgba(255,255,200,.08)' : 'rgba(0,30,0,.08)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
   // grass: short and fine on the lawn, long and golden-green in the meadow
   { g.save(); g.lineCap = 'round'; const n = meadow ? 7400 : 4200; for (let i = 0; i < n; i++) { const y = CREST + 12 + (WORLD_H - CREST - 12) * Math.pow(rnd(), .8), x = R(0, WORLD_W), s = persp(y), h = (meadow ? R(10, 24) : R(5, 10)) * s;
-      g.strokeStyle = meadow && rnd() < .25 ? rgba(mix(hex(T.grass[0]), [214, 196, 110], .45)) : T.grass[RI(0, 2)]; g.globalAlpha = .75; g.lineWidth = Math.max(.7, 1.3 * s); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + R(-2, 2) * s, y - h * .6, x + R(-5, 5) * s, y - h); g.stroke(); }
+      g.strokeStyle = meadow && rnd() < .25 ? rgba(mix(hex(T.grass[0]), [214, 196, 110], .45)) : gcol(RI(0, 2)); g.globalAlpha = .75; g.lineWidth = Math.max(.7, 1.3 * s); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + R(-2, 2) * s, y - h * .6, x + R(-5, 5) * s, y - h); g.stroke(); }
     g.restore(); }
   if (meadow) {
     // a mown path winding through
@@ -634,35 +653,29 @@ function paintBackdrop() {
     const clumps = []; for (const F of plan.flocks) { const n = 5 + RI(0, 2); for (let k = 0; k < n; k++) { const y = clamp(F.y + R(-60, 70), CREST + 60, WORLD_H - 20); clumps.push([clamp(F.x + R(-1, 1) * 230 * persp(y), 30, WORLD_W - 30), y]); } }
     clumps.sort((a, b) => a[1] - b[1]); for (const [x, y] of clumps) { const s = persp(y); clump(g, x, y, R(120, 170) * s, s); }
   } else {
-    // little flowers in the lawn
-    for (let i = 0; i < 260; i++) { const y = CREST + 30 + (WORLD_H - CREST - 30) * Math.pow(rnd(), .85), x = R(0, WORLD_W), s = persp(y);
-      if (rnd() < .6) { g.fillStyle = '#fbfbf4'; for (let j = 0; j < 6; j++) { const a = j / 6 * 6.3; g.beginPath(); g.ellipse(x + Math.cos(a) * 2 * s, y + Math.sin(a) * 1.4 * s, 1.5 * s, .9 * s, a, 0, 6.3); g.fill(); } g.fillStyle = '#f2c94c'; g.beginPath(); g.arc(x, y, 1 * s, 0, 6.3); g.fill(); }
-      else { g.fillStyle = '#f6d63a'; g.beginPath(); g.arc(x, y, 1.6 * s, 0, 6.3); g.fill(); } }
-    // a gravel path winding up to a gate in the fence
-    { const p = plan.path, pts = []; for (let t = 0; t <= 1.0001; t += .01) { const y = lerp(WORLD_H + 20, CREST + 28, t), u = 1 - t, x = u * u * u * p.x0 + 3 * u * u * t * (p.x0 + p.b1) + 3 * u * t * t * (p.x1 + p.b2) + t * t * t * p.x1; pts.push([x, y, 40 * persp(y)]); }
-      const edge = side => pts.map(([x, y, w]) => [x + side * w, y]), L = edge(-1), Rt = edge(1), path = new Path2D(); L.forEach((q, i) => i ? path.lineTo(...q) : path.moveTo(...q)); for (let i = Rt.length - 1; i >= 0; i--) path.lineTo(...Rt[i]); path.closePath();
-      const pg = g.createLinearGradient(0, CREST, 0, WORLD_H); pg.addColorStop(0, '#cfc0a0'); pg.addColorStop(1, '#e0d2b2'); g.fillStyle = pg; g.fill(path);
-      g.save(); g.clip(path); for (let i = 0; i < 1400; i++) { const k = RI(0, pts.length - 1), [x, y, w] = pts[k], s = persp(y); g.fillStyle = rnd() < .5 ? 'rgba(150,130,100,.5)' : 'rgba(255,250,235,.6)'; g.beginPath(); g.arc(x + R(-1, 1) * w, y + R(-6, 6), R(.6, 1.6) * s, 0, 6.3); g.fill(); } g.restore();
-      g.strokeStyle = 'rgba(110,90,60,.45)'; g.lineWidth = 1.6; for (const E of [L, Rt]) { g.beginPath(); E.forEach((q, i) => i ? g.lineTo(...q) : g.moveTo(...q)); g.stroke(); }
-      const top = pts[pts.length - 1]; g.fillStyle = '#fbfaf4'; g.fillRect(top[0] - 14, top[1] - 16, 28, 3); g.fillRect(top[0] - 14, top[1] - 9, 28, 3); }   // the gate
-    // borders down both sides and along the fence: foxgloves, hollyhocks and rows of lavender
-    const border = []; for (let i = 0; i < 70; i++) { const y = R(CREST + 40, WORLD_H - 10), side = rnd() < .5; border.push([side ? R(0, 90) * persp(y) : WORLD_W - R(0, 90) * persp(y), y]); }
-    for (let x = 30; x < WORLD_W - 30; x += R(30, 60)) border.push([x, crest(x) + R(30, 44)]);
-    border.sort((a, b) => a[1] - b[1]);
-    for (const [x, y] of border) { const s = persp(y), k = rnd(); if (k < .4) foxglove(g, x, y, R(40, 60) * s, s, pick(['#d86aa8', '#b87ad8', '#f4e8f4'])); else if (k < .7) hollyhock(g, x, y, R(46, 70) * s, s, pick(['#f28cb8', '#f4f0e6', '#d84a6a', '#f6d870'])); else lavender(g, x, y, R(30, 60) * s, s); }
-    // a lily pond and a bird bath
-    if (plan.pond) { const { x, y, rx, ry } = plan.pond, s = persp(y);
-      g.fillStyle = '#8a8478'; for (let a = 0; a < 6.3; a += .22) { g.beginPath(); g.ellipse(x + Math.cos(a) * (rx + 4 * s), y + Math.sin(a) * (ry + 2 * s), 7 * s, 4 * s, 0, 0, 6.3); g.fill(); }
-      const wg = g.createRadialGradient(x - rx * .3, y - ry * .4, 2, x, y, rx); wg.addColorStop(0, '#9ad0e8'); wg.addColorStop(.6, '#4a8eb4'); wg.addColorStop(1, '#2e6a8c'); g.fillStyle = wg; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill();
-      for (let k = 0; k < 7; k++) { const a = R(0, 6.3), d = R(.2, .75), px = x + Math.cos(a) * rx * d, py = y + Math.sin(a) * ry * d, r = R(6, 10) * s; g.fillStyle = '#4f9a48'; g.beginPath(); g.ellipse(px, py, r, r * .45, 0, .3, 6.3 - .3); g.lineTo(px, py); g.fill(); if (k < 2) { g.fillStyle = '#f6c8dc'; for (let j = 0; j < 6; j++) { const b = j / 6 * 6.3; g.beginPath(); g.ellipse(px + Math.cos(b) * 2.4 * s, py - 2 * s + Math.sin(b) * 1.2 * s, 2.2 * s, 1 * s, b, 0, 6.3); g.fill(); } g.fillStyle = '#f6d63a'; g.beginPath(); g.arc(px, py - 2 * s, 1 * s, 0, 6.3); g.fill(); } }
-      g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(x + rx * .2, y - ry * .3, rx * .3, ry * .15, 0, Math.PI * 1.1, Math.PI * 1.8); g.stroke(); }
-    if (plan.bath) { const { x, y } = plan.bath, s = persp(y);
-      g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(x + 3 * s, y, 16 * s, 4 * s, 0, 0, 6.3); g.fill();
-      g.fillStyle = '#b8b2a6'; g.fillRect(x - 4 * s, y - 26 * s, 8 * s, 26 * s); g.beginPath(); g.ellipse(x, y, 10 * s, 3 * s, 0, 0, 6.3); g.fill();
-      g.beginPath(); g.ellipse(x, y - 27 * s, 18 * s, 6 * s, 0, 0, 6.3); g.fill(); g.fillStyle = '#7ab8d8'; g.beginPath(); g.ellipse(x, y - 28 * s, 14 * s, 4 * s, 0, 0, 6.3); g.fill(); }
-    // butterfly bushes where the butterflies gather
-    const bushes = []; for (const F of plan.flocks) { const n = 4 + RI(0, 2); for (let k = 0; k < n; k++) { const y = clamp(F.y + R(-60, 70), CREST + 60, WORLD_H - 20); bushes.push([clamp(F.x + R(-1, 1) * 230 * persp(y), 30, WORLD_W - 30), y]); } }
-    bushes.sort((a, b) => a[1] - b[1]); for (const [x, y] of bushes) { const s = persp(y); bush(g, x, y, R(170, 230) * s, s); }
+    for (let i = 0; i < 90; i++) { const y = R(CREST + 20, WORLD_H), x = R(0, WORLD_W), r = R(50, 130) * persp(y), gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, rnd() < .6 ? 'rgba(10,50,20,.16)' : 'rgba(220,255,160,.1)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }   // dappled shade
+    // a jungle pool
+    if (plan.pond) { const { x, y } = plan.pond, s = persp(y), rx = plan.pond.rx * 1.1, ry = plan.pond.ry * 1.1;
+      g.fillStyle = '#6f6a5e'; for (let a = 0; a < 6.3; a += .2) { g.beginPath(); g.ellipse(x + Math.cos(a) * (rx + 5 * s), y + Math.sin(a) * (ry + 3 * s), R(7, 10) * s, R(4, 6) * s, 0, 0, 6.3); g.fill(); }
+      const wg = g.createRadialGradient(x - rx * .3, y - ry * .4, 2, x, y, rx); wg.addColorStop(0, '#9af0e6'); wg.addColorStop(.55, '#2fb8b0'); wg.addColorStop(1, '#1a7a80'); g.fillStyle = wg; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.2; for (let k = 0; k < 3; k++) { g.beginPath(); g.ellipse(x + R(-.4, .4) * rx, y + R(-.3, .3) * ry, rx * R(.12, .25), ry * .12, 0, 0, 6.3); g.stroke(); }
+      for (let k = 0; k < 7; k++) { const a = R(Math.PI, 6.3); frond(g, x + Math.cos(a) * rx, y + Math.sin(a) * ry, -Math.PI / 2 + R(-1, 1), R(22, 32) * s, s, '#3f8a3a'); } }
+    // tiny flowers on the forest floor
+    for (let i = 0; i < 220; i++) { const y = CREST + 30 + (WORLD_H - CREST - 30) * Math.pow(rnd(), .85), x = R(0, WORLD_W), s = persp(y); g.fillStyle = pick(['#f7943a', '#f26a9a', '#f6d63a', '#e8303a']); for (let j = 0; j < 5; j++) { g.beginPath(); g.arc(x + R(-2.4, 2.4) * s, y + R(-1.6, 1.6) * s, 1.2 * s, 0, 6.3); g.fill(); } }
+    // banana leaves up the sides, ferns, palms at the back of the clearing and flowering bushes where the butterflies gather, back to front
+    const things = [];
+    for (let i = 0; i < 44; i++) { const y = R(CREST + 50, WORLD_H + 30), left = rnd() < .5; things.push([left ? R(-20, 100) * persp(y) : WORLD_W - R(-20, 100) * persp(y), y, left ? 0 : 1]); }
+    for (let i = 0; i < 140; i++) things.push([R(0, WORLD_W), R(CREST + 40, WORLD_H), 2]);
+    for (let x = R(0, 60); x < WORLD_W; x += R(90, 180)) things.push([x, crest(x) + R(20, 50), 3]);
+    for (let x = -20; x < WORLD_W + 20; x += R(26, 46)) things.push([x, crest(x) + R(14, 34), 5]);
+    for (const F of plan.flocks) { const n = 4 + RI(0, 2); for (let k = 0; k < n; k++) { const y = clamp(F.y + R(-60, 70), CREST + 60, WORLD_H - 20); things.push([clamp(F.x + R(-1, 1) * 230 * persp(y), 30, WORLD_W - 30), y, 4]); } }
+    things.sort((a, b) => a[1] - b[1]);
+    for (const [x, y, k] of things) { const s = persp(y);
+      if (k < 2) { const col = pick(['#3f8a3a', '#4a9a40', '#2f7a3e', '#5aa84a']); for (let j = 0; j < 3; j++) bigLeaf(g, x, y, k ? -Math.PI + R(.3, 1.3) : -R(.3, 1.3), R(70, 110) * s, s, col); }
+      else if (k === 2) for (let j = 0; j < 5; j++) frond(g, x, y, -Math.PI / 2 + (j - 2) * .45 + R(-.1, .1), R(18, 28) * s, s, rgba(shade(hex('#3f8a3a'), R(-.2, .1))));
+      else if (k === 3) palm(g, x, y, R(140, 200) * s, s, R(-.3, .3));
+      else if (k === 5) { const col = pick(['#2f7a3e', '#3f8a3a', '#286a38']); for (let j = 0; j < 4; j++) bigLeaf(g, x + R(-8, 8), y, -Math.PI / 2 + R(-1, 1), R(40, 60) * s, s, col); }
+      else tropicBush(g, x, y, R(170, 230) * s, s); }
   }
   // Bear and Bean's picnic
   { const p = plan.picnic, s = persp(p.y), w = 330 * s;
@@ -845,13 +858,13 @@ const TIPS = [
   'Ladybirds 🐞 hide among the clusters: 75 points each.',
   'Pinch or tap ＋ to zoom in close. Tap the little map to jump about.',
   'Stuck? 🔍 shows you where one is, for 25 points.',
-  'Find every butterfly, one at a time. The day moves on as the garden empties.',
+  'Find every butterfly, one at a time. The day moves on as you find them.',
 ];
 const loadingEl = $('loading');
 function makeField(fresh) {
   if (fresh) { S.seed = (Math.random() * 2147483647) | 0; S.hunt = 1; S.found = []; S.clovers = []; S.score = 0; S.shoos = 0; S.hints = 0; save(); }
   BDPR = Math.min(Math.min(window.devicePixelRatio || 1, 2), Math.sqrt(4.6e6 / (WORLD_W * WORLD_H)));
-  busy = true; $('tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)]; $('loadMsg').textContent = wild() ? 'Sowing the wildflowers…' : 'Planting the butterfly bushes…'; loadingEl.classList.add('show');
+  busy = true; $('tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)]; $('loadMsg').textContent = wild() ? 'Sowing the wildflowers…' : 'Growing the rainforest…'; loadingEl.classList.add('show');
   return new Promise(res => setTimeout(() => {
     let plan;
     try { plan = planField(); } catch (e) { busy = false; loadingEl.classList.remove('show'); note('Sorry, the butterflies flew off. Tap ↻ to look somewhere else'); res(); return; }
