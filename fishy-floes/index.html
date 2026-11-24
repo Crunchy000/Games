@@ -588,7 +588,7 @@ document.addEventListener('click', e => {
 
   /* ---------- drawing ---------- */
   const cv = $('board'), g = cv.getContext('2d');
-  let W = 400, H = 360, R = 20, ox = 0, oy = 0, dpr = 1;
+  let W = 400, H = 360, R = 20, ox = 0, oy = 0, dpr = 1, dirty = true;   // the board is only redrawn when something changes
   function layout() {
     dpr = Math.min(/firefox/i.test(navigator.userAgent) ? 2 : 3, devicePixelRatio || 1);   // Firefox redraws a smaller canvas more smoothly
     const rows = SIZES[size].rows, wide = Math.max(...rows) * 2;   // doubled columns
@@ -596,7 +596,7 @@ document.addEventListener('click', e => {
     R = hexW / Math.sqrt(3); const gap = R * .06;
     H = Math.round(2 * R + (rows.length - 1) * 1.5 * R + R * .9 + 8);
     ox = hexW / 2 + gap; oy = R + 6;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px';
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px'; dirty = true;
   }
   const pos = i => { const t = st.tiles[i]; return { x: ox + t.x * (R * Math.sqrt(3) / 2), y: oy + t.r * 1.5 * R }; };
   function hexPath(x, y, rad) { g.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30); g.lineTo(x + rad * Math.cos(a), y + rad * Math.sin(a)); } g.closePath(); }
@@ -695,7 +695,7 @@ document.addEventListener('click', e => {
     // the sea, with a few soft swells
     const sea = g.createLinearGradient(0, 0, 0, H); sea.addColorStop(0, '#1d5a8a'); sea.addColorStop(1, '#123c63'); g.fillStyle = sea; g.fillRect(0, 0, W, H);
     g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 2;
-    for (let yy = 18; yy < H; yy += 34) { g.beginPath(); for (let xx = 0; xx <= W; xx += 8) g.lineTo(xx, yy + Math.sin(xx / 22 + yy + now / 1400) * 3); g.stroke(); }
+    for (let yy = 18; yy < H; yy += 34) { g.beginPath(); for (let xx = 0; xx <= W; xx += 8) g.lineTo(xx, yy + Math.sin(xx / 22 + yy) * 3); g.stroke(); }
     const sliding = anims.find(a => a.type === 'slide'), sinking = anims.filter(a => a.type === 'sink');
     const targets = sel >= 0 && st.phase === 'move' ? movesFrom(st.pens[sel].t) : [];
     st.tiles.forEach((t, i) => {
@@ -718,12 +718,12 @@ document.addEventListener('click', e => {
       // a ring in the team colour under each penguin, so you can tell the sides apart at a glance
       g.lineWidth = 3.5; g.strokeStyle = pn.p ? '#ff5fa2' : '#e8994a'; g.fillStyle = pn.p ? 'rgba(255,95,162,.25)' : 'rgba(232,153,74,.28)';
       g.beginPath(); g.ellipse(x, y + R * .34, R * .52, R * .2, 0, 0, 7); g.fill(); g.stroke();
-      drawPen(x, y + R * .34, R * 1.62, now / 1000 + k, pn.p, stuck);
+      drawPen(x, y + R * .34, R * 1.62, k * 1.7, pn.p, stuck);
     });
     g.restore();
     anims = anims.filter(a => now - a.t0 < a.dur + 30);
   }
-  function frame(now) { requestAnimationFrame(frame); draw(now); }
+  function frame(now) { requestAnimationFrame(frame); if (dirty || anims.length) { dirty = false; draw(now); } }   // redraw only while something moves or changes
 
   /* ---------- tapping ---------- */
   function hit(cx, cy) {
@@ -754,6 +754,7 @@ document.addEventListener('click', e => {
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function plus(q, n) { const p = document.createElement('div'); p.className = 'plus'; p.style.color = q ? 'var(--p1)' : 'var(--p0)'; p.textContent = '+' + n; $('card' + q).appendChild(p); setTimeout(() => p.remove(), 950); }
   function render() {
+    dirty = true;
     const per = perPlayer();
     for (const q of [0, 1]) {
       $('f' + q).innerHTML = `${st.fish[q]}<small>fish</small>`;
@@ -816,6 +817,8 @@ document.addEventListener('click', e => {
   if (saved && saved.st && saved.size === size && saved.st.pens.length === 2 * perPlayer()) { st = saved.st; rebuildIndex(); autoSelect(); layout(); render(); maybeCpu(); }
   else newGame(true);
   requestAnimationFrame(frame);
+  // a phone may throw the picture away in the background: draw it again on return
+  document.addEventListener('visibilitychange', () => { dirty = true; }); addEventListener('pageshow', () => { dirty = true; }); cv.addEventListener('contextrestored', () => { dirty = true; });
   if (DEBUG) window.__ff = { get st() { return st; }, place, move, movesFrom, penMoves, canMove, get busy() { return busy; }, get sel() { return sel; }, pos, cpuMove, cpuPlace, newGame, undo, autoSelect, islandsOf, bestHaul, retireIslands, fairStart, get hist() { return hist.length; } };
 })();
 </script>
