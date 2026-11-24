@@ -22,6 +22,11 @@
     });
   }).catch(() => {}));
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || swap) return; swap = true; if (Date.now() - t0 < 10000) location.reload(); });
+  // finish saving the offline copy when the connection comes back, and (in the installed app) check for updates about once a day
+  navigator.serviceWorker.ready.then(async reg => {
+    try { if ('sync' in reg) await reg.sync.register('bb-save'); } catch (e) {}
+    try { if ('periodicSync' in reg) { const p = await navigator.permissions.query({ name: 'periodic-background-sync' }); if (p.state === 'granted') await reg.periodicSync.register('bb-refresh', { minInterval: 24 * 60 * 60 * 1000 }); } } catch (e) {}
+  }).catch(() => {});
 }</script>
 <title>The Bear &amp; Bean Games: free, wholesome mini-games that work offline</title>
 <meta name="description" content="The Bear &amp; Bean Games: wholesome mini-games that work offline. Totally free, with no ads, no purchases, no tracking and no nonsense.">

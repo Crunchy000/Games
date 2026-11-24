@@ -6,7 +6,10 @@
      the saved copy, and kept across versions in their own store; a new stamp for the same file replaces the old one
    - anything else: answer from the saved copy and refresh it quietly
    - activate: delete the copies saved by older versions
-   - a page can ask which version is running: postMessage('version') */
+   - a page can ask which version is running: postMessage('version')
+   - offline: with no connection, pages come from the saved copy, and a page that was never saved falls back to the home page
+   - background sync ('bb-save'): finishes saving anything the offline copy is missing, once the connection is back
+   - periodic sync ('bb-refresh', about daily, installed app only): checks for a new version and tops up the saved copy */
 const VERSION = '__VERSION__';
 const STAMPED = 'bb-stamped';
 const FILES = [
@@ -37,6 +40,28 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('message', event => {
   if (event.data === 'version' && event.ports[0]) event.ports[0].postMessage(VERSION);
+});
+
+// save any of the files the offline copy is missing (never throws: what can't be fetched now is tried again next time)
+async function topUp() {
+  const pages = await caches.open(VERSION), stamped = await caches.open(STAMPED);
+  let missing = 0;
+  await Promise.all(FILES.map(async url => {
+    const store = url.includes('?v=') ? stamped : pages;
+    if (await store.match(url)) return;
+    try { const res = await fetch(new Request(url, { cache: 'reload' })); if (res.ok) await store.put(url, res); else missing++; } catch (e) { missing++; }
+  }));
+  return missing;
+}
+
+// background sync: a page asks for 'bb-save' when its offline copy might be incomplete; the browser runs it when online
+self.addEventListener('sync', event => {
+  if (event.tag === 'bb-save') event.waitUntil(topUp().then(missing => { if (missing) throw new Error(missing + ' still to save'); }));   // a failure makes the browser try again later
+});
+
+// periodic sync: the installed app checks for a new version now and then, even when it isn't open
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'bb-refresh') event.waitUntil(self.registration.update().catch(() => {}).then(topUp));
 });
 
 async function stampedFile(req, url) {
