@@ -307,6 +307,8 @@ const SS = 1.16;                       // the sheep's size
 const FENCE_H = 40, JUMP_T = 1.5, JUMP_H = 90, JUMP_V = 104;   // a slow, floaty hop: about three quarters of a second to tap in, at first
 const GROUND = () => Math.round(H * .74), FX = Math.round(W * .6);
 const FRONT = 30 * SS, BACK = 28 * SS;   // how far the body reaches in front of and behind the feet
+const WAIT_X = FX - 79;   // where each sheep stops and waits to be hopped over (a hop from here always clears)
+const NUDGE_T = 4, GIVE_UP_T = 8;   // a waiting sheep bleats again after a while, then wanders off
 
 function resize() {
   H = cardMode ? 270 : Math.round(clamp(W * innerHeight / innerWidth, 540, 800));
@@ -377,29 +379,29 @@ const sDoze = () => [72, 67, 64, 60].forEach((m, i) => tone(midi(m), 1.6, 'sine'
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
 /* ---------- the night's state ---------- */
-let frozen = false, cardMode = false, state = 'title', time = 0, count = 0, drowsy = 0, overT = 0, nextIn = 0, sheep = null, lastTy = null, pops = [], overLine = '';
+let frozen = false, cardMode = false, noteI = 0, state = 'title', time = 0, count = 0, drowsy = 0, overT = 0, nextIn = 0, sheep = null, lastTy = null, pops = [], overLine = '';
 const DROWSY_MAX = 3;
 // the sheep: x is where its feet are; st: walk, pause, jump, bump, off (wandering away after a bump), gone
 function newSheep() {
   let ty; do ty = { col: pick(COLOURS), pat: pick(PATTERNS), face: FACES[0] }; while (lastTy && ty.col === lastTy.col && ty.pat === lastTy.pat); lastTy = ty;
   const v = (62 + Math.min(count, 80) * .45) * R(.88, 1.12);
   sheep = { ty, x: -36, v, st: 'walk', t: 0, ph: R(0, 6), lift: 0, cleared: false, dir: 1,
-    pauseAt: count >= 4 && Math.random() < .2 ? R(30, FX - FRONT - 70) : null, pauseFor: R(.7, 1.5), lid: R(.25, .5) };
+    pauseAt: null, pauseFor: 0, lid: R(.25, .5) };
 }
 function startNight(carry) {
   count = carry ? run.count : 0; drowsy = carry ? run.drowsy : 0; run = { count, drowsy };
-  state = 'play'; sheep = null; nextIn = .4; pops = []; persist();
+  state = 'play'; sheep = null; nextIn = .4; pops = []; noteI = count * 2; persist();
 }
 function hop() {
   if (state !== 'play' || !sheep) return;
-  if ((sheep.st === 'walk' || sheep.st === 'pause') && !sheep.cleared && sheep.x < FX) { sheep.st = 'jump'; sheep.t = 0; sHop(); }
+  if (sheep.st === 'wait') { sheep.st = 'jump'; sheep.t = 0; sNote(noteI++); }   // released: a chime, and over it goes
 }
 function bump() {
   const s = sheep; s.st = 'bump'; s.t = 0; s.x = Math.min(s.x, FX - 5 - FRONT); s.liftFrom = s.lift;
   drowsy++; run.drowsy = drowsy; sBump(); buzz(25); persist();
 }
 function countIt() {
-  sheep.cleared = true; sNote(count); count++; total++; run.count = count;
+  sheep.cleared = true; sNote(noteI++); count++; total++; run.count = count;
   pops.push({ x: FX + 10, y: GROUND() - 120, t: 0, n: count }); persist();
 }
 function nodOff() {
@@ -417,9 +419,10 @@ function update(dt) {
   if (s.st === 'walk') {
     const v = s.cleared ? Math.max(s.v * 1.5, 95) : s.v;
     s.x += v * dt * s.dir; s.ph += dt * v / 7;
-    if (s.pauseAt !== null && s.x >= s.pauseAt) { s.st = 'pause'; s.t = 0; s.pauseAt = null; }
-  } else if (s.st === 'pause') {   // a nibble of grass on the way
-    if (s.t > s.pauseFor) { s.st = 'walk'; s.t = 0; }
+    if (!s.cleared && s.dir > 0 && s.x >= WAIT_X) { s.x = WAIT_X; s.st = 'wait'; s.t = 0; s.nudged = false; baa(R(.95, 1.1), .045); buzz(30); }   // at the fence: wait, with a bleat and a buzz
+  } else if (s.st === 'wait') {
+    if (!s.nudged && s.t > NUDGE_T) { s.nudged = true; baa(1.12, .05); buzz(30); }
+    if (s.t > GIVE_UP_T) { drowsy++; run.drowsy = drowsy; persist(); if (drowsy >= DROWSY_MAX) { nodOff(); return; } s.st = 'off'; s.dir = -1; s.t = 0; s.v *= .8; baa(.85, .035); }   // left too long: it wanders off, and you're a little sleepier
   } else if (s.st === 'jump') {
     const p = s.t / JUMP_T; s.x += Math.max(s.v, JUMP_V) * dt;
     s.lift = 4 * JUMP_H * p * (1 - p); s.ph += dt * 3;
@@ -475,11 +478,11 @@ function drawSheepAt(s) {
   const G = GROUND(), y = G - s.lift;
   // its shadow stays on the grass, smaller the higher it goes
   const sh = 1 - s.lift / (JUMP_H * 1.6); ctx.fillStyle = `rgba(0,0,0,${.28 * sh})`; ctx.beginPath(); ctx.ellipse(s.x - 2 * s.dir, G, 30 * SS * sh, 5 * SS * sh, 0, 0, 6.3); ctx.fill();
-  const bob = s.st === 'walk' || s.st === 'off' ? Math.abs(Math.sin(s.ph)) * 1.4 : 0;
-  const tilt = s.st === 'jump' ? (s.t / JUMP_T - .5) * .5 : s.st === 'bump' ? -Math.sin(Math.min(1, s.t / .5) * Math.PI) * .18 : s.st === 'pause' ? .12 : 0;
+  const bob = s.st === 'walk' || s.st === 'off' ? Math.abs(Math.sin(s.ph)) * 1.4 : s.st === 'wait' ? Math.sin(time * 2.2) * .6 + .6 : 0;
+  const tilt = s.st === 'jump' ? (s.t / JUMP_T - .5) * .5 : s.st === 'bump' ? -Math.sin(Math.min(1, s.t / .5) * Math.PI) * .18 : s.st === 'wait' ? -.04 : 0;
   const tuck = s.st === 'jump' ? Math.min(1, s.t / JUMP_T * 5, (1 - s.t / JUMP_T) * 5) : 0;
   ctx.save(); ctx.translate(s.x, y - bob); ctx.scale(SS * s.dir, SS); ctx.rotate(tilt);
-  drawSheep(ctx, s.ty, { ph: s.st === 'pause' ? 0 : s.ph, tuck, lid: s.st === 'bump' ? 0 : s.st === 'jump' ? s.lid * .4 : s.lid });
+  drawSheep(ctx, s.ty, { ph: s.st === 'wait' ? 0 : s.ph, tuck, lid: s.st === 'bump' ? 0 : s.st === 'jump' || (s.st === 'wait' && s.t < .8) ? s.lid * .4 : s.lid });
   ctx.restore();
   if (s.st === 'bump') {   // a few slow little stars round its head
     const hx = s.x + 26 * SS, hy = y - 62 * SS; ctx.fillStyle = '#ffe9a8';
@@ -526,7 +529,7 @@ function titleCard() {
   const y = H * .2;
   PK.presents(ctx, W / 2, y - 44, PKIMG, { size: 10, color: '#d8d2ff' });
   txt('Counting', W / 2, y, 46, '#fff1c8', '#2a2550'); txt('Sheep', W / 2, y + 48, 46, '#fff1c8', '#2a2550');
-  const lines = ['Tap to help each sheep hop the fence', 'Too soon or too late and they bump it', 'Three bumps and you nod off'];
+  const lines = ['Each sheep waits at the fence: tap to hop it over', 'Leave one waiting too long and it wanders off', 'Three wander off and you nod off'];
   lines.forEach((l, i) => txt(l, W / 2, H * .43 + i * 24, i ? 13 : 15, '#fff', 'rgba(10,12,35,.55)', 'center', i ? 700 : 800));
   if (best || total) txt(`Best ${best} · ${total} sheep counted in all`, W / 2, H * .43 + 82, 13, '#ffe2a8', 'rgba(10,12,35,.55)', 'center', 700);
   const carry = run && run.count > 0 && run.drowsy < DROWSY_MAX;
