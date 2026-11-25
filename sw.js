@@ -10,7 +10,7 @@
    - offline: with no connection, pages come from the saved copy, and a page that was never saved falls back to the home page
    - background sync ('bb-save'): finishes saving anything the offline copy is missing, once the connection is back
    - periodic sync ('bb-refresh', about daily, installed app only): checks for a new version and tops up the saved copy */
-const VERSION = 'games-a9846224341c';
+const VERSION = 'games-8919bae46a69';
 const STAMPED = 'bb-stamped';
 const FILES = [
   './',
@@ -18,6 +18,7 @@ const FILES = [
   './icons/apple-touch-icon.png?v=0ef76193',
   './icons/bean.png?v=2ef68eca',
   './icons/bear.png?v=406624f3',
+  './icons/card-counting-sheep.webp?v=3863e259',
   './icons/card-find-the-butterfly.webp?v=7300e73e',
   './icons/card-sheep-wearing-jumpers.webp?v=16137b03',
   './icons/favicon-32.png?v=aada1fbe',
@@ -31,6 +32,7 @@ const FILES = [
   './icons/shortcut-sheep-wearing-jumpers.png?v=04d89d20',
   './bean-2048/',
   './bumble-dash/',
+  './counting-sheep/',
   './crystal-cave/',
   './dot-loop/',
   './dots-and-boxes/',
